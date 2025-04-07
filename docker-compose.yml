@@ -1,0 +1,7 @@
+services:
+  frontend:
+    build: .
+    ports:
+      - "3000:80"  # Mapea el puerto 80 del contenedor al puerto 3000 de tu host
+    environment:
+      - NODE_ENV=production
