@@ -10,27 +10,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-        
-
     steps:
       # Extrae el repositorio
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Configura la versión de Node.js; aquí usamos la 18, pero puedes ajustarla
+      # Configura la versión de Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "18.x"
 
-      # Instala las dependencias usando npm ci (más rápido en CI)
+      # Instala las dependencias usando npm ci 
       - name: Install Dependencies
         run: npm ci
 
-      # Opcional: Ejecuta ESLint para verificar calidad (si deseas que falle en caso de error)
+      # Opcional: Ejecuta ESLint para verificar calidad 
       - name: Run Lint
         run: npm run lint
 
