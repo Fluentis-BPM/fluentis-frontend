@@ -1,14 +1,12 @@
+import type React from "react"
+import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { publicRoutes } from './routes/public';
 
 
-import './index.css'
+const router = createBrowserRouter([...publicRoutes]);
 
 function App() {
-
-  return (
-    <h1 className="text-3xl font-bold underline">
-    Hello world!
-  </h1>
-  )
+  return <RouterProvider router={router} />;
 }
 
-export default App
+export default App;
