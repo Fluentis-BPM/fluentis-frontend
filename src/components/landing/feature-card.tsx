@@ -1,4 +1,4 @@
-import type React from "react"
+
 
 import { Card, CardContent } from "@/components/ui/card"
 import { theme } from "@/lib/theme"

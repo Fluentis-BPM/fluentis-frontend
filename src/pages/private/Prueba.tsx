@@ -1,4 +1,4 @@
-import type React from "react"
+
 import { RootState } from '@/store';
 import { logout } from '@/store/auth/authSlice';
 import { useDispatch, useSelector } from 'react-redux';

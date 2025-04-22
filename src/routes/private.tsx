@@ -1,4 +1,4 @@
-import type React from "react"
+
 import { AppRouteObject } from '../types/router';
 import { PrivateRoute } from '../components/auth/PrivateRoute';
 import PruebaPage from '@/pages/private/Prueba';

@@ -1,4 +1,4 @@
-import type React from "react"
+
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
