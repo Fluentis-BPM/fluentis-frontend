@@ -1,7 +1,8 @@
 
 import type React from "react"
 import LandingPage from '../pages/static/LandingPage';
-import { AppRouteObject } from './router';
+import { AppRouteObject } from "@/types/router";
+
 
 export const publicRoutes: AppRouteObject[] = [
   {

@@ -19,9 +19,28 @@ import { FeatureCard } from "@/components/landing/feature-card"
 import { FaqItem } from "@/components/landing/faq-item"
 import { LandingFooter } from "@/components/landing/footer"
 import { useAzureAuth } from "@/hooks/useAzureAuth"
+import { useDispatch } from "react-redux"
+import { useNavigate } from "react-router-dom"
+import { setCredentials } from "@/store/auth/authSlice"
 
 export default function LandingPage() {
   const { handleLogin } = useAzureAuth()
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // Simulacion 
+  const handleTestLogin = () => {
+   
+    const mockUser = {
+      id: '1',
+      email: 'usuario@asofarma.com',
+      name: 'Usuario de Prueba'
+    };
+    const mockToken = 'token-simulado-123';
+
+    dispatch(setCredentials({ user: mockUser, token: mockToken }));
+    navigate('/dashboard');
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -60,7 +79,7 @@ export default function LandingPage() {
                 <Button 
                   size="lg" 
                   className={`bg-white text-[${theme.colors.primary}] hover:bg-white/90`}
-                  onClick={handleLogin}
+                  onClick={handleTestLogin}
                 >
                   Acceder al Sistema
                 </Button>
