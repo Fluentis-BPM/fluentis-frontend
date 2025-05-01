@@ -18,30 +18,10 @@ import { ScrollReveal } from "@/components/landing/scroll-reveal"
 import { FeatureCard } from "@/components/landing/feature-card"
 import { FaqItem } from "@/components/landing/faq-item"
 import { LandingFooter } from "@/components/landing/footer"
-import { useAzureAuth } from "@/hooks/useAzureAuth"
-import { useDispatch } from "react-redux"
-import { useNavigate } from "react-router-dom"
-import { setCredentials } from "@/store/auth/authSlice"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function LandingPage() {
-  const { handleLogin } = useAzureAuth()
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-
-  // Simulacion 
-  const handleTestLogin = () => {
-   
-    const mockUser = {
-      id: '1',
-      email: 'usuario@asofarma.com',
-      name: 'Usuario de Prueba'
-    };
-    const mockToken = 'token-simulado-123';
-
-    dispatch(setCredentials({ user: mockUser, token: mockToken }));
-    navigate('/dashboard');
-  };
-
+  const { handleLogin } = useAuth()
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero Section */}
@@ -79,7 +59,7 @@ export default function LandingPage() {
                 <Button 
                   size="lg" 
                   className={`bg-white text-[${theme.colors.primary}] hover:bg-white/90`}
-                  onClick={handleTestLogin}
+                  onClick={handleLogin}
                 >
                   Acceder al Sistema
                 </Button>
