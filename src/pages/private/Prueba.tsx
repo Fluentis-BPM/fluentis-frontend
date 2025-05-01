@@ -1,13 +1,11 @@
 
 import { RootState } from '@/store';
-import { logout } from '@/store/auth/authSlice';
-import { useDispatch, useSelector } from 'react-redux';
-
+import { useAuth } from "@/hooks/useAuth"
+import { useSelector } from 'react-redux';
 
 const PruebaPage = () => {
-  const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
-
+  const { handleLogout } = useAuth();
   return (
     <div className="p-8">
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -20,7 +18,7 @@ const PruebaPage = () => {
         </div>
 
         <button 
-          onClick={() => dispatch(logout())}
+          onClick={() => handleLogout}
           className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
         >
           Cerrar Sesión
