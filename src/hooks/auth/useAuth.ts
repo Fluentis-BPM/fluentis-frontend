@@ -1,10 +1,10 @@
 import { useMsal } from "@azure/msal-react";
-import { loginRequest } from "../authConfig";
+import { loginRequest } from "../../authConfig";
 import { useDispatch } from "react-redux";
-import { setUser, setAccessToken } from "../store/auth/authSlice";
-import { User } from "../types/auth";
-import { clearAuth } from "../store/auth/authSlice";
-import { AppDispatch } from "../store";
+import { setUser, setAccessToken } from "../../store/auth/authSlice";
+import { User } from "../../types/auth";
+import { clearAuth } from "../../store/auth/authSlice";
+import { AppDispatch } from "../../store";
 
 export const useAuth = () => {
     const { instance } = useMsal();

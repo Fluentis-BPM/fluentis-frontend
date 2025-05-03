@@ -8,10 +8,10 @@ interface PrivateRouteProps {
 }
 
 export const PrivateRoute = ({ children }: PrivateRouteProps) => {
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { accessToken } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
 
-  if (!isAuthenticated) {
+  if (!accessToken) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 

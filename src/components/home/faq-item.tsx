@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { ChevronDown, ChevronUp } from "lucide-react"
-import { theme } from "@/lib/theme"
+
 
 interface FaqItemProps {
   question: string
@@ -20,7 +20,7 @@ export function FaqItem({ question, answer }: FaqItemProps) {
         >
           <h3 className="text-lg font-medium">{question}</h3>
           {isOpen ? (
-            <ChevronUp className={`h-5 w-5 text-[${theme.colors.primary}]`} />
+            <ChevronUp className={`h-5 w-5 text-primary`} />
           ) : (
             <ChevronDown className="h-5 w-5 text-gray-500" />
           )}

@@ -1,6 +1,6 @@
 
 import { RootState } from '@/store';
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/auth/useAuth"
 import { useSelector } from 'react-redux';
 
 const PruebaPage = () => {

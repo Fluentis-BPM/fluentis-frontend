@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { theme } from "@/lib/theme";
+
 
 export function LandingFooter() {
   return (
@@ -12,7 +12,7 @@ export function LandingFooter() {
           <div>
             <div className="flex items-center mb-4">
               <div
-                className={`w-8 h-8 rounded-full bg-[${theme.colors.primary}] flex items-center justify-center text-white font-bold mr-2`}
+                className={`w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold mr-2`}
               >
                 A
               </div>
@@ -108,11 +108,11 @@ export function LandingFooter() {
                   <AccordionContent>
                     <p className="mb-1 whitespace-pre-line">{direccion}</p>
                     <p>
-                      <Mail className={`inline h-4 w-4 text-[${theme.colors.primary}] mr-1`} />
+                      <Mail className={`inline h-4 w-4 text-primary mr-1`} />
                       contactenos@asofarma-ca.com
                     </p>
                     <p>
-                      <Phone className={`inline h-4 w-4 text-[${theme.colors.primary}] mr-1`} />
+                      <Phone className={`inline h-4 w-4 text-primary mr-1`} />
                       {telefono}
                     </p>
                   </AccordionContent>

@@ -13,12 +13,11 @@ import {
   Calendar,
   MessageSquare,
 } from "lucide-react"
-import { theme } from "@/lib/theme"
-import { ScrollReveal } from "@/components/landing/scroll-reveal"
-import { FeatureCard } from "@/components/landing/feature-card"
-import { FaqItem } from "@/components/landing/faq-item"
-import { LandingFooter } from "@/components/landing/footer"
-import { useAuth } from "@/hooks/useAuth"
+import { ScrollReveal } from "@/components/home/scroll-reveal"
+import { FeatureCard } from "@/components/home/feature-card"
+import { FaqItem } from "@/components/home/faq-item"
+import { LandingFooter } from "@/components/home/footer"
+import { useAuth } from "@/hooks/auth/useAuth"
 
 export default function LandingPage() {
   const { handleLogin } = useAuth()
@@ -26,16 +25,16 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col">
       {/* Hero Section */}
       <section
-        className={`relative bg-gradient-to-br ${theme.colors.gradient.primary} pt-16 pb-20 md:pt-20 md:pb-32 overflow-hidden`}
+        className={`relative bg-gradient-to-br bg-gradient-primary  pt-16 pb-20 md:pt-20 md:pb-32 overflow-hidden`}
       >
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[length:20px_20px]" />
-        <div className={`absolute inset-0 bg-gradient-to-t ${theme.colors.gradient.primaryTransparent}`} />
+        <div className={`absolute inset-0 bg-gradient-to-t bg-gradient-primary-transparent`} />
 
         <div className="container relative z-10 mx-auto px-4 md:px-6">
           <div className="flex justify-center mb-8">
             <div className="flex items-center">
               <div
-                className={`w-12 h-12 rounded-full bg-white flex items-center justify-center text-[${theme.colors.primary}] font-bold mr-3`}
+                className={`w-12 h-12 rounded-full bg-white flex items-center justify-center text-primary font-bold mr-3`}
               >
                 <img src="/img/isologo-asofarma.png" alt="ASOFARMA Logo" className="rounded-full" />
               </div>
@@ -58,7 +57,7 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button 
                   size="lg" 
-                  className={`bg-white text-[${theme.colors.primary}] hover:bg-white/90`}
+                  className={`bg-white text-tertiary hover:bg-white/90`}
                   onClick={handleLogin}
                 >
                   Acceder al Sistema
@@ -74,10 +73,10 @@ export default function LandingPage() {
             </div>
             <div className="hidden md:block relative">
               <div
-                className={`absolute -right-20 -top-20 w-64 h-64 bg-[${theme.colors.secondary}]/30 rounded-full blur-3xl`}
+                className={`absolute -right-20 -top-20 w-64 h-64 bg-secondary/30 rounded-full blur-3xl`}
               />
               <div
-                className={`absolute -left-10 -bottom-10 w-64 h-64 bg-[${theme.colors.tertiary}]/30 rounded-full blur-3xl`}
+                className={`absolute -left-10 -bottom-10 w-64 h-64 bg-tertiary/30 rounded-full blur-3xl`}
               />
               <div className="relative bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 p-6 shadow-xl">
                 <img src="https://thispersondoesnotexist.com/" alt="Dashboard BPM" className="rounded-lg shadow-lg" />
@@ -94,7 +93,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className={`${theme.spacing.section.paddingY} bg-gray-50`} id="features">
+      <section className={`section-padding-y bg-gray-50`} id="features">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center mb-16">
             <ScrollReveal>
@@ -108,42 +107,42 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <ScrollReveal>
               <FeatureCard
-                icon={<Workflow className={`h-10 w-10 text-[${theme.colors.primary}]`} />}
+                icon={<Workflow className={`h-10 w-10 text-primary`} />}
                 title="Flujos de Trabajo Personalizados"
                 description="Flujos de aprobación adaptados a cada departamento o tipo de solicitud de ASOFARMA"
               />
             </ScrollReveal>
             <ScrollReveal delay={200}>
               <FeatureCard
-                icon={<Bell className={`h-10 w-10 text-[${theme.colors.secondary}]`} />}
+                icon={<Bell className={`h-10 w-10 text-secondary`} />}
                 title="Notificaciones Automáticas"
                 description="Sistema de alertas y notificaciones para mantener informados a todos los colaboradores"
               />
             </ScrollReveal>
             <ScrollReveal delay={400}>
               <FeatureCard
-                icon={<FileCheck className={`h-10 w-10 text-[${theme.colors.tertiary}]`} />}
+                icon={<FileCheck className={`h-10 w-10 text-tertiary`} />}
                 title="Gestión de Solicitudes"
                 description="Seguimiento completo de solicitudes desde su creación hasta su finalización"
               />
             </ScrollReveal>
             <ScrollReveal>
               <FeatureCard
-                icon={<Shield className={`h-10 w-10 text-[${theme.colors.primary}]`} />}
+                icon={<Shield className={`h-10 w-10 text-primary`} />}
                 title="Control de Acceso"
                 description="Sistema jerárquico de permisos basado en roles para mayor seguridad"
               />
             </ScrollReveal>
             <ScrollReveal delay={200}>
               <FeatureCard
-                icon={<BarChart2 className={`h-10 w-10 text-[${theme.colors.secondary}]`} />}
+                icon={<BarChart2 className={`h-10 w-10 text-secondary`} />}
                 title="Métricas y KPIs"
                 description="Análisis detallado del rendimiento de los procesos y tiempos de respuesta"
               />
             </ScrollReveal>
             <ScrollReveal delay={400}>
               <FeatureCard
-                icon={<Users className={`h-10 w-10 text-[${theme.colors.tertiary}]`} />}
+                icon={<Users className={`h-10 w-10 text-tertiary`} />}
                 title="Colaboración en Equipo"
                 description="Herramientas para facilitar la comunicación y colaboración entre departamentos"
               />
@@ -153,7 +152,7 @@ export default function LandingPage() {
       </section>
 
       {/* Process Section */}
-      <section className={`${theme.spacing.section.paddingY} bg-white`} id="benefits">
+      <section className={`section-padding-y bg-white`} id="benefits">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <ScrollReveal>
@@ -172,13 +171,13 @@ export default function LandingPage() {
                     "Análisis de eficiencia y cuellos de botella",
                   ].map((item, index) => (
                     <li key={index} className="flex items-start">
-                      <CheckCircle className={`h-6 w-6 text-[${theme.colors.primary}] mr-2 flex-shrink-0`} />
+                      <CheckCircle className={`h-6 w-6 text-primary mr-2 flex-shrink-0`} />
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
                 <Button 
-                  className={`bg-[${theme.colors.primary}] ${theme.effects.buttonHover}`}
+                  className={`bg-primary button-hover-effect`}
                   onClick={handleLogin}
                 >
                   Acceder al Sistema
@@ -189,10 +188,10 @@ export default function LandingPage() {
             <ScrollReveal delay={300}>
               <div className="relative">
                 <div
-                  className={`absolute -z-10 -right-6 -top-6 w-64 h-64 bg-[${theme.colors.primary}]/10 rounded-full blur-xl`}
+                  className={`absolute -z-10 -right-6 -top-6 w-64 h-64 bg-primary/10 rounded-full blur-xl`}
                 />
                 <div
-                  className={`absolute -z-10 -left-6 -bottom-6 w-64 h-64 bg-[${theme.colors.tertiary}]/10 rounded-full blur-xl`}
+                  className={`absolute -z-10 -left-6 -bottom-6 w-64 h-64 bg-tertiary/10 rounded-full blur-xl`}
                 />
                 <div className="bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
                   <img src="https://thispersondoesnotexist.com/" alt="Proceso BPM" className="w-full h-auto" />
@@ -205,7 +204,7 @@ export default function LandingPage() {
 
       {/* Feedback Section */}
       <section
-        className={`${theme.spacing.section.paddingY} bg-gradient-to-br ${theme.colors.gradient.light}`}
+        className={`section-padding-y bg-gradient-to-br bg-gradient-light`}
         id="feedback"
       >
         <div className="container mx-auto px-4 md:px-6">
@@ -224,9 +223,9 @@ export default function LandingPage() {
               <ScrollReveal>
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-center">
                   <div
-                    className={`rounded-full bg-[${theme.colors.primary}]/10 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center`}
+                    className={`rounded-full bg-primary/10 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center`}
                   >
-                    <MessageSquare className={`h-8 w-8 text-[${theme.colors.primary}]`} />
+                    <MessageSquare className={`h-8 w-8 text-primary`} />
                   </div>
                   <h3 className="font-semibold text-lg mb-2">Comparte tus ideas</h3>
                   <p className="text-gray-600 mb-4">
@@ -234,7 +233,7 @@ export default function LandingPage() {
                   </p>
                   <Button
                     variant="outline"
-                    className={`w-full border-[${theme.colors.primary}] text-[${theme.colors.primary}]`}
+                    className={`w-full border-primary text-primary`}
                   >
                     Enviar sugerencia
                   </Button>
@@ -244,9 +243,9 @@ export default function LandingPage() {
               <ScrollReveal delay={400}>
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 text-center">
                   <div
-                    className={`rounded-full bg-[${theme.colors.tertiary}]/10 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center`}
+                    className={`rounded-full bg-tertiary/10 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center`}
                   >
-                    <Calendar className={`h-8 w-8 text-[${theme.colors.tertiary}]`} />
+                    <Calendar className={`h-8 w-8 text-tertiary`} />
                   </div>
                   <h3 className="font-semibold text-lg mb-2">Capacitación</h3>
                   <p className="text-gray-600 mb-4">
@@ -254,7 +253,7 @@ export default function LandingPage() {
                   </p>
                   <Button
                     variant="outline"
-                    className={`w-full border-[${theme.colors.tertiary}] text-[${theme.colors.tertiary}]`}
+                    className={`w-full border-tertiary text-tertiary`}
                   >
                     Ver calendario
                   </Button>
@@ -266,7 +265,7 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ Section */}
-      <section className={`${theme.spacing.section.paddingY} bg-gray-50`} id="faq">
+      <section className={`section-padding-y bg-gray-50`} id="faq">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center mb-16">
             <ScrollReveal>
@@ -314,7 +313,7 @@ export default function LandingPage() {
 
       {/* CTA Section */}
       <section
-        className={`${theme.spacing.section.paddingY} bg-gradient-to-br ${theme.colors.gradient.primary} text-white`}
+        className={`section-padding-y bg-gradient-to-br bg-gradient-primary  text-white`}
       >
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-3xl mx-auto text-center">
@@ -326,7 +325,7 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button 
                   size="lg" 
-                  className={`bg-white text-[${theme.colors.primary}] hover:bg-white/90`}
+                  className={`bg-white text-primary hover:bg-white/90`}
                   onClick={handleLogin}
                 >
                   Acceder al Sistema

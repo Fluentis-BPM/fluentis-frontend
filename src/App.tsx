@@ -6,10 +6,9 @@ import { PublicClientApplication } from "@azure/msal-browser";
 import { MsalProvider } from "@azure/msal-react";
 import { msalConfig } from "./authConfig";
 
-import { publicRoutes } from './routes/public';
-import { privateRoutes } from './routes/private';
+import { routes } from './routes';
 
-const router = createBrowserRouter([...publicRoutes, ...privateRoutes]);
+const router = createBrowserRouter([...routes]);
 const msalInstance = new PublicClientApplication(msalConfig);
 
 function App() {

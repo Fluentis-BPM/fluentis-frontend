@@ -40,3 +40,25 @@
 .read-the-docs {
   color: #888;
 }
+
+
+@layer components {
+  .gradient-primary {
+    @apply bg-gradient-to-r from-primary via-secondary to-tertiary;
+  }
+  .gradient-primary-transparent {
+    @apply bg-gradient-to-r from-primary/90 to-transparent;
+  }
+  .gradient-light {
+    @apply bg-gradient-to-r from-primary/5 via-secondary/5 to-tertiary/5;
+  }
+  .section-padding-y {
+    @apply py-16 md:py-20;
+  }
+  .card-hover {
+    @apply hover:shadow-md hover:border-primary/20;
+  }
+  .button-hover {
+    @apply hover:bg-secondary;
+  }
+}
