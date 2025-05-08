@@ -1,7 +1,10 @@
 export interface User {
-    name: string;
-    email: string;
-    jobTitle?: string;
+    oid: string;
+    Email: string;
+    Nombre: string;
+    Cargo: string;
+    Departamento: string;
+    Rol: string;
 }
 
 export interface AuthState {
@@ -11,10 +14,3 @@ export interface AuthState {
     error: string | null;
 }
 
-export interface FetchUserProfileResponse {
-    IdUsuario: number;
-    Nombre: string;
-    Email: string;
-    JobTitle?: string;
-    Role: string;
-}

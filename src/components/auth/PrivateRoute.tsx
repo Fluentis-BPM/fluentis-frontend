@@ -1,14 +1,14 @@
 
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { selectAccessToken } from '@/store/auth/authSlice';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
 }
 
 export const PrivateRoute = ({ children }: PrivateRouteProps) => {
-  const { accessToken } = useSelector((state: RootState) => state.auth);
+  const  accessToken  = useSelector(selectAccessToken);
   const location = useLocation();
 
   if (!accessToken) {

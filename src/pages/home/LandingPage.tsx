@@ -1,5 +1,4 @@
-
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   CheckCircle,
   ArrowRight,
@@ -12,20 +11,19 @@ import {
   Users,
   Calendar,
   MessageSquare,
-} from "lucide-react"
-import { ScrollReveal } from "@/components/home/scroll-reveal"
-import { FeatureCard } from "@/components/home/feature-card"
-import { FaqItem } from "@/components/home/faq-item"
-import { LandingFooter } from "@/components/home/footer"
-import { useAuth } from "@/hooks/auth/useAuth"
+} from "lucide-react";
+import { ScrollReveal } from "@/components/home/scroll-reveal";
+import { FeatureCard } from "@/components/home/feature-card";
+import { FaqItem } from "@/components/home/faq-item";
+import { LandingFooter } from "@/components/home/footer";
+import { Link } from "react-router-dom";
 
 export default function LandingPage() {
-  const { handleLogin } = useAuth()
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero Section */}
       <section
-        className={`relative bg-gradient-to-br bg-gradient-primary  pt-16 pb-20 md:pt-20 md:pb-32 overflow-hidden`}
+        className={`relative bg-gradient-to-br bg-gradient-primary pt-16 pb-20 md:pt-20 md:pb-32 overflow-hidden`}
       >
         <div className="absolute inset-0 bg-grid-white/[0.05] bg-[length:20px_20px]" />
         <div className={`absolute inset-0 bg-gradient-to-t bg-gradient-primary-transparent`} />
@@ -55,16 +53,14 @@ export default function LandingPage() {
                 Caribe.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  size="lg" 
-                  className={`bg-white text-tertiary hover:bg-white/90`}
-                  onClick={handleLogin}
-                >
-                  Acceder al Sistema
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+                <Link to="/login">
+                  <Button size="lg" className={`bg-white text-tertiary hover:bg-white/90`}>
+                    Acceder al Sistema
+                  </Button>
+                </Link>
+                <Button
+                  size="lg"
+                  variant="outline"
                   className="text-white border-white bg-white/10 hover:bg-white/20"
                 >
                   Conocer más <ArrowRight className="ml-2 h-4 w-4" />
@@ -72,12 +68,8 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="hidden md:block relative">
-              <div
-                className={`absolute -right-20 -top-20 w-64 h-64 bg-secondary/30 rounded-full blur-3xl`}
-              />
-              <div
-                className={`absolute -left-10 -bottom-10 w-64 h-64 bg-tertiary/30 rounded-full blur-3xl`}
-              />
+              <div className={`absolute -right-20 -top-20 w-64 h-64 bg-secondary/30 rounded-full blur-3xl`} />
+              <div className={`absolute -left-10 -bottom-10 w-64 h-64 bg-tertiary/30 rounded-full blur-3xl`} />
               <div className="relative bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 p-6 shadow-xl">
                 <img src="https://thispersondoesnotexist.com/" alt="Dashboard BPM" className="rounded-lg shadow-lg" />
               </div>
@@ -176,23 +168,16 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button 
-                  className={`bg-primary button-hover-effect`}
-                  onClick={handleLogin}
-                >
-                  Acceder al Sistema
-                </Button>
+                <Link to="/login">
+                  <Button className={`bg-primary button-hover-effect`}>Acceder al Sistema</Button>
+                </Link>
               </div>
             </ScrollReveal>
 
             <ScrollReveal delay={300}>
               <div className="relative">
-                <div
-                  className={`absolute -z-10 -right-6 -top-6 w-64 h-64 bg-primary/10 rounded-full blur-xl`}
-                />
-                <div
-                  className={`absolute -z-10 -left-6 -bottom-6 w-64 h-64 bg-tertiary/10 rounded-full blur-xl`}
-                />
+                <div className={`absolute -z-10 -right-6 -top-6 w-64 h-64 bg-primary/10 rounded-full blur-xl`} />
+                <div className={`absolute -z-10 -left-6 -bottom-6 w-64 h-64 bg-tertiary/10 rounded-full blur-xl`} />
                 <div className="bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
                   <img src="https://thispersondoesnotexist.com/" alt="Proceso BPM" className="w-full h-auto" />
                 </div>
@@ -203,10 +188,7 @@ export default function LandingPage() {
       </section>
 
       {/* Feedback Section */}
-      <section
-        className={`section-padding-y bg-gradient-to-br bg-gradient-light`}
-        id="feedback"
-      >
+      <section className={`section-padding-y bg-gradient-to-br bg-gradient-light`} id="feedback">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-12">
@@ -231,10 +213,7 @@ export default function LandingPage() {
                   <p className="text-gray-600 mb-4">
                     Envía sugerencias sobre funcionalidades que te gustaría ver implementadas en el sistema.
                   </p>
-                  <Button
-                    variant="outline"
-                    className={`w-full border-primary text-primary`}
-                  >
+                  <Button variant="outline" className={`w-full border-primary text-primary`}>
                     Enviar sugerencia
                   </Button>
                 </div>
@@ -251,10 +230,7 @@ export default function LandingPage() {
                   <p className="text-gray-600 mb-4">
                     Participa en nuestras sesiones de capacitación para aprender a utilizar el sistema BPM.
                   </p>
-                  <Button
-                    variant="outline"
-                    className={`w-full border-tertiary text-tertiary`}
-                  >
+                  <Button variant="outline" className={`w-full border-tertiary text-tertiary`}>
                     Ver calendario
                   </Button>
                 </div>
@@ -312,9 +288,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section
-        className={`section-padding-y bg-gradient-to-br bg-gradient-primary  text-white`}
-      >
+      <section className={`section-padding-y bg-gradient-to-br bg-gradient-primary text-white`}>
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-3xl mx-auto text-center">
             <ScrollReveal>
@@ -323,16 +297,14 @@ export default function LandingPage() {
                 Únete a tus colegas de ASOFARMA Centro América & Caribe que ya están aprovechando nuestro sistema BPM
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
-                  size="lg" 
-                  className={`bg-white text-primary hover:bg-white/90`}
-                  onClick={handleLogin}
-                >
-                  Acceder al Sistema
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+                <Link to="/login">
+                  <Button size="lg" className={`bg-white text-primary hover:bg-white/90`}>
+                    Acceder al Sistema
+                  </Button>
+                </Link>
+                <Button
+                  size="lg"
+                  variant="outline"
                   className="text-white border-white bg-white/10 hover:bg-white/20"
                 >
                   Ver Guía de Usuario
@@ -345,5 +317,5 @@ export default function LandingPage() {
 
       <LandingFooter />
     </div>
-  )
+  );
 }

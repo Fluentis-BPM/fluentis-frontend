@@ -1,32 +1,32 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { AuthState } from "../../types/auth";
-import { User } from "../../types/auth";
-
-
-// export const fetchUserProfile = createAsyncThunk<FetchUserProfileResponse, void, { state: { auth: AuthState } }>(
-//   "auth/fetchUserProfile",
-//   async (_, { getState, rejectWithValue }) => {
-//     try {
-//       const { auth } = getState();
-//       const response: AxiosResponse<FetchUserProfileResponse> = await axios.get("https://localhost:5001/Usuarios/me", {
-//         headers: {
-//           Authorization: `Bearer ${auth.accessToken}`,
-//         },
-//       });
-//       return response.data;
-//     } catch (error: AxiosError<any>) {
-//       return rejectWithValue(error.response?.data || "Error fetching profile");
-//     }
-//   }
-// );
+// store/auth/authSlice.ts
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { AuthState, User } from "../../types/auth";
+import { RootState } from "..";
+import api from "@/services/api";
 
 const initialState: AuthState = {
   user: null,
   accessToken: null,
-  // profile: null,
   status: "idle",
   error: null,
 };
+
+// Thunk para verificar el token con el backend
+export const verifyToken = createAsyncThunk(
+  "auth/verifyToken",
+  async (accessToken: string, { rejectWithValue }) => {
+    try {
+      const response = await api.post<{ user?: User; error?: string }>("/Auth/login", { accessToken });
+      if (response.data.user) {
+        return response.data.user;
+      } else {
+        return rejectWithValue(response.data.error || "Error desconocido");
+      }
+    } catch (error) {
+      return rejectWithValue("Error al conectar con el servidor " + (error.message));
+    }
+  }
+);
 
 const authSlice = createSlice({
   name: "auth",
@@ -48,21 +48,28 @@ const authSlice = createSlice({
       state.error = action.payload;
     },
   },
-  // extraReducers: (builder) => {
-  //   builder
-  //     .addCase(fetchUserProfile.pending, (state) => {
-  //       state.status = "loading";
-  //     })
-  //     .addCase(fetchUserProfile.fulfilled, (state, action: PayloadAction<FetchUserProfileResponse>) => {
-  //       state.status = "succeeded";
-  //       state.profile = action.payload;
-  //     })
-  //     .addCase(fetchUserProfile.rejected, (state, action) => {
-  //       state.status = "failed";
-  //       state.error = action.payload as string;
-  //     });
-  // },
+  extraReducers: (builder) => {
+    builder
+      .addCase(verifyToken.pending, (state) => {
+        state.status = "loading";
+        state.error = null; 
+      })
+      .addCase(verifyToken.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.user = action.payload;
+      })
+      .addCase(verifyToken.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload as string;
+      });
+  },
 });
 
 export const { setUser, setAccessToken, clearAuth, setError } = authSlice.actions;
+export const { selectAccessToken, selectStatus, selectUser, selectError } = {
+  selectAccessToken: (state: RootState) => state.auth.accessToken,
+  selectStatus: (state: RootState) => state.auth.status,
+  selectUser: (state: RootState) => state.auth.user,
+  selectError: (state: RootState) => state.auth.error,
+};
 export default authSlice.reducer;

@@ -1,10 +1,11 @@
-import { authRoutes } from './authRoutes';
-import { homeRoutes } from './homeRoutes';
+import { privateRoutes } from "./privateRoutes";
+import { publicRoutes } from "./publicRoutes";
+
 
 
 export const routes = [
-  ...homeRoutes,
-  ...authRoutes,
+  ...publicRoutes,
+  ...privateRoutes,
   { path: '/unauthorized', element: <div>No autorizado</div> },
   { path: '*', element: <div>404 - Página no encontrada</div> },
 ];
