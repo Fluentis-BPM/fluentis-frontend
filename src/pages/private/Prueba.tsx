@@ -13,12 +13,12 @@ const PruebaPage = () => {
         
         <div className="mb-6">
           <p className="text-gray-600">Usuario conectado:</p>
-          <p className="font-semibold">{user?.name}</p>
+          <p className="font-semibold">{user?.nombre}</p>
           <p className="text-sm text-gray-500">{user?.email}</p>
         </div>
 
         <button 
-          onClick={() => handleLogout}
+          onClick={handleLogout}
           className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
         >
           Cerrar Sesión

@@ -1,10 +1,10 @@
 export interface User {
     oid: string;
-    Email: string;
-    Nombre: string;
-    Cargo: string;
-    Departamento: string;
-    Rol: string;
+    email: string;
+    nombre: string;
+    cargo: string;
+    departamento: string;
+    rol: "Miembro" | "Administrador" | "Visualizador" | "Visualizadordepartamental";
 }
 
 export interface AuthState {

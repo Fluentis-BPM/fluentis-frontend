@@ -16,7 +16,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (status === 'succeeded' && user) {
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/equipos/usuarios');
       }, 2000);
     }
   }, [status, user, navigate]);
@@ -87,7 +87,7 @@ export default function LoginPage() {
             </div>
             <p className="text-foreground">¡Login exitoso!</p>
             <p className="text-muted-foreground mt-2">
-              Bienvenido, {user.name}. Serás redirigido al dashboard...
+              Bienvenido, {user.nombre}. Serás redirigido al dashboard...
             </p>
           </div>
         )}
