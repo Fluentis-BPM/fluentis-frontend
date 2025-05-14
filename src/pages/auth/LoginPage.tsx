@@ -38,8 +38,8 @@ export default function LoginPage() {
         </button>
         <div className="flex justify-center mb-6">
           <div className="flex items-center">
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mr-3">
-              <img src="/img/isologo-asofarma.png" alt="ASOFARMA Logo" className="rounded-full" />
+            <div className="w-12 h-12  flex items-center justify-center mr-3">
+              <img src="/img/logo-fluentis-black.png" alt="ASOFARMA Logo" className="" />
             </div>
             <span className="text-xl font-bold text-foreground">ASOFARMA BPM</span>
           </div>

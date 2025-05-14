@@ -32,11 +32,11 @@ export default function LandingPage() {
           <div className="flex justify-center mb-8">
             <div className="flex items-center">
               <div
-                className={`w-12 h-12 rounded-full bg-white flex items-center justify-center text-primary font-bold mr-3`}
+                className={`w-12 h-12  flex items-center justify-center text-primary font-bold mr-3`}
               >
-                <img src="/img/isologo-asofarma.png" alt="ASOFARMA Logo" className="rounded-full" />
+                <img src="/img/logo-fluentis.png" alt="ASOFARMA Logo" className="" />
               </div>
-              <span className="text-2xl font-bold text-white">ASOFARMA Centro América & Caribe</span>
+              <span className="text-2xl font-bold text-white">Sistema BPM Interno</span>
             </div>
           </div>
 
