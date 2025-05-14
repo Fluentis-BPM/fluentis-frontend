@@ -1,8 +1,9 @@
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import MainLayout from "@/components/layouts/MainLayout";
+import UsersPage from "@/pages/users/UsersPage";
 
 // Placeholders para las páginas privadas (solo divs con nombres)
-const UsuariosPage = () => <div>Usuarios Page</div>;
+
 const DepartamentosPage = () => <div>Departamentos Page</div>;
 const RolesPage = () => <div>Roles Page</div>;
 const CargosPage = () => <div>Cargos Page</div>;
@@ -26,7 +27,7 @@ export const privateRoutes = [
     element: <MainLayout />,
     children: [
       // Módulo: Gestión de Equipos y Permisos
-      { path: '/equipos/usuarios', element: <PrivateRoute><UsuariosPage /></PrivateRoute> },
+      { path: '/equipos/usuarios', element: <PrivateRoute><UsersPage /></PrivateRoute> },
       { path: '/equipos/departamentos', element: <PrivateRoute><DepartamentosPage /></PrivateRoute> },
       { path: '/equipos/roles', element: <PrivateRoute><RolesPage /></PrivateRoute> },
       { path: '/equipos/cargos', element: <PrivateRoute><CargosPage /></PrivateRoute> },
