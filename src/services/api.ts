@@ -5,7 +5,7 @@ import { selectAccessToken } from "../store/auth/authSlice";
 
 // Crear una instancia de Axios
 const api = axios.create({
-  baseURL: "http://localhost:5155", 
+  baseURL: "https://fluentis-backend.onrender.com", 
   headers: {
     "Content-Type": "application/json",
   },
