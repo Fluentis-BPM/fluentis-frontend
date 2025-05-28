@@ -18,6 +18,7 @@ export const useUsers = (): UseUsersReturn => {
     try {
       const response = await api.get<User[]>('/api/usuarios');
       setUsers(response.data);
+      console.log('API Users Data:', response.data);
     } catch (err: unknown) {
       const axiosError = err as AxiosError<{ message?: string }>;
       setError(axiosError.response?.data?.message || 'Error al cargar usuarios');

@@ -7,7 +7,7 @@ interface UsersTableProps {
 
 export default function UsersTable({ users }: UsersTableProps) {
 
-  const getRoleBadgeColor = (rol: User["rol"]) => {
+  const getRoleBadgeColor = (rol: User["rolNombre"]) => {
     switch (rol) {
       case "Administrador":
         return "bg-green-100 text-green-800"
@@ -15,7 +15,7 @@ export default function UsersTable({ users }: UsersTableProps) {
         return "bg-blue-100 text-blue-800"
       case "Visualizador":
         return "bg-purple-100 text-purple-800"
-      case "Visualizadordepartamental":
+      case "Visualizador Departamental":
         return "bg-orange-100 text-orange-800"
       default:
         return "bg-gray-100 text-gray-800"
@@ -63,15 +63,15 @@ export default function UsersTable({ users }: UsersTableProps) {
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{user.email}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{user.departamento}</td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{user.departamentoNombre}</td>
                 <td className="whitespace-nowrap px-6 py-4">
                   <span
                     className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getRoleBadgeColor(user.rol)}`}
                   >
-                    {user.rol}
+                    {user.rolNombre}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{user.cargo}</td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{user.cargoNombre}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                   <div className="flex space-x-2">
                     <button className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500">

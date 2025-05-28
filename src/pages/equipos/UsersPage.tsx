@@ -18,9 +18,9 @@ export default function UsersPage() {
     (user) =>
       user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.departamento.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.rol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.cargo.toLowerCase().includes(searchTerm.toLowerCase()),
+      user.departamentoNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.rolNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.cargoNombre.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const indexOfLastItem = currentPage * itemsPerPage
