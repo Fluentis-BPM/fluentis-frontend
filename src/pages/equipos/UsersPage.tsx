@@ -16,11 +16,11 @@ export default function UsersPage() {
 
   const filteredUsers = users.filter(
     (user) =>
-      user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.departamentoNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.rolNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.cargoNombre.toLowerCase().includes(searchTerm.toLowerCase()),
+      (user.nombre?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
+      (user.email?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
+      (user.departamentoNombre?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
+      (user.rolNombre?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
+      (user.cargoNombre?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()),
   )
 
   const indexOfLastItem = currentPage * itemsPerPage
