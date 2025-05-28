@@ -1,10 +1,9 @@
 import { useState } from "react"
 import { Building2, Users } from 'lucide-react'
 import UserCard from "../common/UserCard"
-import { DepartmentCardProps } from "@/types/equipos/department"
+import { RoleCardProps } from "@/types/equipos/role"
 
-
-export default function DepartmentCard({ department, users, onDrop, draggedUser }: DepartmentCardProps) {
+export default function RoleCard({ role, users, onDrop, draggedUser }: RoleCardProps) {
   const [isDragOver, setIsDragOver] = useState(false)
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -20,10 +19,10 @@ export default function DepartmentCard({ department, users, onDrop, draggedUser 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
-    onDrop(department.idDepartamento)
+    onDrop(role.idRol)
   }
 
-  const getDepartmentColor = (id: number) => {
+  const getRoleColor = (id: number) => {
     const colors = [
       "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", 
       "bg-pink-500", "bg-indigo-500", "bg-gray-500", "bg-yellow-500", 
@@ -45,15 +44,15 @@ export default function DepartmentCard({ department, users, onDrop, draggedUser 
             : "border-gray-200 bg-white"
       }`}
     >
-      {/* Department Header */}
+      {/* Role Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">
-          <div className={`p-2 rounded-lg ${getDepartmentColor(department.idDepartamento)}`}>
+          <div className={`p-2 rounded-lg ${getRoleColor(role.idRol)}`}>
             <Building2 className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">{department.nombre}</h3>
-            <p className="text-sm text-gray-500">ID: {department.idDepartamento}</p>
+            <h3 className="font-semibold text-gray-900">{role.nombre}</h3>
+            <p className="text-sm text-gray-500">ID: {role.idRol}</p>
           </div>
         </div>
         <div className="flex items-center space-x-1 text-sm text-gray-500">
@@ -65,11 +64,11 @@ export default function DepartmentCard({ department, users, onDrop, draggedUser 
       {/* Drop Zone Message */}
       {isDragOver && (
         <div className="text-center py-4 text-primary font-medium">
-          Suelta aquí para mover a {department.nombre}
+          Suelta aquí para mover a {role.nombre}
         </div>
       )}
 
-      {/* Users in Department */}
+      {/* Users in Role */}
       <div className="space-y-2">
         {users.length > 0 ? (
           users.map((user) => (
@@ -84,7 +83,7 @@ export default function DepartmentCard({ department, users, onDrop, draggedUser 
         ) : (
           <div className="text-center py-6 text-gray-400">
             <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No hay usuarios en este departamento</p>
+            <p className="text-sm">No hay usuarios en este rol</p>
             <p className="text-xs">Arrastra usuarios aquí para asignarlos</p>
           </div>
         )}

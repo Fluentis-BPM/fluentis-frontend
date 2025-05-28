@@ -1,13 +1,15 @@
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import MainLayout from "@/components/layouts/MainLayout";
+import CargosPage from "@/pages/equipos/CargosPage";
 import DepartmentsPage from "@/pages/equipos/DepartmentPage";
+import RolesPage from "@/pages/equipos/RolesPage";
 import UsersPage from "@/pages/equipos/UsersPage";
 import UserPage from "@/pages/user/UserPage";
 
 // Placeholders para las páginas privadas (solo divs con nombres)
 
-const RolesPage = () => <div>Roles Page</div>;
-const CargosPage = () => <div>Cargos Page</div>;
+
+
 const DelegacionesPage = () => <div>Delegaciones Page</div>;
 const GruposAprobacionPage = () => <div>Grupos de Aprobación Page</div>;
 
@@ -30,8 +32,8 @@ export const privateRoutes = [
       // Módulo: Gestión de Equipos y Permisos
       { path: '/equipos/usuarios', element: <PrivateRoute><UsersPage /></PrivateRoute> },
       { path: '/equipos/departamentos', element: <PrivateRoute><DepartmentsPage /></PrivateRoute> },
-      { path: '/equipos/roles', element: <PrivateRoute><RolesPage /></PrivateRoute> },
-      { path: '/equipos/cargos', element: <PrivateRoute><CargosPage /></PrivateRoute> },
+      { path: '/equipos/roles', element: <PrivateRoute><RolesPage/></PrivateRoute> },
+      { path: '/equipos/cargos', element: <PrivateRoute><CargosPage/></PrivateRoute> },
       { path: '/equipos/delegaciones', element: <PrivateRoute><DelegacionesPage /></PrivateRoute> },
       { path: '/equipos/grupos-aprobacion', element: <PrivateRoute><GruposAprobacionPage /></PrivateRoute> },
 

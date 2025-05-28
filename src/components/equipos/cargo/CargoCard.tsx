@@ -1,10 +1,9 @@
 import { useState } from "react"
-import { Building2, Users } from 'lucide-react'
+import { Briefcase, Users } from 'lucide-react'
 import UserCard from "../common/UserCard"
-import { DepartmentCardProps } from "@/types/equipos/department"
+import { CargoCardProps } from "@/types/equipos/cargo"
 
-
-export default function DepartmentCard({ department, users, onDrop, draggedUser }: DepartmentCardProps) {
+export default function CargoCard({ cargo, users, onDrop, draggedUser }: CargoCardProps) {
   const [isDragOver, setIsDragOver] = useState(false)
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -20,10 +19,10 @@ export default function DepartmentCard({ department, users, onDrop, draggedUser 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
-    onDrop(department.idDepartamento)
+    onDrop(cargo.idCargo)
   }
 
-  const getDepartmentColor = (id: number) => {
+  const getCargoColor = (id: number) => {
     const colors = [
       "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", 
       "bg-pink-500", "bg-indigo-500", "bg-gray-500", "bg-yellow-500", 
@@ -31,6 +30,12 @@ export default function DepartmentCard({ department, users, onDrop, draggedUser 
     ]
     return colors[(id - 1) % colors.length] || "bg-gray-500"
   }
+
+  // Ensure users is an array
+  const safeUsers = Array.isArray(users) ? users : [];
+
+  // Get jefeCargo name safely
+  const jefeCargoName = cargo.jefeCargo ? cargo.jefeCargo.nombre : 'Sin Jefe';
 
   return (
     <div
@@ -45,34 +50,36 @@ export default function DepartmentCard({ department, users, onDrop, draggedUser 
             : "border-gray-200 bg-white"
       }`}
     >
-      {/* Department Header */}
+      {/* Cargo Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">
-          <div className={`p-2 rounded-lg ${getDepartmentColor(department.idDepartamento)}`}>
-            <Building2 className="h-5 w-5 text-white" />
+          <div className={`p-2 rounded-lg ${getCargoColor(cargo.idCargo)}`}>
+            <Briefcase className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">{department.nombre}</h3>
-            <p className="text-sm text-gray-500">ID: {department.idDepartamento}</p>
+            <h3 className="font-semibold text-gray-900">{cargo.nombre || 'Sin Nombre'}</h3>
+            <p className="text-sm text-gray-500">
+              ID: {cargo.idCargo} | Jefe: {jefeCargoName}
+            </p>
           </div>
         </div>
         <div className="flex items-center space-x-1 text-sm text-gray-500">
           <Users className="h-4 w-4" />
-          <span>{users.length}</span>
+          <span>{safeUsers.length}</span>
         </div>
       </div>
 
       {/* Drop Zone Message */}
       {isDragOver && (
         <div className="text-center py-4 text-primary font-medium">
-          Suelta aquí para mover a {department.nombre}
+          Suelta aquí para mover a {cargo.nombre || 'este cargo'}
         </div>
       )}
 
-      {/* Users in Department */}
+      {/* Users in Cargo */}
       <div className="space-y-2">
-        {users.length > 0 ? (
-          users.map((user) => (
+        {safeUsers.length > 0 ? (
+          safeUsers.map((user) => (
             <UserCard
               key={user.oid}
               user={user}
@@ -83,8 +90,8 @@ export default function DepartmentCard({ department, users, onDrop, draggedUser 
           ))
         ) : (
           <div className="text-center py-6 text-gray-400">
-            <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No hay usuarios en este departamento</p>
+            <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No hay usuarios en este cargo</p>
             <p className="text-xs">Arrastra usuarios aquí para asignarlos</p>
           </div>
         )}
