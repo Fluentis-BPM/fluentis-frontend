@@ -1,12 +1,14 @@
 import { User } from "../auth"
 
+// Modelo que viene del backend
 export interface Departamento {
   idDepartamento: number
   nombre: string
-  usuarios?: string[] | null
+  usuarios?: User[] | null
 }
 
-export interface Department {
+// Modelo adaptado para UI
+export interface DepartmentUI {
   id: string
   nombre: string
   descripcion: string
@@ -41,4 +43,11 @@ export interface DepartmentCardProps {
   users: User[]
   onDrop: (departmentId: number) => void
   draggedUser: User | null
+}
+
+export interface UseDepartmentsReturn {
+  departments: Departamento[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
 }

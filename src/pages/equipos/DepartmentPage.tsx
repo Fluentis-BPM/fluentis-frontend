@@ -1,85 +1,27 @@
 import { useState, useEffect } from "react"
 
 import type { User } from "@/types/auth"
-import { Departamento } from "@/types/equipos/department"
 import DepartmentsHeader from "@/components/equipos/department/DepartmentsHeader"
 import UsersList from "@/components/equipos/department/UsersList"
 import DepartmentsList from "@/components/equipos/department/DepartmentsList"
 import { useUsers } from "@/hooks/users/useUsers"
-
+import { useDepartments } from "@/hooks/equipos/useDepartments"
 
 export default function DepartmentsPage() {
   const { users, loading: usersLoading } = useUsers()
-  const [departments, setDepartments] = useState<Departamento[]>([])
+  const {
+    departments,
+    loading: departmentsLoading,
+    error,
+    refetch,
+  } = useDepartments()
+
   const [draggedUser, setDraggedUser] = useState<User | null>(null)
-  const [departmentsLoading, setDepartmentsLoading] = useState(true)
 
   useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        const mockDepartments: Departamento[] = [
-          {
-            idDepartamento: 1,
-            nombre: "Recursos Humanos",
-            usuarios: ["oid-123456-abcdef-1", "oid-123456-abcdef-4", "oid-123456-abcdef-14"]
-          },
-          {
-            idDepartamento: 2,
-            nombre: "Finanzas",
-            usuarios: ["oid-123456-abcdef-2", "oid-123456-abcdef-10"]
-          },
-          {
-            idDepartamento: 3,
-            nombre: "Tecnología",
-            usuarios: ["oid-123456-abcdef-3", "oid-123456-abcdef-7", "oid-123456-abcdef-15"]
-          },
-          {
-            idDepartamento: 4,
-            nombre: "Ventas",
-            usuarios: ["oid-123456-abcdef-5"]
-          },
-          {
-            idDepartamento: 5,
-            nombre: "Marketing",
-            usuarios: ["oid-123456-abcdef-6"]
-          },
-          {
-            idDepartamento: 6,
-            nombre: "Operaciones",
-            usuarios: ["oid-123456-abcdef-8"]
-          },
-          {
-            idDepartamento: 7,
-            nombre: "Legal",
-            usuarios: ["oid-123456-abcdef-9"]
-          },
-          {
-            idDepartamento: 8,
-            nombre: "Producción",
-            usuarios: ["oid-123456-abcdef-11"]
-          },
-          {
-            idDepartamento: 9,
-            nombre: "Calidad",
-            usuarios: ["oid-123456-abcdef-12"]
-          },
-          {
-            idDepartamento: 10,
-            nombre: "Investigación",
-            usuarios: ["oid-123456-abcdef-13"]
-          }
-        ]
-        
-        setDepartments(mockDepartments)
-        setDepartmentsLoading(false)
-      } catch (error) {
-        console.error('Error fetching departments:', error)
-        setDepartmentsLoading(false)
-      }
-    }
-
-    fetchDepartments()
-  }, [])
+    console.log('API Users Data in DepartmentPage:', users)
+    console.log('Users Loading:', usersLoading)
+  }, [users, usersLoading])
 
   const handleDragStart = (user: User) => {
     setDraggedUser(user)
@@ -93,24 +35,8 @@ export default function DepartmentsPage() {
     if (!draggedUser) return
 
     try {
-   
       const targetDepartment = departments.find(d => d.idDepartamento === departmentId)
       if (!targetDepartment) return
-
-
-      const updatedDepartments = departments.map(dept => ({
-        ...dept,
-        usuarios: dept.usuarios?.filter(userId => userId !== draggedUser.oid) || []
-      }))
-
-      const finalDepartments = updatedDepartments.map(dept => 
-        dept.idDepartamento === departmentId
-          ? { ...dept, usuarios: [...(dept.usuarios || []), draggedUser.oid] }
-          : dept
-      )
-
-
-      setDepartments(finalDepartments)
 
 
       setDraggedUser(null)
@@ -120,17 +46,14 @@ export default function DepartmentsPage() {
     }
   }
 
-
   const getUsersByDepartment = (departmentId: number): User[] => {
     const department = departments.find(d => d.idDepartamento === departmentId)
     if (!department || !department.usuarios) return []
-    
-    return users.filter(user => department.usuarios?.includes(user.oid))
+    return department.usuarios
   }
 
-
   const getUnassignedUsers = (): User[] => {
-    const assignedUserIds = departments.flatMap(dept => dept.usuarios || [])
+    const assignedUserIds = departments.flatMap(dept => dept.usuarios || []).map(user => user.oid)
     return users.filter(user => !assignedUserIds.includes(user.oid))
   }
 
@@ -145,6 +68,20 @@ export default function DepartmentsPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
             <p className="mt-2 text-gray-500">Cargando departamentos y usuarios...</p>
           </div>
+        </div>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main className="flex-1 overflow-auto p-6">
+        <DepartmentsHeader />
+        <div className="text-red-500 text-center mt-8">
+          <p>Error al cargar departamentos: {error}</p>
+          <button onClick={refetch} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            Reintentar
+          </button>
         </div>
       </main>
     )
