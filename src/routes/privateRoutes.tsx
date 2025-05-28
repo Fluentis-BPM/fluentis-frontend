@@ -2,6 +2,7 @@ import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import MainLayout from "@/components/layouts/MainLayout";
 import DepartmentsPage from "@/pages/equipos/DepartmentPage";
 import UsersPage from "@/pages/equipos/UsersPage";
+import UserPage from "@/pages/user/UserPage";
 
 // Placeholders para las páginas privadas (solo divs con nombres)
 
@@ -48,6 +49,9 @@ export const privateRoutes = [
       // Módulo: Métricas e Informes
       { path: '/metricas/metricas', element: <PrivateRoute><MetricasPage /></PrivateRoute> },
       { path: '/metricas/informes', element: <PrivateRoute><InformesPage /></PrivateRoute> },
+    
+      // Modulo: Perfil
+      { path: '/profile', element: <PrivateRoute><UserPage /></PrivateRoute>},
     ],
   },
 ];
