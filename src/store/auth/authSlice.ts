@@ -1,7 +1,6 @@
 // store/auth/authSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { AuthState, User } from "../../types/auth";
-import { RootState } from "..";
 import api from "@/services/api";
 
 const initialState: AuthState = {
@@ -9,6 +8,8 @@ const initialState: AuthState = {
   accessToken: null,
   status: "idle",
   error: null,
+  isAuthenticated: false,
+  token: null,
 };
 
 // Thunk para verificar el token con el backend
@@ -22,8 +23,8 @@ export const verifyToken = createAsyncThunk(
       } else {
         return rejectWithValue(response.data.error || "Error desconocido");
       }
-    } catch (error) {
-      return rejectWithValue("Error al conectar con el servidor " + (error.message));
+    } catch (error: unknown) {
+      return rejectWithValue("Error al conectar con el servidor " + (error as Error).message);
     }
   }
 );
@@ -34,15 +35,19 @@ const authSlice = createSlice({
   reducers: {
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
+      state.isAuthenticated = true;
     },
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;
+      state.token = action.payload;
     },
     clearAuth: (state) => {
       state.user = null;
       state.accessToken = null;
+      state.token = null;
       state.status = "idle";
       state.error = null;
+      state.isAuthenticated = false;
     },
     setError: (state, action: PayloadAction<string>) => {
       state.error = action.payload;
@@ -57,6 +62,7 @@ const authSlice = createSlice({
       .addCase(verifyToken.fulfilled, (state, action) => {
         state.status = "succeeded";
         state.user = action.payload;
+        state.isAuthenticated = true;
       })
       .addCase(verifyToken.rejected, (state, action) => {
         state.status = "failed";
@@ -66,10 +72,8 @@ const authSlice = createSlice({
 });
 
 export const { setUser, setAccessToken, clearAuth, setError } = authSlice.actions;
-export const { selectAccessToken, selectStatus, selectUser, selectError } = {
-  selectAccessToken: (state: RootState) => state.auth.accessToken,
-  selectStatus: (state: RootState) => state.auth.status,
-  selectUser: (state: RootState) => state.auth.user,
-  selectError: (state: RootState) => state.auth.error,
-};
+
+// Export logout as alias for clearAuth for backward compatibility
+export const logout = clearAuth;
+
 export default authSlice.reducer;

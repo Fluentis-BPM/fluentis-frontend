@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { selectUser } from '@/store/auth/authSlice';
+import { selectUser } from '@/store';
 
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';

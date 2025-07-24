@@ -1,14 +1,12 @@
 
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import { PublicClientApplication } from "@azure/msal-browser";
 import { MsalProvider } from "@azure/msal-react";
 import { msalConfig } from "./authConfig";
 
-import { routes } from './routes';
-
-const router = createBrowserRouter([...routes]);
+import { router } from './routes';
 const msalInstance = new PublicClientApplication(msalConfig);
 
 function App() {

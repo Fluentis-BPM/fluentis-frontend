@@ -5,6 +5,11 @@ export interface User {
     cargoNombre: string;
     departamentoNombre: string;
     rolNombre: "Miembro" | "Administrador" | "Visualizador" | "Visualizador Departamental";
+    // Legacy properties for backward compatibility
+    departamento?: string;
+    rol?: "Miembro" | "Administrador" | "Visualizador" | "Visualizadordepartamental";
+    cargo?: string;
+    name?: string; // For PrivateLayout compatibility
 }
 
 export interface AuthState {
@@ -12,5 +17,7 @@ export interface AuthState {
     accessToken: string | null;
     status: "idle" | "loading" | "succeeded" | "failed";
     error: string | null;
+    isAuthenticated: boolean;
+    token: string | null; // Legacy property for backward compatibility
 }
 

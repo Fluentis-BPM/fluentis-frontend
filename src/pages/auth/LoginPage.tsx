@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useSelector } from 'react-redux';
-import {  selectStatus, selectUser, selectError } from '@/store/auth/authSlice';
+import { selectStatus, selectUser, selectError } from '@/store';
 import { ArrowLeft } from 'lucide-react';
 
 export default function LoginPage() {

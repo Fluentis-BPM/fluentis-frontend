@@ -71,6 +71,7 @@ export default function Sidebar({ user }: SidebarProps) {
       label: 'Flujos y Solicitudes',
       icon: <GitPullRequest className="h-5 w-5" />,
       items: [
+        { path: '/bpm', label: 'Panel BPM' },
         { path: '/flujos/plantillas', label: 'Flujos (Plantillas)' },
         { path: '/flujos/solicitudes', label: 'Solicitudes' },
         { path: '/flujos/activos', label: 'Flujos Activos' },

@@ -1,7 +1,7 @@
 
 import axios from "axios";
 import { store } from "../store"; 
-import { selectAccessToken } from "../store/auth/authSlice"; 
+import { selectAccessToken } from "../store"; 
 
 // Crear una instancia de Axios
 const api = axios.create({

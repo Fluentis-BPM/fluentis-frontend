@@ -66,7 +66,7 @@ export default function UsersTable({ users }: UsersTableProps) {
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{user.departamentoNombre}</td>
                 <td className="whitespace-nowrap px-6 py-4">
                   <span
-                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getRoleBadgeColor(user.rol)}`}
+                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getRoleBadgeColor(user.rolNombre)}`}
                   >
                     {user.rolNombre}
                   </span>
