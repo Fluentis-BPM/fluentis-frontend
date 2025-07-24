@@ -1,7 +1,8 @@
 // store/auth/authSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { AuthState, User } from "../../types/auth";
-import api from "@/services/api";
+import axios from "axios";
+import { setApiToken } from "../../services/api";
 
 const initialState: AuthState = {
   user: null,
@@ -17,7 +18,15 @@ export const verifyToken = createAsyncThunk(
   "auth/verifyToken",
   async (accessToken: string, { rejectWithValue }) => {
     try {
-      const response = await api.post<{ user?: User; error?: string }>("/Auth/login", { accessToken });
+      const response = await axios.post<{ user?: User; error?: string }>("http://localhost:8080/Auth/login", 
+        { accessToken },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
       if (response.data.user) {
         return response.data.user;
       } else {
@@ -40,6 +49,10 @@ const authSlice = createSlice({
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;
       state.token = action.payload;
+      // Update the API token
+      setApiToken(action.payload);
+      // Persist to localStorage
+      localStorage.setItem('accessToken', action.payload);
     },
     clearAuth: (state) => {
       state.user = null;
@@ -48,6 +61,10 @@ const authSlice = createSlice({
       state.status = "idle";
       state.error = null;
       state.isAuthenticated = false;
+      // Clear the API token
+      setApiToken(null);
+      // Clear persisted token
+      localStorage.removeItem('accessToken');
     },
     setError: (state, action: PayloadAction<string>) => {
       state.error = action.payload;
@@ -63,10 +80,18 @@ const authSlice = createSlice({
         state.status = "succeeded";
         state.user = action.payload;
         state.isAuthenticated = true;
+        // Ensure API token is set if we have an access token
+        if (state.accessToken) {
+          setApiToken(state.accessToken);
+        }
       })
       .addCase(verifyToken.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
+        // Clear invalid token from localStorage
+        localStorage.removeItem('accessToken');
+        // Clear the API token
+        setApiToken(null);
       });
   },
 });

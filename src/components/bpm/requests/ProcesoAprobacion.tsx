@@ -4,8 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { TipoDecision } from '@/types/bpm/approval';
+import { TipoDecision, GrupoAprobacionCompleto, DecisionConUsuario } from '@/types/bpm/approval';
 import { CheckCircle, XCircle, Clock, Users, UserCheck, UserX } from 'lucide-react';
+
+interface EstadisticasAprobacion {
+  aprobaciones: number;
+  rechazos: number;
+  pendientes: number;
+  total: number;
+  total_miembros: number;
+}
 
 interface Props {
   solicitud_id: number;
@@ -13,11 +21,11 @@ interface Props {
   relacionGrupoAprobacionId?: number; // ID de la relación grupo-aprobación
   onEstadoCambiado?: (nuevoEstado: 'aprobado' | 'rechazado') => void;
   // Funciones del hook useAprobacion
-  obtenerGrupoPorSolicitud: (solicitud_id: number) => any;
+  obtenerGrupoPorSolicitud: (solicitud_id: number) => GrupoAprobacionCompleto | undefined;
   registrarDecision: (id_usuario: number, relacion_grupo_aprobacion_id: number, decision: TipoDecision, onEstadoCambiado?: (nuevoEstado: 'aprobado' | 'rechazado') => void) => void;
   verificarAprobacionCompleta: (solicitud_id: number, miembrosGrupo: number[]) => boolean;
   verificarRechazo: (solicitud_id: number) => boolean;
-  obtenerEstadisticasAprobacion: (solicitud_id: number, miembrosGrupo: number[]) => any;
+  obtenerEstadisticasAprobacion: (solicitud_id: number, miembrosGrupo: number[]) => EstadisticasAprobacion;
 }
 
 export const ProcesoAprobacion: React.FC<Props> = ({ 
@@ -61,7 +69,7 @@ export const ProcesoAprobacion: React.FC<Props> = ({
   };
 
   const obtenerDecisionUsuario = (idUsuario: number): TipoDecision | null => {
-    const decision = grupo?.decisiones?.find((d: any) => d.id_usuario === idUsuario);
+    const decision = grupo?.decisiones?.find((d: DecisionConUsuario) => d.id_usuario === idUsuario);
     return decision?.decision || null;
   };
 

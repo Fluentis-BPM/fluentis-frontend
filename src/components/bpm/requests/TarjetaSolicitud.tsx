@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { motion } from 'motion/react';
+import { CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Solicitud, EstadoSolicitud } from '@/types/bpm/request';
@@ -76,7 +77,17 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
   const prioridad = solicitud.datos_adicionales?.prioridad || 'media';
 
   return (
-    <Card className={`shadow-soft border-l-4 ${getPrioridadColor(prioridad)} hover:shadow-elevated transition-smooth group`}>
+    <motion.div
+      className={`rounded-lg border bg-card text-card-foreground shadow-soft border-l-4 ${getPrioridadColor(prioridad)} group`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      whileHover={{ 
+        y: -4, 
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" 
+      }}
+      whileTap={{ scale: 0.98 }}
+    >
       <CardHeader className="flex flex-row items-start justify-between pb-3">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-full ${estadoConfig.gradient}`}>
@@ -230,6 +241,6 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
           </div>
         </div>
       </CardContent>
-    </Card>
+    </motion.div>
   );
 };

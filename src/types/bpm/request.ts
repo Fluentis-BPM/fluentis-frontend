@@ -17,7 +17,7 @@ export interface SolicitudBase {
 
 // Interfaz extensible para datos adicionales
 export interface DatosAdicionales {
-  [key: string]: any;
+  [key: string]: string | number | boolean | Date | string[] | undefined;
 }
 
 // Interfaz completa que combina los campos base con datos adicionales

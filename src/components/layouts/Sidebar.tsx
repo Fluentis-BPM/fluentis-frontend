@@ -1,16 +1,17 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, Shield, GitPullRequest, BarChart3, 
   LogOut, ChevronRight, ChevronDown, HomeIcon,
-  Menu
+  Menu, User, Settings
 } from 'lucide-react';
 import { cn } from '@/utils/utils';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { User } from '@/types/auth';
+import { User as UserType } from '@/types/auth';
 
 interface SidebarProps {
-  user: User | null;
+  user: UserType | null;
 }
 
 interface NavItem {
@@ -32,11 +33,17 @@ export default function Sidebar({ user }: SidebarProps) {
     navigate('/login');
   };
 
-  const toggleModule = (moduleId: string) => {
-    setExpandedModules(prev => ({
-      ...prev,
-      [moduleId]: !prev[moduleId]
-    }));
+  const toggleModule = (moduleId: string, items?: { path: string; label: string }[]) => {
+    if (isCollapsed && items && items.length > 0) {
+      // When collapsed, navigate to first child instead of toggling
+      navigate(items[0].path);
+    } else {
+      // Normal toggle behavior when expanded
+      setExpandedModules(prev => ({
+        ...prev,
+        [moduleId]: !prev[moduleId]
+      }));
+    }
   };
 
   const toggleSidebar = () => {
@@ -99,6 +106,26 @@ export default function Sidebar({ user }: SidebarProps) {
     },
   ];
 
+  // Additional user menu items
+  const userMenuItems: NavItem[] = [
+    {
+      id: 'profile',
+      label: 'Mi Perfil',
+      icon: <User className="h-5 w-5" />,
+      items: [
+        { path: '/profile', label: 'Ver Perfil' }
+      ]
+    },
+    {
+      id: 'configuration',
+      label: 'Configuración',
+      icon: <Settings className="h-5 w-5" />,
+      items: [
+        { path: '/configuracion/cuenta', label: 'Configuración de Cuenta' }
+      ]
+    }
+  ];
+
   // Check if path is active
   const isActivePath = (path: string) => {
     return location.pathname === path;
@@ -112,16 +139,31 @@ export default function Sidebar({ user }: SidebarProps) {
 
   return (
     <>
-      <aside className={cn(
-        "bg-white border-r border-border shadow-lg flex flex-col fixed left-0 top-0 h-screen z-30 transition-all duration-300 ease-in-out overflow-hidden",
-        isCollapsed ? "w-20" : "w-72"
-      )}>
+      <motion.aside 
+        className={cn(
+          "bg-white border-r border-border shadow-lg flex flex-col fixed left-0 top-0 h-screen z-30 overflow-hidden",
+          isCollapsed ? "w-16" : "w-72"
+        )}
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ 
+          x: 0, 
+          opacity: 1,
+          width: isCollapsed ? 64 : 288 
+        }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 300, 
+          damping: 30,
+          width: { type: "tween", duration: 0.3, ease: "easeInOut" }
+        }}
+      >
         {/* Logo and Brand */}
         <div className="p-4 py-4.5 border-b border-border bg-gradient-primary text-white relative min-h-[80px]">
           <button
             onClick={toggleSidebar}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-white/10 transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/20"
             title={isCollapsed ? "Expandir menú" : "Colapsar menú"}
+            aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
             <Menu className="h-5 w-5 text-white" />
           </button>
@@ -130,7 +172,11 @@ export default function Sidebar({ user }: SidebarProps) {
             isCollapsed ? "justify-center" : "space-x-3"
           )}>
             <div className="h-12 w-12 flex items-center justify-center">
-              <img src="/img/logo-fluentis.png" alt="ASOFARMA Logo" className="w-full h-full object-contain" />
+              <img 
+                src="/img/logo-fluentis.png" 
+                alt="ASOFARMA Logo" 
+                className="w-full h-full object-contain" 
+              />
             </div>
             {!isCollapsed && (
               <div>
@@ -142,12 +188,18 @@ export default function Sidebar({ user }: SidebarProps) {
         </div>
 
         {/* User Profile Summary */}
-        <div className="p-4 border-b border-border bg-muted">
+        <div className={cn(
+          "border-b border-border bg-muted",
+          isCollapsed ? "p-2" : "p-4"
+        )}>
           <div className={cn(
             "flex items-center",
             isCollapsed ? "justify-center" : "space-x-3"
           )}>
-            <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white flex-shrink-0">
+            <div className={cn(
+              "rounded-full bg-primary flex items-center justify-center text-white flex-shrink-0",
+              isCollapsed ? "h-8 w-8" : "h-10 w-10"
+            )}>
               {user?.nombre?.charAt(0) || 'U'}
             </div>
             {!isCollapsed && (
@@ -160,23 +212,31 @@ export default function Sidebar({ user }: SidebarProps) {
         </div>
 
         {/* Navigation Menu */}
-        <nav className="flex-1 overflow-y-auto">
-          <div className="p-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className={cn(
+            isCollapsed ? "p-2 space-y-2" : "p-4 space-y-1"
+          )}>
             {navItems.map((item) => (
-              <div key={item.id} className="mb-1">
-                <button
+              <div key={item.id} className={cn(isCollapsed ? "mb-2" : "mb-1")}>
+                <motion.button
                   className={cn(
-                    "flex items-center w-full p-3 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-lg",
+                    isCollapsed 
+                      ? "w-12 h-12 p-0 justify-center mx-auto" 
+                      : "w-full p-3",
                     hasActivePath(item.items) 
-                      ? "bg-primary text-white" 
+                      ? "bg-primary/10 text-primary border border-primary/20" 
                       : "text-foreground hover:bg-primary-light hover:text-primary"
                   )}
-                  onClick={() => toggleModule(item.id)}
+                  onClick={() => toggleModule(item.id, item.items)}
                   title={isCollapsed ? item.label : undefined}
+                  aria-label={isCollapsed ? item.label : undefined}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   <span className={cn(
                     "flex-shrink-0",
-                    isCollapsed ? "mx-auto" : "mr-3"
+                    isCollapsed ? "" : "mr-3"
                   )}>{item.icon}</span>
                   {!isCollapsed && (
                     <>
@@ -190,52 +250,157 @@ export default function Sidebar({ user }: SidebarProps) {
                       </span>
                     </>
                   )}
-                </button>
+                </motion.button>
                 
-                {!isCollapsed && expandedModules[item.id] && item.items && (
-                  <div className="ml-9 mt-1 space-y-1">
-                    {item.items.map((subItem) => (
-                      <Link key={subItem.path} to={subItem.path}>
-                        <div
-                          className={cn(
-                            "p-2 rounded-md text-sm transition-colors truncate",
-                            isActivePath(subItem.path)
-                              ? "bg-secondary-light text-primary font-medium"
-                              : "text-foreground hover:bg-muted"
-                          )}
+                <AnimatePresence>
+                  {!isCollapsed && expandedModules[item.id] && item.items && (
+                    <motion.div 
+                      className="ml-9 mt-1 space-y-1"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                    >
+                      {item.items.map((subItem, index) => (
+                        <motion.div
+                          key={subItem.path}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05, duration: 0.2 }}
                         >
-                          {subItem.label}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                          <Link to={subItem.path}>
+                            <div
+                              className={cn(
+                                "p-2 rounded-md text-sm transition-colors truncate",
+                                isActivePath(subItem.path)
+                                  ? "bg-primary/10 text-primary border border-primary/20 font-medium shadow-sm"
+                                  : "text-foreground hover:bg-muted hover:text-primary"
+                              )}
+                            >
+                              {subItem.label}
+                            </div>
+                          </Link>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+            
+            {/* Separator */}
+            <div className={cn(
+              "border-t border-border",
+              isCollapsed ? "my-2 mx-2" : "my-4"
+            )}></div>
+            
+            {/* User Menu Items */}
+            {userMenuItems.map((item) => (
+              <div key={item.id} className={cn(isCollapsed ? "mb-2" : "mb-1")}>
+                <motion.button
+                  className={cn(
+                    "flex items-center text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-lg",
+                    isCollapsed 
+                      ? "w-12 h-12 p-0 justify-center mx-auto" 
+                      : "w-full p-3",
+                    hasActivePath(item.items) 
+                      ? "bg-primary/10 text-primary border border-primary/20" 
+                      : "text-foreground hover:bg-primary-light hover:text-primary"
+                  )}
+                  onClick={() => toggleModule(item.id, item.items)}
+                  title={isCollapsed ? item.label : undefined}
+                  aria-label={isCollapsed ? item.label : undefined}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <span className={cn(
+                    "flex-shrink-0",
+                    isCollapsed ? "" : "mr-3"
+                  )}>{item.icon}</span>
+                  {!isCollapsed && (
+                    <>
+                      <span className="truncate">{item.label}</span>
+                      <span className="ml-auto flex-shrink-0">
+                        {expandedModules[item.id] ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </span>
+                    </>
+                  )}
+                </motion.button>
+                
+                <AnimatePresence>
+                  {!isCollapsed && expandedModules[item.id] && item.items && (
+                    <motion.div 
+                      className="ml-9 mt-1 space-y-1"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                    >
+                      {item.items.map((subItem, index) => (
+                        <motion.div
+                          key={subItem.path}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05, duration: 0.2 }}
+                        >
+                          <Link to={subItem.path}>
+                            <div
+                              className={cn(
+                                "p-2 rounded-md text-sm transition-colors truncate",
+                                isActivePath(subItem.path)
+                                  ? "bg-primary/10 text-primary border border-primary/20 font-medium shadow-sm"
+                                  : "text-foreground hover:bg-muted hover:text-primary"
+                              )}
+                            >
+                              {subItem.label}
+                            </div>
+                          </Link>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ))}
           </div>
         </nav>
 
         {/* Logout Button */}
-        <div className="p-4 border-t border-border mt-auto">
-          <button
+        <div className={cn(
+          "border-t border-border mt-auto",
+          isCollapsed ? "p-2" : "p-4"
+        )}>
+          <motion.button
             onClick={handleLogoutClick}
             className={cn(
-              "flex items-center p-3 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors",
-              isCollapsed ? "justify-center w-full" : "w-full"
+              "flex items-center text-sm font-medium text-error hover:bg-error/10 transition-colors rounded-lg",
+              isCollapsed 
+                ? "w-12 h-12 p-0 justify-center mx-auto" 
+                : "w-full p-3"
             )}
             title={isCollapsed ? "Cerrar Sesión" : undefined}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <LogOut className="h-5 w-5 flex-shrink-0" />
-            {!isCollapsed && <span className="ml-3 truncate">Cerrar Sesión</span>}
-          </button>
+            <LogOut className={cn(
+              "h-5 w-5 flex-shrink-0",
+              isCollapsed ? "" : "mr-3"
+            )} />
+            {!isCollapsed && <span className="truncate">Cerrar Sesión</span>}
+          </motion.button>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Spacer div to push content */}
-      <div className={cn(
-        "flex-shrink-0 transition-all duration-300 ease-in-out",
-        isCollapsed ? "w-20" : "w-72"
-      )} />
+      <motion.div 
+        className="flex-shrink-0"
+        animate={{ width: isCollapsed ? 64 : 288 }}
+        transition={{ type: "tween", duration: 0.3, ease: "easeInOut" }}
+      />
     </>
   );
 }

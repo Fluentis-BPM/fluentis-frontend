@@ -68,7 +68,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
     }
   };
 
-  const handleCambio = (campo: keyof PasoSolicitud, valor: any) => {
+  const handleCambio = (campo: keyof PasoSolicitud, valor: string | number | boolean | Date | undefined) => {
     if (datosEditados) {
       setDatosEditados(prev => prev ? { ...prev, [campo]: valor } : null);
     }

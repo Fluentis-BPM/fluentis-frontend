@@ -13,6 +13,7 @@ import DepartmentPage from "./pages/equipos/DepartmentPage";
 import RolesPage from "./pages/equipos/RolesPage";
 import CargosPage from "./pages/equipos/CargosPage";
 import UserPage from "./pages/user/UserPage";
+import ConfigPage from "./pages/user/ConfigPage";
 
 export const router = createBrowserRouter([
   {
@@ -61,14 +62,14 @@ export const router = createBrowserRouter([
         element: <BPMDashboard />,
       },
 
-      // User Profile
+      // User Profile and Configuration
       {
         path: "profile",
         element: <UserPage />,
       },
       {
         path: "configuracion/cuenta",
-        element: <UserPage />,
+        element: <ConfigPage />,
       },
 
       // Placeholders for other routes mentioned in sidebar

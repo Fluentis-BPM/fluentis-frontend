@@ -53,9 +53,14 @@ export default function LoginPage() {
         {status === 'idle' && (
           <Button
             onClick={handleLoginClick}
-            className="w-full bg-primary hover:bg-primary-dark text-white button-hover"
+            className="w-full bg-primary hover:bg-primary/90 text-black font-medium shadow-sm border border-primary/20 transition-all duration-200 gap-3"
+            variant="default"
           >
-            <img src='/icons/microsoft.png' alt="Microsoft Logo" className="inline-block mr-2 w-5 h-5"/>
+            <img 
+              src='/icons/microsoft.png' 
+              alt="Microsoft Logo" 
+              className="w-5 h-5 bg-white rounded p-0.5"
+            />
             Iniciar Sesión con Microsoft
           </Button>
         )}
@@ -114,7 +119,8 @@ export default function LoginPage() {
             <p className="text-muted-foreground mt-2">{error || 'Error desconocido'}</p>
             <Button
               onClick={handleLoginClick}
-              className="mt-4 bg-primary hover:bg-primary-dark text-white button-hover"
+              className="mt-4 bg-primary hover:bg-primary/90 text-white font-medium shadow-sm border border-primary/20 transition-all duration-200"
+              variant="default"
             >
               Intentar de nuevo
             </Button>

@@ -6,8 +6,11 @@ import {
   EjecucionPaso,
   EstadisticasFlujos,
   PasoSolicitud,
-  CaminoParalelo
+  CaminoParalelo,
+  DatosSolicitud,
+  ResultadoPaso
 } from '@/types/bpm/flow';
+import { RelacionInput, CamposDinamicos } from '@/types/bpm/inputs';
 
 /**
  * Hook para manejar flujos activos
@@ -28,8 +31,8 @@ export const useFlujos = () => {
   // Crear flujo activo desde solicitud aprobada
   const crearFlujoDesde = useCallback((
     solicitud_id: number, 
-    datos_solicitud?: any, 
-    campos_dinamicos?: any,
+    datos_solicitud?: DatosSolicitud, 
+    campos_dinamicos?: RelacionInput[] | CamposDinamicos,
     plantilla_id?: number
   ): FlujoActivo => {
     console.log('🌊 CREANDO FLUJO DESDE SOLICITUD:', { 
@@ -170,7 +173,7 @@ export const useFlujos = () => {
   const actualizarEstadoPaso = useCallback((
     ejecucion_id: number, 
     nuevoEstado: EjecucionPaso['estado'],
-    resultado?: any
+    resultado?: ResultadoPaso
   ) => {
     setEjecucionesPasos(prev => prev.map(ejecucion => 
       ejecucion.id_ejecucion === ejecucion_id 

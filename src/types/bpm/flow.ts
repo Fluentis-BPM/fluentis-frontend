@@ -2,8 +2,41 @@
  * Tipos para el módulo de flujos
  */
 
+import { RelacionInput, CamposDinamicos } from './inputs';
+
 // Estados posibles de un flujo
 export type EstadoFlujo = 'encurso' | 'finalizado' | 'cancelado';
+
+// Interfaz para datos de solicitud
+export interface DatosSolicitud {
+  descripcion?: string;
+  titulo?: string;
+  justificacion?: string;
+  departamento?: string;
+  fecha_requerida?: string;
+  presupuesto?: number;
+  prioridad?: 'alta' | 'media' | 'baja';
+  [key: string]: string | number | boolean | undefined;
+}
+
+// Configuración de paso flexible
+export interface ConfiguracionPaso {
+  timeout_minutos?: number;
+  notificaciones_activas?: boolean;
+  validacion_requerida?: boolean;
+  campos_visibles?: string[];
+  permisos_especiales?: string[];
+  [key: string]: string | number | boolean | string[] | undefined;
+}
+
+// Resultado de ejecución de paso
+export interface ResultadoPaso {
+  exitoso: boolean;
+  mensaje?: string;
+  datos_salida?: Record<string, unknown>;
+  tiempo_ejecucion?: number;
+  errores?: string[];
+}
 
 // Flujo activo - representa un flujo en ejecución
 export interface FlujoActivo {
@@ -13,8 +46,8 @@ export interface FlujoActivo {
   estado: EstadoFlujo;
   fecha_inicio: Date;
   fecha_finalizacion?: Date;
-  datos_solicitud?: any; // Datos de la solicitud original
-  campos_dinamicos?: any; // Campos dinámicos de la solicitud
+  datos_solicitud?: DatosSolicitud; // Datos de la solicitud original
+  campos_dinamicos?: RelacionInput[] | CamposDinamicos; // Campos dinámicos - puede ser array o objeto
 }
 
 // Plantilla de flujo (opcional)
@@ -33,7 +66,7 @@ export interface PasoFlujo {
   nombre: string;
   descripcion?: string;
   tipo: 'manual' | 'automatico' | 'aprobacion';
-  configuracion?: any;
+  configuracion?: ConfiguracionPaso;
 }
 
 // Ejecución de paso en un flujo activo
@@ -45,7 +78,7 @@ export interface EjecucionPaso {
   estado: 'pendiente' | 'enprogreso' | 'completado' | 'fallido';
   fecha_inicio?: Date;
   fecha_finalizacion?: Date;
-  resultado?: any;
+  resultado?: ResultadoPaso;
   responsable_id?: number;
 }
 
@@ -67,7 +100,7 @@ export interface PasoSolicitud {
   tipo_paso: 'ejecucion' | 'aprobacion'; // Nuevo campo para diferenciar tipos
   tipo_flujo: 'normal' | 'bifurcacion' | 'union'; // Tipo de flujo del paso
   regla_aprobacion: 'unanime' | 'individual' | 'ancla'; // Regla de aprobación para pasos de aprobación
-  campos_dinamicos?: any; // Campos dinámicos del paso
+  campos_dinamicos?: RelacionInput[] | CamposDinamicos; // Campos dinámicos del paso
 }
 
 // Camino paralelo para conexiones entre pasos

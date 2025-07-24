@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CrearSolicitudInput } from '@/types/bpm/request';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EstadoSolicitud } from '@/types/bpm/request';
@@ -47,7 +48,7 @@ export const ModuloSolicitudes: React.FC<{
   const [busqueda, setBusqueda] = useState('');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
-  const handleCrearSolicitud = (input: any, grupoAprobacionId?: number) => {
+  const handleCrearSolicitud = (input: CrearSolicitudInput, grupoAprobacionId?: number) => {
     try {
       const nuevaSolicitud = crearSolicitud(input);
       
@@ -64,7 +65,7 @@ export const ModuloSolicitudes: React.FC<{
     } catch (error) {
       toast({
         title: "Error",
-        description: "No se pudo crear la solicitud",
+        description: "No se pudo crear la solicitud" + (error instanceof Error ? `: ${error.message}` : ""),
         variant: "destructive",
       });
     }
@@ -80,7 +81,7 @@ export const ModuloSolicitudes: React.FC<{
     } catch (error) {
       toast({
         title: "Error",
-        description: "No se pudo actualizar el estado",
+        description: "No se pudo actualizar el estado" + (error instanceof Error ? `: ${error.message}` : ""),
         variant: "destructive",
       });
     }
@@ -96,7 +97,7 @@ export const ModuloSolicitudes: React.FC<{
     } catch (error) {
       toast({
         title: "Error",
-        description: "No se pudo eliminar la solicitud",
+        description: "No se pudo eliminar la solicitud" + (error instanceof Error ? `: ${error.message}` : ""),
         variant: "destructive",
       });
     }
@@ -189,7 +190,7 @@ export const ModuloSolicitudes: React.FC<{
                     </div>
                   </div>
                   
-                  <Select value={filtroEstado} onValueChange={(value: any) => setFiltroEstado(value)}>
+                  <Select value={filtroEstado} onValueChange={(value: EstadoSolicitud | 'todos') => setFiltroEstado(value)}>
                     <SelectTrigger className="w-44 h-9 transition-smooth focus:ring-request-primary/50">
                       <SelectValue placeholder="Filtrar por estado" />
                     </SelectTrigger>

@@ -162,7 +162,7 @@ export const ModuloFlujos: React.FC<{
             </div>
           </div>
           
-          <Select value={filtroEstado} onValueChange={(value: any) => setFiltroEstado(value)}>
+          <Select value={filtroEstado} onValueChange={(value: EstadoFlujo | 'todos') => setFiltroEstado(value)}>
             <SelectTrigger className="w-48 transition-smooth focus:ring-primary/50">
               <SelectValue placeholder="Filtrar por estado" />
             </SelectTrigger>

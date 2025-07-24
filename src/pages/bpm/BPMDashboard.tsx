@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { ModuloSolicitudes } from '@/components/bpm/requests/ModuloSolicitudes';
 import { ModuloFlujos } from '@/components/bpm/flows/ModuloFlujos';
 import { useSolicitudes } from '@/hooks/bpm/useSolicitudes';
@@ -46,49 +47,77 @@ export const BPMDashboard: React.FC = () => {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Solicitudes</CardTitle>
-            <FileText className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.totalSolicitudes}</div>
-            <p className="text-xs text-muted-foreground">Registradas en el sistema</p>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          whileHover={{ y: -2, scale: 1.02 }}
+        >
+          <Card className="border-l-4 border-l-blue-500 h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Solicitudes</CardTitle>
+              <FileText className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{stats.totalSolicitudes}</div>
+              <p className="text-xs text-muted-foreground">Registradas en el sistema</p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aprobadas</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.solicitudesAprobadas}</div>
-            <p className="text-xs text-muted-foreground">Con flujos activos</p>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          whileHover={{ y: -2, scale: 1.02 }}
+        >
+          <Card className="border-l-4 border-l-green-500 h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Aprobadas</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats.solicitudesAprobadas}</div>
+              <p className="text-xs text-muted-foreground">Con flujos activos</p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="border-l-4 border-l-yellow-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.solicitudesPendientes}</div>
-            <p className="text-xs text-muted-foreground">Esperando aprobación</p>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          whileHover={{ y: -2, scale: 1.02 }}
+        >
+          <Card className="border-l-4 border-l-yellow-500 h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-600">{stats.solicitudesPendientes}</div>
+              <p className="text-xs text-muted-foreground">Esperando aprobación</p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Flujos Activos</CardTitle>
-            <Workflow className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.flujosEnCurso}</div>
-            <p className="text-xs text-muted-foreground">En ejecución</p>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.4 }}
+          whileHover={{ y: -2, scale: 1.02 }}
+        >
+          <Card className="border-l-4 border-l-purple-500 h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Flujos Activos</CardTitle>
+              <Workflow className="h-4 w-4 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">{stats.flujosEnCurso}</div>
+              <p className="text-xs text-muted-foreground">En ejecución</p>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Main Content Tabs */}

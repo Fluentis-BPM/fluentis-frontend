@@ -12,10 +12,13 @@ import {
   MiniMap,
   Position,
   Handle,
-  MarkerType
+  MarkerType,
+  NodeChange,
+  OnNodeDrag
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PasoSolicitud, CaminoParalelo } from '@/types/bpm/flow';
+import { RelacionInput, CamposDinamicos } from '@/types/bpm/inputs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,6 +33,18 @@ import {
   Plus
 } from 'lucide-react';
 
+// Tipo para los datos del nodo
+interface PasoNodeData {
+  paso: PasoSolicitud;
+  onActualizarEstado: (pasoId: number, estado: PasoSolicitud['estado']) => void;
+  onEditarPaso?: (paso: PasoSolicitud) => void;
+  camposDinamicosIniciales?: RelacionInput[] | CamposDinamicos;
+  esInicial: boolean;
+  isSelected: boolean;
+  onNodeClick?: (paso: PasoSolicitud) => void;
+  readOnly?: boolean;
+}
+
 interface DiagramaFlujoProps {
   pasos: PasoSolicitud[];
   caminos: CaminoParalelo[];
@@ -38,13 +53,13 @@ interface DiagramaFlujoProps {
   onCrearCamino: (origen: number, destino: number) => void;
   onEditarPaso?: (paso: PasoSolicitud) => void;
   readOnly?: boolean;
-  camposDinamicosIniciales?: any; // Campos dinámicos de la solicitud original
+  camposDinamicosIniciales?: RelacionInput[] | CamposDinamicos; // Campos dinámicos de la solicitud original
   selectedNodeId?: string;
   onNodeSelect?: (paso: PasoSolicitud | null) => void;
 }
 
 // Componente personalizado para nodos de paso
-const PasoNode: React.FC<{ data: any }> = ({ data }) => {
+const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   const { paso, onActualizarEstado, onEditarPaso, camposDinamicosIniciales, esInicial, isSelected, onNodeClick } = data;
   
   const getIconByTipo = () => {
@@ -276,7 +291,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Función mejorada para actualizar posición del paso
-  const handleNodeDragEnd = useCallback((_event: any, node: Node) => {
+  const handleNodeDragEnd: OnNodeDrag<Node> = useCallback((_event, node) => {
     console.log('🎯 Node drag ended:', { id: node.id, position: node.position });
     
     // Buscar el paso correspondiente y actualizar su posición
@@ -293,7 +308,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   }, [pasos, onEditarPaso]);
 
   // Personalizar onNodesChange para manejar el arrastre
-  const customOnNodesChange = useCallback((changes: any[]) => {
+  const customOnNodesChange = useCallback((changes: NodeChange[]) => {
     onNodesChange(changes);
     
     // Buscar cambios de posición cuando termina el drag

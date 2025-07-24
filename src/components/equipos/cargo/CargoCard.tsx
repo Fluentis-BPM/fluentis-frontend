@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { motion } from "motion/react"
 import { Briefcase, Users } from 'lucide-react'
 import UserCard from "../common/UserCard"
 import { CargoCardProps } from "@/types/equipos/cargo"
@@ -38,7 +39,11 @@ export default function CargoCard({ cargo, users, onDrop, draggedUser }: CargoCa
   const jefeCargoName = cargo.jefeCargo ? cargo.jefeCargo.nombre : 'Sin Jefe';
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      whileHover={{ y: -2, scale: isDragOver ? 1.05 : 1.02 }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -96,6 +101,6 @@ export default function CargoCard({ cargo, users, onDrop, draggedUser }: CargoCa
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

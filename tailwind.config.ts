@@ -10,11 +10,13 @@ const config: Config = {
           DEFAULT: '#0a4890', // #0a4890 (polynesian_blue DEFAULT)
           light: '#bcd9fa', // #bcd9fa (polynesian_blue-900)
           dark: '#0f6ad2', // #0f6ad2 (polynesian_blue-600)
+          foreground: '#ffffff', // White text for primary backgrounds
         },
         secondary: {
           DEFAULT: '#0b78d1', // #0b78d1 (french_blue DEFAULT)
           light: '#c8e5fc', // #c8e5fc (french_blue-900)
           dark: '#2295f3', // #2295f3 (french_blue-600)
+          foreground: '#ffffff', // White text for secondary backgrounds
         },
         tertiary: {
           DEFAULT: '#45a6f5', // #45a6f5 (argentinian_blue DEFAULT)
@@ -30,6 +32,17 @@ const config: Config = {
         warning: '#F59E0B', // #F59E0B
         error: '#EF4444', // #EF4444
         info: '#3B82F6', // #3B82F6
+        
+        // Additional shadcn color tokens
+        card: '#ffffff',
+        'card-foreground': '#111111',
+        popover: '#ffffff',
+        'popover-foreground': '#111111',
+        destructive: '#EF4444',
+        'destructive-foreground': '#ffffff',
+        accent: '#e6f2fd',
+        'accent-foreground': '#111111',
+        ring: '#0a4890',
 
         // Nueva paleta completa como colores personalizados
         polynesian_blue: {

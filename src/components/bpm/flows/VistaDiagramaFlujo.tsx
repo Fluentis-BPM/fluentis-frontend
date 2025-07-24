@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { DiagramaFlujo } from './DiagramaFlujo';
 import { EditorPaso } from './EditorPaso';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FlujoActivo, PasoSolicitud } from '@/types/bpm/flow';
+import { FlujoActivo, PasoSolicitud, CaminoParalelo } from '@/types/bpm/flow';
+import { RelacionInput } from '@/types/bpm/inputs';
 import { 
   Workflow, 
   Eye, 
@@ -22,7 +24,7 @@ import { useToast } from '@/hooks/bpm/use-toast';
 interface VistaDiagramaFlujoProps {
   flujo: FlujoActivo;
   pasos: PasoSolicitud[];
-  caminos: any[];
+  caminos: CaminoParalelo[];
   onActualizarPaso: (pasoId: number, estado: PasoSolicitud['estado']) => void;
   onAgregarPaso: (flujoId: number, x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => void;
   onCrearCamino: (origen: number, destino: number) => void;
@@ -240,7 +242,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 onNodeSelect={handleNodeSelect}
                 camposDinamicosIniciales={
                   flujo.campos_dinamicos && Array.isArray(flujo.campos_dinamicos) 
-                    ? flujo.campos_dinamicos.reduce((acc: any, campo: any) => {
+                    ? flujo.campos_dinamicos.reduce((acc: Record<string, string>, campo: RelacionInput) => {
                         if (campo.valor !== undefined) {
                           acc[`Campo ${campo.input_id}`] = campo.valor;
                         }
@@ -333,53 +335,81 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
 
         <TabsContent value="estadisticas" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-success" />
-                  <div>
-                    <p className="text-2xl font-bold text-success">{estadisticasPasos.aprobados}</p>
-                    <p className="text-sm text-muted-foreground">Aprobados</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+            >
+              <Card className="h-full">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-success" />
+                    <div>
+                      <p className="text-2xl font-bold text-success">{estadisticasPasos.aprobados}</p>
+                      <p className="text-sm text-muted-foreground">Aprobados</p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-warning" />
-                  <div>
-                    <p className="text-2xl font-bold text-warning">{estadisticasPasos.pendientes}</p>
-                    <p className="text-sm text-muted-foreground">Pendientes</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+            >
+              <Card className="h-full">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-warning" />
+                    <div>
+                      <p className="text-2xl font-bold text-warning">{estadisticasPasos.pendientes}</p>
+                      <p className="text-sm text-muted-foreground">Pendientes</p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-destructive" />
-                  <div>
-                    <p className="text-2xl font-bold text-destructive">{estadisticasPasos.rechazados}</p>
-                    <p className="text-sm text-muted-foreground">Rechazados</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+            >
+              <Card className="h-full">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-destructive" />
+                    <div>
+                      <p className="text-2xl font-bold text-destructive">{estadisticasPasos.rechazados}</p>
+                      <p className="text-sm text-muted-foreground">Rechazados</p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-primary" />
-                  <div>
-                    <p className="text-2xl font-bold text-primary">{estadisticasPasos.excepciones}</p>
-                    <p className="text-sm text-muted-foreground">Excepciones</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+            >
+              <Card className="h-full">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="text-2xl font-bold text-primary">{estadisticasPasos.excepciones}</p>
+                      <p className="text-sm text-muted-foreground">Excepciones</p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
 
           {/* Lista detallada de pasos */}

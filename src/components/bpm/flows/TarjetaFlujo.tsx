@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,13 +14,13 @@ import {
   Square,
   Eye
 } from 'lucide-react';
-import { FlujoActivo, EstadoFlujo } from '@/types/bpm/flow';
+import { FlujoActivo, EstadoFlujo, PasoSolicitud } from '@/types/bpm/flow';
 import { formatDistance } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface Props {
   flujo: FlujoActivo;
-  pasos?: any[];
+  pasos?: PasoSolicitud[];
   onActualizarEstado: (flujo_id: number, estado: EstadoFlujo) => void;
   onVerDetalles?: (flujo_id: number) => void;
   onVerDiagrama?: (flujo_id: number) => void;
@@ -71,12 +72,18 @@ export const TarjetaFlujo: React.FC<Props> = ({
   const progreso = pasos.length > 0 ? (pasosCompletados / pasos.length) * 100 : 0;
 
   return (
-    <Card className="shadow-soft hover:shadow-elegant transition-smooth">
-      <CardHeader className="bg-gradient-secondary text-white">
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Workflow className="w-5 h-5" />
-            <span>Flujo #{flujo.id_flujo_activo}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      whileHover={{ y: -3, scale: 1.02 }}
+    >
+      <Card className="shadow-soft hover:shadow-elegant transition-smooth">
+        <CardHeader className="bg-gradient-secondary text-white">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Workflow className="w-5 h-5" />
+              <span>Flujo #{flujo.id_flujo_activo}</span>
             {getEstadoIcon()}
           </div>
           {getEstadoBadge()}
@@ -223,5 +230,6 @@ export const TarjetaFlujo: React.FC<Props> = ({
         </div>
       </CardContent>
     </Card>
+  </motion.div>
   );
 };
