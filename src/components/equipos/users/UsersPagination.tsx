@@ -70,20 +70,20 @@ export default function UsersPagination({
   const pageNumbers = getPageNumbers()
 
   return (
-    <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+    <div className="flex items-center justify-between border-t border-[#dbe7f3] bg-white px-4 py-3 sm:px-6 rounded-b-xl">
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm text-gray-700">
-            Mostrando <span className="font-medium">{startItem}</span> a <span className="font-medium">{endItem}</span>{" "}
-            de <span className="font-medium">{totalItems}</span> resultados
+          <p className="text-sm text-[#6b7a90]">
+            Mostrando <span className="font-bold text-[#1a4e8a]">{startItem}</span> a <span className="font-bold text-[#1a4e8a]">{endItem}</span>{" "}
+            de <span className="font-bold text-[#1a4e8a]">{totalItems}</span> resultados
           </p>
         </div>
         <div>
-          <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+          <nav className="isolate inline-flex -space-x-px rounded-xl shadow-sm" aria-label="Pagination">
             <button
               onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center rounded-l-xl px-2 py-2 text-[#6b7a90] ring-1 ring-inset ring-[#dbe7f3] bg-[#f6fafd] hover:bg-[#eaf3fa] focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="sr-only">Anterior</span>
               <ChevronLeft className="h-5 w-5" />
@@ -93,7 +93,7 @@ export default function UsersPagination({
               page === "..." ? (
                 <span
                   key={`ellipsis-${index}`}
-                  className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300"
+                  className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-[#6b7a90] ring-1 ring-inset ring-[#dbe7f3] bg-[#f6fafd]"
                 >
                   ...
                 </span>
@@ -102,10 +102,10 @@ export default function UsersPagination({
                   key={`page-${page}`}
                   onClick={() => onPageChange(page as number)}
                   aria-current={currentPage === page ? "page" : undefined}
-                  className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                  className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold rounded-xl transition-colors ${
                     currentPage === page
-                      ? "bg-primary text-white focus-visible:outline-primary"
-                      : "text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                      ? "bg-[#1a4e8a] text-white focus-visible:outline-[#1a4e8a]"
+                      : "text-[#1a4e8a] ring-1 ring-inset ring-[#dbe7f3] bg-[#f6fafd] hover:bg-[#eaf3fa]"
                   } focus:z-20 focus:outline-offset-0`}
                 >
                   {page}
@@ -116,7 +116,7 @@ export default function UsersPagination({
             <button
               onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages || totalPages === 0}
-              className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center rounded-r-xl px-2 py-2 text-[#6b7a90] ring-1 ring-inset ring-[#dbe7f3] bg-[#f6fafd] hover:bg-[#eaf3fa] focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="sr-only">Siguiente</span>
               <ChevronRight className="h-5 w-5" />

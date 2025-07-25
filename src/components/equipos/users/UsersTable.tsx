@@ -23,64 +23,52 @@ export default function UsersTable({ users }: UsersTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <div className="w-full">
+      <table className="w-full table-fixed divide-y divide-[#dbe7f3]">
+        <thead className="bg-[#f6fafd]">
           <tr>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Nombre
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Email
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Departamento
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Rol
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Cargo
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-              Acciones
-            </th>
+            <th className="w-[180px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7a90]">Nombre</th>
+            <th className="w-[260px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7a90]">Email</th>
+            <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7a90]">Departamento</th>
+            <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7a90]">Rol</th>
+            <th className="w-[160px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7a90]">Cargo</th>
+            <th className="w-[100px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b7a90]">Acciones</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
+        <tbody className="divide-y divide-[#eaf3fa] bg-white">
           {users.length > 0 ? (
             users.map((user) => (
-              <tr key={user.oid} className="hover:bg-gray-50">
-                <td className="whitespace-nowrap px-6 py-4">
+              <tr key={user.oid} className="hover:bg-[#f6fafd] transition-colors">
+                <td className="px-4 py-4">
                   <div className="flex items-center">
-                    <div className="h-10 w-10 flex-shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
+                    <div className="h-10 w-10 flex-shrink-0 rounded-full bg-[#eaf3fa] flex items-center justify-center text-[#1a4e8a] font-bold border border-[#dbe7f3]">
                       {user.nombre.charAt(0)}
                     </div>
                     <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{user.nombre}</div>
-                      <div className="text-xs text-gray-500">OID: {user.oid.substring(0, 8)}...</div>
+                      <div className="text-sm font-semibold text-[#1a4e8a]">{user.nombre}</div>
+                      <div className="text-xs text-[#6b7a90]">OID: {user.oid.substring(0, 8)}...</div>
                     </div>
                   </div>
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{user.email}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{user.departamentoNombre}</td>
-                <td className="whitespace-nowrap px-6 py-4">
+                <td className="px-4 py-4 text-sm text-[#6b7a90]">{user.email}</td>
+                <td className="px-4 py-4 text-sm text-[#6b7a90]">{user.departamentoNombre}</td>
+                <td className="px-4 py-4">
                   <span
-                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getRoleBadgeColor(user.rolNombre)}`}
+                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold leading-5 ${getRoleBadgeColor(user.rolNombre)}`}
                   >
                     {user.rolNombre}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{user.cargoNombre}</td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                <td className="px-4 py-4 text-sm text-[#6b7a90]">{user.cargoNombre}</td>
+                <td className="px-4 py-4 text-sm">
                   <div className="flex space-x-2">
-                    <button className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
+                    <button className="rounded-full p-2 text-[#6b7a90] hover:bg-[#eaf3fa] hover:text-[#1a4e8a] transition-colors" title="Ver">
                       <Eye className="h-4 w-4" />
                     </button>
-                    <button className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-500">
+                    <button className="rounded-full p-2 text-[#6b7a90] hover:bg-[#eaf3fa] hover:text-[#1a4e8a] transition-colors" title="Editar">
                       <Edit className="h-4 w-4" />
                     </button>
-                    <button className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-500">
+                    <button className="rounded-full p-2 text-[#6b7a90] hover:bg-[#ffeaea] hover:text-[#d32f2f] transition-colors" title="Eliminar">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -89,7 +77,7 @@ export default function UsersTable({ users }: UsersTableProps) {
             ))
           ) : (
             <tr>
-              <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+              <td colSpan={6} className="px-4 py-4 text-center text-sm text-[#6b7a90]">
                 No se encontraron usuarios
               </td>
             </tr>

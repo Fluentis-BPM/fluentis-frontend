@@ -29,192 +29,160 @@ export const BPMDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Business Process Management
-          </h1>
-          <p className="text-lg text-muted-foreground mt-2">
-            Gestión integral de solicitudes y flujos de trabajo automatizados
-          </p>
+    <main className="flex-1 overflow-auto bg-[#eaf3fa] p-0 min-h-screen">
+      <div className="max-w-5xl mx-auto pt-8">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-[#1a4e8a] tracking-tight">Business Process Management</h1>
+          <p className="text-base text-[#6b7a90] mt-1">Gestión integral de solicitudes y flujos de trabajo automatizados</p>
         </div>
-        <Badge variant="outline" className="text-lg px-4 py-2">
-          Sistema Fluentis BPM
-        </Badge>
-      </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
-          whileHover={{ y: -2, scale: 1.02 }}
-        >
-          <Card className="border-l-4 border-l-blue-500 h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Solicitudes</CardTitle>
-              <FileText className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.totalSolicitudes}</div>
-              <p className="text-xs text-muted-foreground">Registradas en el sistema</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
-          whileHover={{ y: -2, scale: 1.02 }}
-        >
-          <Card className="border-l-4 border-l-green-500 h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Aprobadas</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
+        {/* Overview Stats con animaciones */}
+        <div className="overflow-hidden rounded-xl border border-[#dbe7f3] bg-white shadow-lg p-0 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              className="border-r border-[#eaf3fa] p-6 flex flex-col items-center justify-center"
+            >
+              <FileText className="h-8 w-8 text-[#1a4e8a] mb-2" />
+              <div className="text-2xl font-bold text-[#1a4e8a]">{stats.totalSolicitudes}</div>
+              <div className="text-xs text-[#6b7a90] mt-1">Solicitudes registradas</div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              className="border-r border-[#eaf3fa] p-6 flex flex-col items-center justify-center"
+            >
+              <CheckCircle className="h-8 w-8 text-green-600 mb-2" />
               <div className="text-2xl font-bold text-green-600">{stats.solicitudesAprobadas}</div>
-              <p className="text-xs text-muted-foreground">Con flujos activos</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-          whileHover={{ y: -2, scale: 1.02 }}
-        >
-          <Card className="border-l-4 border-l-yellow-500 h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
+              <div className="text-xs text-[#6b7a90] mt-1">Aprobadas</div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              className="border-r border-[#eaf3fa] p-6 flex flex-col items-center justify-center"
+            >
+              <Clock className="h-8 w-8 text-yellow-500 mb-2" />
               <div className="text-2xl font-bold text-yellow-600">{stats.solicitudesPendientes}</div>
-              <p className="text-xs text-muted-foreground">Esperando aprobación</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.4 }}
-          whileHover={{ y: -2, scale: 1.02 }}
-        >
-          <Card className="border-l-4 border-l-purple-500 h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Flujos Activos</CardTitle>
-              <Workflow className="h-4 w-4 text-purple-500" />
-            </CardHeader>
-            <CardContent>
+              <div className="text-xs text-[#6b7a90] mt-1">Pendientes</div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              className="p-6 flex flex-col items-center justify-center"
+            >
+              <Workflow className="h-8 w-8 text-purple-600 mb-2" />
               <div className="text-2xl font-bold text-purple-600">{stats.flujosEnCurso}</div>
-              <p className="text-xs text-muted-foreground">En ejecución</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Resumen
-          </TabsTrigger>
-          <TabsTrigger value="solicitudes" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Solicitudes
-          </TabsTrigger>
-          <TabsTrigger value="flujos" className="flex items-center gap-2">
-            <Workflow className="w-4 h-4" />
-            Flujos
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Proceso de Solicitudes
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
-                    <span className="font-medium">Crear Solicitud</span>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-blue-500" />
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
-                    <span className="font-medium">Proceso de Aprobación</span>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-yellow-500" />
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
-                    <span className="font-medium">Flujo Automatizado</span>
-                  </div>
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Workflow className="w-5 h-5" />
-                  Tipos de Flujo
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Flujos Secuenciales</span>
-                    <Badge variant="outline">Normal</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Flujos con Bifurcación</span>
-                    <Badge variant="outline">Paralelo</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Flujos de Aprobación</span>
-                    <Badge variant="outline">Aprobación</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Flujos de Ejecución</span>
-                    <Badge variant="outline">Ejecución</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              <div className="text-xs text-[#6b7a90] mt-1">Flujos activos</div>
+            </motion.div>
           </div>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="solicitudes" className="space-y-4">
-          <ModuloSolicitudes 
-            solicitudesData={solicitudesData}
-            onNavigateToFlujos={() => setActiveTab('flujos')}
-          />
-        </TabsContent>
+        {/* Main Content Tabs */}
+        <div className="rounded-xl border border-[#dbe7f3] bg-white shadow-lg p-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3 bg-[#f6fafd] rounded-t-xl border-b border-[#eaf3fa]">
+              <TabsTrigger value="overview" className="flex items-center gap-2 text-[#1a4e8a] px-4 py-3 font-medium">
+                <BarChart3 className="w-4 h-4" />
+                Resumen
+              </TabsTrigger>
+              <TabsTrigger value="solicitudes" className="flex items-center gap-2 text-[#1a4e8a] px-4 py-3 font-medium">
+                <FileText className="w-4 h-4" />
+                Solicitudes
+              </TabsTrigger>
+              <TabsTrigger value="flujos" className="flex items-center gap-2 text-[#1a4e8a] px-4 py-3 font-medium">
+                <Workflow className="w-4 h-4" />
+                Flujos
+              </TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="flujos" className="space-y-4">
-          <ModuloFlujos solicitudesData={solicitudesData} />
-        </TabsContent>
-      </Tabs>
-    </div>
+            <TabsContent value="overview" className="space-y-6 p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card className="border-none shadow-none bg-[#f6fafd]">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-[#1a4e8a]">
+                      <FileText className="w-5 h-5" />
+                      Proceso de Solicitudes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-[#eaf3fa] rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-[#1a4e8a] rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+                        <span className="font-medium text-[#1a4e8a]">Crear Solicitud</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-[#1a4e8a]" />
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-[#f6fafd] rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
+                        <span className="font-medium text-[#6b7a90]">Proceso de Aprobación</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-yellow-500" />
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-[#eaf3fa] rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
+                        <span className="font-medium text-green-600">Flujo Automatizado</span>
+                      </div>
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-none bg-[#f6fafd]">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-[#1a4e8a]">
+                      <Workflow className="w-5 h-5" />
+                      Tipos de Flujo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#1a4e8a]">Flujos Secuenciales</span>
+                        <Badge variant="outline" className="bg-[#eaf3fa] text-[#1a4e8a]">Normal</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#1a4e8a]">Flujos con Bifurcación</span>
+                        <Badge variant="outline" className="bg-[#eaf3fa] text-[#1a4e8a]">Paralelo</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#1a4e8a]">Flujos de Aprobación</span>
+                        <Badge variant="outline" className="bg-[#eaf3fa] text-[#1a4e8a]">Aprobación</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#1a4e8a]">Flujos de Ejecución</span>
+                        <Badge variant="outline" className="bg-[#eaf3fa] text-[#1a4e8a]">Ejecución</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="solicitudes" className="space-y-4 p-8">
+              <ModuloSolicitudes 
+                solicitudesData={solicitudesData}
+                onNavigateToFlujos={() => setActiveTab('flujos')}
+              />
+            </TabsContent>
+
+            <TabsContent value="flujos" className="space-y-4 p-8">
+              <ModuloFlujos solicitudesData={solicitudesData} />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </main>
   );
 };
