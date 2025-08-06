@@ -1,6 +1,5 @@
 import React from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import PrivateRoute from "./shared/components/PrivateRoute";
 
 
 

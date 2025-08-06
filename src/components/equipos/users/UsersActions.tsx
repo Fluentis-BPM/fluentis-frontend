@@ -1,6 +1,7 @@
 "use client"
 
 import { Search, Filter, UserPlus, Download } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 interface UsersActionsProps {
   searchTerm: string
@@ -8,6 +9,7 @@ interface UsersActionsProps {
 }
 
 export default function UsersActions({ searchTerm, setSearchTerm }: UsersActionsProps) {
+  const navigate = useNavigate()
   return (
     <div className="mb-6 flex flex-col sm:flex-row justify-between gap-4">
       <div className="relative flex-1">
@@ -29,7 +31,10 @@ export default function UsersActions({ searchTerm, setSearchTerm }: UsersActions
           <Download className="h-4 w-4" />
           Exportar
         </button>
-        <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
+        <button 
+          onClick={() => navigate("/test/usuarios/crear")}
+          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
+        >
           <UserPlus className="h-4 w-4" />
           Nuevo Usuario
         </button>

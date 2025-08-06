@@ -1,10 +1,13 @@
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import MainLayout from "@/components/layouts/MainLayout";
 import CargosPage from "@/pages/equipos/CargosPage";
+import CreateUserPage from "@/pages/equipos/CreateUserPage";
 import DepartmentsPage from "@/pages/equipos/DepartmentPage";
 import RolesPage from "@/pages/equipos/RolesPage";
 import UsersPage from "@/pages/equipos/UsersPage";
 import UserPage from "@/pages/user/UserPage";
+import IndexBPM from "@/pages/bpm/IndexBPM";
+import NotFoundBPM from "@/pages/bpm/NotFoundBPM";
 
 // Placeholders para las páginas privadas (solo divs con nombres)
 
@@ -31,6 +34,7 @@ export const privateRoutes = [
     children: [
       // Módulo: Gestión de Equipos y Permisos
       { path: '/equipos/usuarios', element: <PrivateRoute><UsersPage /></PrivateRoute> },
+      { path: '/equipos/usuarios/crear', element: <PrivateRoute><CreateUserPage /></PrivateRoute> },
       { path: '/equipos/departamentos', element: <PrivateRoute><DepartmentsPage /></PrivateRoute> },
       { path: '/equipos/roles', element: <PrivateRoute><RolesPage/></PrivateRoute> },
       { path: '/equipos/cargos', element: <PrivateRoute><CargosPage/></PrivateRoute> },
@@ -54,6 +58,9 @@ export const privateRoutes = [
     
       // Modulo: Perfil
       { path: '/profile', element: <PrivateRoute><UserPage /></PrivateRoute>},
+      // Modulo: Pruebas BPM
+      { path: '/bpm/index', element: <PrivateRoute><IndexBPM /></PrivateRoute> },
+      { path: '/bpm/notfound', element: <PrivateRoute><NotFoundBPM /></PrivateRoute> },
     ],
   },
 ];
