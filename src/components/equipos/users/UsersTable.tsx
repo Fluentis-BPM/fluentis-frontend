@@ -46,7 +46,7 @@ export default function UsersTable({ users }: UsersTableProps) {
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-semibold text-[#1a4e8a]">{user.nombre}</div>
-                      <div className="text-xs text-[#6b7a90]">OID: {user.oid.substring(0, 8)}...</div>
+                      <div className="text-xs text-[#6b7a90]">OID: {String(user.oid).substring(0, 8)}...</div>
                     </div>
                   </div>
                 </td>
