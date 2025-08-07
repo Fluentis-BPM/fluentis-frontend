@@ -12,6 +12,7 @@ import UsersPage from "./pages/equipos/UsersPage";
 import DepartmentPage from "./pages/equipos/DepartmentPage";
 import RolesPage from "./pages/equipos/RolesPage";
 import CargosPage from "./pages/equipos/CargosPage";
+import AprobationsPage from "./pages/equipos/AprobationsPage";
 import UserPage from "./pages/user/UserPage";
 import ConfigPage from "./pages/user/ConfigPage";
 
@@ -79,7 +80,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "equipos/grupos-aprobacion",
-        element: <div>Grupos de Aprobación - Coming Soon</div>,
+        element: <AprobationsPage />,
       },
       {
         path: "flujos/plantillas",
