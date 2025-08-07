@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { setAccessToken, verifyToken } from './store/auth/authSlice';
 
-import { router } from './routes';
+import { router } from './routes/index';
 const msalInstance = new PublicClientApplication(msalConfig);
 
 // Component to handle authentication initialization
