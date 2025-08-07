@@ -1,4 +1,4 @@
-import PrivateRoute from "@/shared/components/PrivateRoute";
+import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import MainLayout from "@/components/layouts/MainLayout";
 import AprobationsPage from "@/pages/equipos/AprobationsPage";
 import CargosPage from "@/pages/equipos/CargosPage";
@@ -6,6 +6,8 @@ import DepartmentsPage from "@/pages/equipos/DepartmentPage";
 import RolesPage from "@/pages/equipos/RolesPage";
 import UsersPage from "@/pages/equipos/UsersPage";
 import UserPage from "@/pages/user/UserPage";
+import ConfigPage from "@/pages/user/ConfigPage";
+import { BPMDashboard } from "@/pages/bpm/BPMDashboard";
 
 
 // Placeholders para las páginas privadas (solo divs con nombres)
@@ -30,31 +32,38 @@ export const privateRoutes = [
   {
     element: <MainLayout />,
     children: [
+      // Dashboard
+      { path: '/dashboard', element: <PrivateRoute><div>Dashboard Coming Soon...</div></PrivateRoute> },
+      
       // Módulo: Gestión de Equipos y Permisos
-      { path: '/equipos/usuarios', element: <PrivateRoute element={<UsersPage />} /> },
-      { path: '/equipos/departamentos', element: <PrivateRoute element={<DepartmentsPage />} /> },
-      { path: '/equipos/roles', element: <PrivateRoute element={<RolesPage />} /> },
-      { path: '/equipos/cargos', element: <PrivateRoute element={<CargosPage />} /> },
-      { path: '/equipos/delegaciones', element: <PrivateRoute element={<DelegacionesPage />} /> },
-      { path: '/equipos/grupos-aprobacion', element: <PrivateRoute element={<AprobationsPage />} /> },
+      { path: '/equipos/usuarios', element: <PrivateRoute><UsersPage /></PrivateRoute> },
+      { path: '/equipos/departamentos', element: <PrivateRoute><DepartmentsPage /></PrivateRoute> },
+      { path: '/equipos/roles', element: <PrivateRoute><RolesPage/></PrivateRoute> },
+      { path: '/equipos/cargos', element: <PrivateRoute><CargosPage/></PrivateRoute> },
+      { path: '/equipos/delegaciones', element: <PrivateRoute><DelegacionesPage /></PrivateRoute> },
+      { path: '/equipos/grupos-aprobacion', element: <PrivateRoute><AprobationsPage /></PrivateRoute> },
+
+      // Módulo: BPM
+      { path: '/bpm', element: <PrivateRoute><BPMDashboard /></PrivateRoute> },
 
       // Módulo: Gestión de Flujos y Solicitudes
-      { path: '/flujos/plantillas', element: <PrivateRoute element={<FlujosPlantillasPage />} /> },
-      { path: '/flujos/solicitudes', element: <PrivateRoute element={<SolicitudesPage />} /> },
-      { path: '/flujos/activos', element: <PrivateRoute element={<FlujosActivosPage />} /> },
-      { path: '/flujos/mis-pasos', element: <PrivateRoute element={<MisPasosPage />} /> },
-      { path: '/flujos/propuestas-votaciones', element: <PrivateRoute element={<PropuestasVotacionesPage />} /> },
+      { path: '/flujos/plantillas', element: <PrivateRoute><FlujosPlantillasPage /></PrivateRoute> },
+      { path: '/flujos/solicitudes', element: <PrivateRoute><SolicitudesPage /></PrivateRoute> },
+      { path: '/flujos/activos', element: <PrivateRoute><FlujosActivosPage /></PrivateRoute> },
+      { path: '/flujos/mis-pasos', element: <PrivateRoute><MisPasosPage /></PrivateRoute> },
+      { path: '/flujos/propuestas-votaciones', element: <PrivateRoute><PropuestasVotacionesPage /></PrivateRoute> },
 
       // Módulo: Backup y Seguridad
-      { path: '/backup/backups', element: <PrivateRoute element={<BackupsPage />} /> },
-      { path: '/backup/incidentes', element: <PrivateRoute element={<IncidentesPage />} /> },
+      { path: '/backup/backups', element: <PrivateRoute><BackupsPage /></PrivateRoute> },
+      { path: '/backup/incidentes', element: <PrivateRoute><IncidentesPage /></PrivateRoute> },
 
       // Módulo: Métricas e Informes
-      { path: '/metricas/metricas', element: <PrivateRoute element={<MetricasPage />} /> },
-      { path: '/metricas/informes', element: <PrivateRoute element={<InformesPage />} /> },
+      { path: '/metricas/metricas', element: <PrivateRoute><MetricasPage /></PrivateRoute> },
+      { path: '/metricas/informes', element: <PrivateRoute><InformesPage /></PrivateRoute> },
     
-      // Modulo: Perfil
-      { path: '/profile', element: <PrivateRoute element={<UserPage />} />},
+      // Módulo: Perfil y Configuración
+      { path: '/profile', element: <PrivateRoute><UserPage /></PrivateRoute>},
+      { path: '/configuracion/cuenta', element: <PrivateRoute><ConfigPage /></PrivateRoute>},
     ],
   },
 ];
