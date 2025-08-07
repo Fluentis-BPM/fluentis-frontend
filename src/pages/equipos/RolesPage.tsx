@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { motion } from "motion/react"
 
 import type { User } from "@/types/auth"
 import RolesHeader from "@/components/equipos/role/RolesHeader"
@@ -60,12 +61,21 @@ export default function RolesPage() {
 
   if (loading) {
     return (
-      <main className="flex-1 overflow-auto p-6">
-        <RolesHeader />
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-gray-500">Cargando roles y usuarios...</p>
+      <main className="flex-1 overflow-auto bg-[#eaf3fa] p-0 min-h-screen">
+        <div className="max-w-5xl mx-auto pt-8">
+          <RolesHeader />
+          <div className="overflow-hidden rounded-xl border border-[#dbe7f3] bg-white shadow-lg p-0">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="flex items-center justify-center h-64"
+            >
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a4e8a] mx-auto"></div>
+                <p className="mt-2 text-[#6b7a90]">Cargando roles y usuarios...</p>
+              </div>
+            </motion.div>
           </div>
         </div>
       </main>
@@ -74,48 +84,76 @@ export default function RolesPage() {
 
   if (error) {
     return (
-      <main className="flex-1 overflow-auto p-6">
-        <RolesHeader />
-        <div className="text-red-500 text-center mt-8">
-          <p>Error al cargar roles: {error}</p>
-          <button onClick={refetch} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            Reintentar
-          </button>
+      <main className="flex-1 overflow-auto bg-[#eaf3fa] p-0 min-h-screen">
+        <div className="max-w-5xl mx-auto pt-8">
+          <RolesHeader />
+          <div className="overflow-hidden rounded-xl border border-[#dbe7f3] bg-white shadow-lg p-0">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="text-red-500 text-center mt-8"
+            >
+              <p>Error al cargar roles: {error}</p>
+              <button onClick={refetch} className="mt-4 px-4 py-2 bg-[#1a4e8a] text-white rounded hover:bg-[#163e6c]">
+                Reintentar
+              </button>
+            </motion.div>
+          </div>
         </div>
       </main>
     )
   }
 
   return (
-    <main className="flex-1 overflow-auto p-6">
-      <RolesHeader />
+    <main className="flex-1 overflow-auto bg-[#eaf3fa] p-0 min-h-screen">
+      <div className="max-w-5xl mx-auto pt-8">
+        <RolesHeader />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+          {/* Users List */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            whileHover={{ y: -2, scale: 1.02 }}
+            className="overflow-hidden rounded-xl border border-[#dbe7f3] bg-white shadow-lg p-0 flex flex-col"
+            style={{ maxHeight: '600px' }}
+          >
+            <div className="p-4 border-b border-[#eaf3fa]">
+              <h2 className="text-lg font-semibold text-[#1a4e8a]">Usuarios Disponibles</h2>
+              <p className="text-sm text-[#6b7a90]">Arrastra los usuarios a los roles correspondientes</p>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <UsersList 
+                users={getUnassignedUsers()} 
+                onDragStart={handleDragStart} 
+                onDragEnd={handleDragEnd} 
+              />
+            </div>
+          </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
-        {/* Users List */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Usuarios Disponibles</h2>
-            <p className="text-sm text-gray-500">Arrastra los usuarios a los roles correspondientes</p>
-          </div>
-          <UsersList 
-            users={getUnassignedUsers()} 
-            onDragStart={handleDragStart} 
-            onDragEnd={handleDragEnd} 
-          />
-        </div>
-
-        {/* Roles List */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Roles</h2>
-            <p className="text-sm text-gray-500">Suelta los usuarios en el rol deseado</p>
-          </div>
-          <RolesList
-            roles={roles}
-            getUsersByRole={getUsersByRole}
-            onDrop={handleDrop}
-            draggedUser={draggedUser}
-          />
+          {/* Roles List */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            whileHover={{ y: -2, scale: 1.02 }}
+            className="overflow-hidden rounded-xl border border-[#dbe7f3] bg-white shadow-lg p-0 flex flex-col"
+            style={{ maxHeight: '600px' }}
+          >
+            <div className="p-4 border-b border-[#eaf3fa]">
+              <h2 className="text-lg font-semibold text-[#1a4e8a]">Roles</h2>
+              <p className="text-sm text-[#6b7a90]">Suelta los usuarios en el rol deseado</p>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <RolesList
+                roles={roles}
+                getUsersByRole={getUsersByRole}
+                onDrop={handleDrop}
+                draggedUser={draggedUser}
+              />
+            </div>
+          </motion.div>
         </div>
       </div>
     </main>

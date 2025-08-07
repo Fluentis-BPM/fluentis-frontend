@@ -1,7 +1,7 @@
 
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { selectAccessToken } from '@/store/auth/authSlice';
+import { selectAccessToken } from '@/store';
 
 interface PrivateRouteProps {
   children: React.ReactNode;

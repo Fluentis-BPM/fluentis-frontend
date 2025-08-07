@@ -15,6 +15,7 @@ export default defineConfig([
   {
     rules: {
       "react/react-in-jsx-scope": "off", // Desactiva la regla
+      "@typescript-eslint/no-unused-vars": "off", // Ignora variables no utilizadas
     },
   },
 ]);

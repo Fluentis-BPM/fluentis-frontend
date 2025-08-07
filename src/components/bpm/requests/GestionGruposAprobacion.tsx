@@ -1,0 +1,251 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { GrupoAprobacion, GrupoAprobacionCompleto } from '@/types/bpm/approval';
+import { Users, Plus, Edit, Trash2, UserPlus, X } from 'lucide-react';
+
+interface Props {
+  grupos: GrupoAprobacion[];
+  miembrosGrupos: { [grupoId: number]: number[] }; // Añadir miembros
+  onCrearGrupo: (nombre: string, miembros: number[]) => void;
+  onEliminarGrupo?: (id: number) => void;
+  onEditarGrupo?: (id: number, nombre: string, miembros: number[]) => void;
+}
+
+export const GestionGruposAprobacion: React.FC<Props> = ({
+  grupos,
+  miembrosGrupos,
+  onCrearGrupo,
+  onEliminarGrupo,
+  onEditarGrupo
+}) => {
+  console.log('🎯 GESTION GRUPOS - miembrosGrupos recibidos:', miembrosGrupos);
+  console.log('🎯 GESTION GRUPOS - grupos recibidos:', grupos);
+  const [mostrarCrear, setMostrarCrear] = useState(false);
+  const [nombreGrupo, setNombreGrupo] = useState('');
+  const [miembros, setMiembros] = useState<number[]>([]);
+  const [nuevoMiembroId, setNuevoMiembroId] = useState('');
+  const [grupoEditando, setGrupoEditando] = useState<number | null>(null);
+
+  const resetForm = () => {
+    setNombreGrupo('');
+    setMiembros([]);
+    setNuevoMiembroId('');
+    setGrupoEditando(null);
+  };
+
+  const handleCrear = () => {
+    if (nombreGrupo.trim()) {
+      console.log('🚀 CREANDO GRUPO DESDE GESTION:', { nombreGrupo: nombreGrupo.trim(), miembros });
+      onCrearGrupo(nombreGrupo.trim(), miembros);
+      resetForm();
+      setMostrarCrear(false);
+    }
+  };
+
+  const handleEditar = () => {
+    if (grupoEditando && nombreGrupo.trim() && onEditarGrupo) {
+      onEditarGrupo(grupoEditando, nombreGrupo.trim(), miembros);
+      resetForm();
+      setMostrarCrear(false);
+    }
+  };
+
+  const iniciarEdicion = (grupo: GrupoAprobacion) => {
+    setGrupoEditando(grupo.id_grupo);
+    setNombreGrupo(grupo.nombre);
+    // Cargar miembros reales del grupo
+    const miembrosReales = miembrosGrupos[grupo.id_grupo] || [];
+    setMiembros(miembrosReales);
+    setMostrarCrear(true);
+  };
+
+  const agregarMiembro = () => {
+    const id = parseInt(nuevoMiembroId);
+    if (id && !miembros.includes(id)) {
+      setMiembros([...miembros, id]);
+      setNuevoMiembroId('');
+    }
+  };
+
+  const removerMiembro = (id: number) => {
+    setMiembros(miembros.filter(m => m !== id));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          <h2 className="text-xl font-semibold">Gestión de Grupos de Aprobación</h2>
+        </div>
+        
+        <Dialog open={mostrarCrear} onOpenChange={setMostrarCrear}>
+          <DialogTrigger asChild>
+            <Button onClick={() => resetForm()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Grupo
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {grupoEditando ? 'Editar Grupo' : 'Crear Nuevo Grupo'}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="nombre">Nombre del Grupo</Label>
+                <Input
+                  id="nombre"
+                  value={nombreGrupo}
+                  onChange={(e) => setNombreGrupo(e.target.value)}
+                  placeholder="Ej: Aprobadores de IT"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Miembros del Grupo</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={nuevoMiembroId}
+                    onChange={(e) => setNuevoMiembroId(e.target.value)}
+                    placeholder="ID de usuario"
+                    type="number"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={agregarMiembro}
+                    disabled={!nuevoMiembroId}
+                  >
+                    <UserPlus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {miembros.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-md">
+                    {miembros.map(id => (
+                      <Badge key={id} variant="secondary" className="flex items-center gap-1">
+                        Usuario {id}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 w-4 h-4"
+                          onClick={() => removerMiembro(id)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={grupoEditando ? handleEditar : handleCrear}
+                  disabled={!nombreGrupo.trim()}
+                  className="flex-1"
+                >
+                  {grupoEditando ? 'Guardar Cambios' : 'Crear Grupo'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    resetForm();
+                    setMostrarCrear(false);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Lista de grupos */}
+      <div className="grid gap-4">
+        {grupos.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+              <Users className="w-12 h-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">No hay grupos creados</h3>
+              <p className="text-muted-foreground mb-4">
+                Crea tu primer grupo de aprobación para comenzar
+              </p>
+              <Button onClick={() => setMostrarCrear(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Crear Primer Grupo
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          grupos.map(grupo => (
+            <Card key={grupo.id_grupo}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{grupo.nombre}</CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => iniciarEdicion(grupo)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    {onEliminarGrupo && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEliminarGrupo(grupo.id_grupo)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    ID del Grupo: {grupo.id_grupo}
+                  </div>
+                  {/* Mostrar miembros reales */}
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Miembros: </span>
+                    {(() => {
+                      const miembrosDelGrupo = miembrosGrupos[grupo.id_grupo] || [];
+                      if (miembrosDelGrupo.length === 0) {
+                        return <span className="text-muted-foreground">No hay miembros asignados</span>;
+                      }
+                      return (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {miembrosDelGrupo.map(id => (
+                            <Badge key={id} variant="secondary" className="text-xs">
+                              Usuario {id}
+                            </Badge>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};

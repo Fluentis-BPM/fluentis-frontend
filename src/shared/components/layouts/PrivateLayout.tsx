@@ -1,8 +1,7 @@
 // src/features/shared/components/PrivateLayout.tsx
-import React from "react";
 import { Outlet, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { logout } from "@/features/auth/slices/authSlice";
+import { logout } from "@/store/auth/authSlice";
 import { RootState } from "@/store";
 
 const PrivateLayout = () => {
@@ -32,7 +31,7 @@ const PrivateLayout = () => {
       </nav>
       {/* Contenido dinámico */}
       <main className="flex-1 p-4">
-        <h1>Bienvenido, {user?.name || "Usuario"}</h1>
+        <h1>Bienvenido, {user?.nombre || "Usuario"}</h1>
         <Outlet /> {/* Aquí se renderizan las rutas privadas */}
       </main>
     </div>

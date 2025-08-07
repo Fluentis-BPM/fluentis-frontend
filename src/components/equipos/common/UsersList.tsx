@@ -12,8 +12,8 @@ export default function UsersList({ users, onDragStart, onDragEnd }: UsersListPr
     (user) =>
       user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.departamento.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.cargo.toLowerCase().includes(searchTerm.toLowerCase()),
+      (user.departamento?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (user.cargo?.toLowerCase() || '').includes(searchTerm.toLowerCase()),
   )
 
   return (

@@ -1,10 +1,7 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@config "../tailwind.config.ts";
-
-
 
 @layer utilities {
+  /* === GRADIENTS === */
   .bg-gradient-primary {
     @apply bg-gradient-to-r from-[#0a4890] via-[#0b78d1] to-[#45a6f5];
   }
@@ -15,6 +12,15 @@
 
   .bg-gradient-light {
     @apply bg-gradient-to-r from-[#0a4890]/5 via-[#0b78d1]/5 to-[#45a6f5]/5;
+  }
+
+  /* === HOVER STATES === */
+  .bg-primary-light {
+    @apply bg-[#bcd9fa];
+  }
+
+  .bg-secondary-light {
+    @apply bg-[#c8e5fc];
   }
 
   /* === EFFECTS === */
@@ -29,5 +35,28 @@
   /* === SPACING === */
   .section-padding-y {
     @apply py-16 md:py-20;
+  }
+
+  /* === SCROLLBAR STYLING === */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #bcd9fa #e6f2fd;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #e6f2fd;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #bcd9fa;
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #0a4890;
   }
 }
