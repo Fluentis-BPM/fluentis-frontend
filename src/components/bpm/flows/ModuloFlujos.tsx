@@ -117,10 +117,10 @@ export const ModuloFlujos: React.FC<{
   }
 
   return (
-    <div className="min-h-screen bg-background p-6 space-y-6">
+    <div className="min-h-screen bg-background p-6 space-y-6 animate-fadeIn">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="animate-slide-up">
           <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             Gestión de Flujos
           </h1>
@@ -131,7 +131,7 @@ export const ModuloFlujos: React.FC<{
         
         <Button 
           variant="outline"
-          className="border-primary text-primary hover:bg-primary/10"
+          className="border-primary text-primary hover:bg-primary hover:text-white hover:scale-105 hover:shadow-glow transition-all duration-300"
         >
           <Settings className="w-4 h-4 mr-2" />
           Configuración
@@ -142,41 +142,41 @@ export const ModuloFlujos: React.FC<{
       <EstadisticasFlujos estadisticas={estadisticas} />
 
       {/* Controles de filtrado y búsqueda */}
-      <Card className="shadow-soft">
+      <Card className="shadow-soft animate-slide-up" style={{ animationDelay: '0.1s' }}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-foreground/90">
+            <Filter className="w-5 h-5 text-primary" />
             Filtros y Búsqueda
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+            <div className="relative group">
+              <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
               <Input
                 placeholder="Buscar por ID de flujo o solicitud..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                className="pl-10 transition-smooth focus:ring-primary/50"
+                className="pl-10 transition-all duration-300 focus:ring-primary/50 hover:border-primary/50"
               />
             </div>
           </div>
           
           <Select value={filtroEstado} onValueChange={(value: EstadoFlujo | 'todos') => setFiltroEstado(value)}>
-            <SelectTrigger className="w-48 transition-smooth focus:ring-primary/50">
+            <SelectTrigger className="w-48 transition-all duration-300 focus:ring-primary/50 hover:border-primary/50 hover:shadow-soft">
               <SelectValue placeholder="Filtrar por estado" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos los estados</SelectItem>
-              <SelectItem value="encurso">En Curso</SelectItem>
-              <SelectItem value="finalizado">Finalizados</SelectItem>
-              <SelectItem value="cancelado">Cancelados</SelectItem>
+            <SelectContent className="animate-scale-in">
+              <SelectItem value="todos" className="hover:bg-primary/10 transition-colors">Todos los estados</SelectItem>
+              <SelectItem value="encurso" className="hover:bg-primary/10 transition-colors">En Curso</SelectItem>
+              <SelectItem value="finalizado" className="hover:bg-primary/10 transition-colors">Finalizados</SelectItem>
+              <SelectItem value="cancelado" className="hover:bg-primary/10 transition-colors">Cancelados</SelectItem>
             </SelectContent>
           </Select>
 
           <div className="flex items-center gap-2">
             <SortDesc className="w-4 h-4 text-muted-foreground" />
-            <Badge variant="outline">
+            <Badge variant="outline" className="border-primary/30 text-primary/80 hover:bg-primary/10 transition-colors">
               {flujosFiltrados.length} resultado{flujosFiltrados.length !== 1 ? 's' : ''}
             </Badge>
           </div>
@@ -184,11 +184,11 @@ export const ModuloFlujos: React.FC<{
       </Card>
 
       {/* Lista de flujos */}
-      <div className="space-y-4">
+      <div className="space-y-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
         {flujosFiltrados.length === 0 ? (
           <Card className="shadow-soft">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <FileX className="w-12 h-12 text-muted-foreground mb-4" />
+              <FileX className="w-12 h-12 text-muted-foreground/50 mb-4 animate-bounce-subtle" />
               <h3 className="text-lg font-semibold mb-2">No hay flujos</h3>
               <p className="text-muted-foreground text-center max-w-md">
                 {flujosActivos.length === 0 
@@ -200,18 +200,23 @@ export const ModuloFlujos: React.FC<{
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {flujosFiltrados.map((flujo) => {
+            {flujosFiltrados.map((flujo, index) => {
               const pasos = obtenerPasosDeFlujo(flujo.id_flujo_activo);
               
               return (
-                <TarjetaFlujo
+                <div
                   key={flujo.id_flujo_activo}
-                  flujo={flujo}
-                  pasos={pasos}
-                  onActualizarEstado={handleActualizarEstado}
-                  onVerDetalles={handleVerDetalles}
-                  onVerDiagrama={handleVerDiagrama}
-                />
+                  className="animate-scale-in"
+                  style={{ animationDelay: `${0.1 * index}s` }}
+                >
+                  <TarjetaFlujo
+                    flujo={flujo}
+                    pasos={pasos}
+                    onActualizarEstado={handleActualizarEstado}
+                    onVerDetalles={handleVerDetalles}
+                    onVerDiagrama={handleVerDiagrama}
+                  />
+                </div>
               );
             })}
           </div>

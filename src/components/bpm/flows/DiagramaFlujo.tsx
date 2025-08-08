@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, useState } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -6,7 +6,6 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
-  Connection,
   Edge,
   Node,
   MiniMap,
@@ -14,7 +13,8 @@ import {
   Handle,
   MarkerType,
   NodeChange,
-  OnNodeDrag
+  OnNodeDrag,
+  Connection
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PasoSolicitud, CaminoParalelo } from '@/types/bpm/flow';
@@ -38,7 +38,7 @@ interface PasoNodeData {
   paso: PasoSolicitud;
   onActualizarEstado: (pasoId: number, estado: PasoSolicitud['estado']) => void;
   onEditarPaso?: (paso: PasoSolicitud) => void;
-  camposDinamicosIniciales?: RelacionInput[] | CamposDinamicos;
+  camposDinamicosIniciales?: RelacionInput[] | CamposDinamicos | Record<string, string>;
   esInicial: boolean;
   isSelected: boolean;
   onNodeClick?: (paso: PasoSolicitud) => void;
@@ -101,8 +101,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
 
   return (
     <Card 
-      className={`p-4 min-w-[220px] transition-all duration-200 cursor-pointer ${getColorByEstado()} ${
-        isSelected ? 'ring-2 ring-primary ring-offset-2' : 'hover:shadow-md'
+      className={`p-4 min-w-[220px] transition-all duration-300 cursor-pointer ${getColorByEstado()} ${
+        isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'
       }`}
       onClick={() => onNodeClick?.(paso)}
     >
@@ -161,28 +161,28 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
                   <Button 
                     size="sm"
                     variant="outline"
-                    className="h-6 px-2 text-xs border-success text-success hover:bg-success/10"
+                    className="h-6 px-2 text-xs border-success text-success hover:bg-success hover:text-white hover:scale-105 transition-all duration-300"
                     onClick={() => onActualizarEstado(paso.id_paso_solicitud, 'aprobado')}
                   >
-                    Aprobar
+                    ✓ Aprobar
                   </Button>
                   <Button 
                     size="sm"
                     variant="outline"
-                    className="h-6 px-2 text-xs border-destructive text-destructive hover:bg-destructive/10"
+                    className="h-6 px-2 text-xs border-destructive text-destructive hover:bg-destructive hover:text-white hover:scale-105 transition-all duration-300"
                     onClick={() => onActualizarEstado(paso.id_paso_solicitud, 'rechazado')}
                   >
-                    Rechazar
+                    ✗ Rechazar
                   </Button>
                 </>
               ) : (
                 <Button 
                   size="sm"
                   variant="outline"
-                  className="h-6 px-2 text-xs border-success text-success hover:bg-success/10"
+                  className="h-6 px-2 text-xs border-success text-success hover:bg-success hover:text-white hover:scale-105 transition-all duration-300"
                   onClick={() => onActualizarEstado(paso.id_paso_solicitud, 'completado')}
                 >
-                  Completar
+                  ✓ Completar
                 </Button>
               )}
             </div>
@@ -228,6 +228,10 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   selectedNodeId,
   onNodeSelect
 }) => {
+  // State for draggable instructions card
+  const [cardPosition, setCardPosition] = useState({ x: 16, y: window.innerHeight - 200 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Convertir pasos a nodos de React Flow
   const initialNodes: Node[] = useMemo(() => 
@@ -434,6 +438,50 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
     [onAgregarPaso, readOnly]
   );
 
+  // Drag handlers for instructions card
+  const handleCardMouseDown = useCallback((e: React.MouseEvent) => {
+    if (readOnly) return;
+    setIsDragging(true);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    e.preventDefault();
+  }, [readOnly]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      
+      // Keep card within viewport bounds
+      const maxX = window.innerWidth - 300; // Card width approximation
+      const maxY = window.innerHeight - 150; // Card height approximation
+      
+      setCardPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
   return (
     <div className="w-full h-[600px] border rounded-lg bg-background">
       <ReactFlow
@@ -471,7 +519,16 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
       </ReactFlow>
       
       {!readOnly && (
-        <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur border rounded-lg p-3 shadow-lg">
+        <div 
+          className="absolute bg-background/95 backdrop-blur border rounded-lg p-3 shadow-lg cursor-move select-none"
+          style={{ 
+            left: `${cardPosition.x}px`, 
+            top: `${cardPosition.y}px`,
+            transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+            transition: isDragging ? 'none' : 'transform 0.2s ease'
+          }}
+          onMouseDown={handleCardMouseDown}
+        >
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
               💡 Doble click para agregar paso • Arrastra desde <span className="text-secondary font-medium">●</span> para conectar pasos
@@ -483,7 +540,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 px-2 text-xs"
+                className="h-7 px-2 text-xs border-blue-500 text-blue-600 hover:bg-blue-500 hover:text-white hover:scale-105 transition-all duration-300"
                 onClick={() => {
                   const rect = document.querySelector('.react-flow')?.getBoundingClientRect();
                   if (rect) {
@@ -497,7 +554,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 px-2 text-xs"
+                className="h-7 px-2 text-xs border-purple-500 text-purple-600 hover:bg-purple-500 hover:text-white hover:scale-105 transition-all duration-300"
                 onClick={() => {
                   const rect = document.querySelector('.react-flow')?.getBoundingClientRect();
                   if (rect) {
