@@ -7,7 +7,7 @@ import { MsalProvider } from "@azure/msal-react";
 import { msalConfig } from "./authConfig";
 import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { setAccessToken, verifyToken } from './store/auth/authSlice';
+import { setAccessToken, silentVerifyToken } from './store/auth/authSlice';
 
 import { router } from './routes/index';
 const msalInstance = new PublicClientApplication(msalConfig);
@@ -27,8 +27,8 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
           // Set the token in the store
           dispatch(setAccessToken(storedToken));
           
-          // Verify the token with the backend
-          await dispatch(verifyToken(storedToken));
+          // Verify the token with the backend silently
+          await dispatch(silentVerifyToken(storedToken));
         }
       } catch (error) {
         console.error('Error initializing authentication:', error);

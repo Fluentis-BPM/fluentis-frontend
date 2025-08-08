@@ -84,11 +84,13 @@ export const TarjetaFlujo: React.FC<Props> = ({
             <div className="flex items-center gap-2">
               <Workflow className="w-5 h-5" />
               <span>Flujo #{flujo.id_flujo_activo}</span>
-            {getEstadoIcon()}
-          </div>
-          {getEstadoBadge()}
-        </CardTitle>
-      </CardHeader>
+              {getEstadoIcon()}
+            </div>
+            <div className="flex items-center gap-2">
+              {getEstadoBadge()}
+            </div>
+          </CardTitle>
+        </CardHeader>
       
       <CardContent className="p-6 space-y-4">
         {/* Información básica */}
@@ -186,7 +188,7 @@ export const TarjetaFlujo: React.FC<Props> = ({
               variant="outline"
               size="sm"
               onClick={() => onVerDiagrama(flujo.id_flujo_activo)}
-              className="flex items-center gap-1 border-primary text-primary hover:bg-primary/10"
+              className="flex items-center gap-1 border-primary text-primary hover:bg-primary hover:text-white hover:scale-105 transition-smooth"
             >
               <Workflow className="w-3 h-3" />
               Ver Diagrama
@@ -199,7 +201,7 @@ export const TarjetaFlujo: React.FC<Props> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => onActualizarEstado(flujo.id_flujo_activo, 'finalizado')}
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 border-green-500 text-green-600 hover:bg-green-500 hover:text-white hover:scale-105 transition-smooth"
               >
                 <Square className="w-3 h-3" />
                 Finalizar
@@ -208,7 +210,7 @@ export const TarjetaFlujo: React.FC<Props> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => onActualizarEstado(flujo.id_flujo_activo, 'cancelado')}
-                className="flex items-center gap-1 text-destructive hover:bg-destructive/10"
+                className="flex items-center gap-1 border-red-500 text-red-600 hover:bg-red-500 hover:text-white hover:scale-105 transition-smooth"
               >
                 <XCircle className="w-3 h-3" />
                 Cancelar
@@ -221,7 +223,7 @@ export const TarjetaFlujo: React.FC<Props> = ({
               variant="outline"
               size="sm"
               onClick={() => onVerDetalles(flujo.id_flujo_activo)}
-              className="flex items-center gap-1 ml-auto"
+              className="flex items-center gap-1 ml-auto border-blue-500 text-blue-600 hover:bg-blue-500 hover:text-white hover:scale-105 transition-smooth"
             >
               <Eye className="w-3 h-3" />
               Detalles

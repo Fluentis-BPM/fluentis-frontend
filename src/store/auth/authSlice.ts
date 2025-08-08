@@ -38,6 +38,31 @@ export const verifyToken = createAsyncThunk(
   }
 );
 
+// Thunk para verificar el token silenciosamente (sin mostrar errores en UI)
+export const silentVerifyToken = createAsyncThunk(
+  "auth/silentVerifyToken",
+  async (accessToken: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.post<{ user?: User; error?: string }>("http://localhost:8080/Auth/login", 
+        { accessToken },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      if (response.data.user) {
+        return response.data.user;
+      } else {
+        return rejectWithValue(response.data.error || "Error desconocido");
+      }
+    } catch (error: unknown) {
+      return rejectWithValue("Error al conectar con el servidor " + (error as Error).message);
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -88,6 +113,29 @@ const authSlice = createSlice({
       .addCase(verifyToken.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
+        // Clear invalid token from localStorage
+        localStorage.removeItem('accessToken');
+        // Clear the API token
+        setApiToken(null);
+      })
+      // Silent verification handlers (no UI status changes for failures)
+      .addCase(silentVerifyToken.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        // Ensure API token is set if we have an access token
+        if (state.accessToken) {
+          setApiToken(state.accessToken);
+        }
+      })
+      .addCase(silentVerifyToken.rejected, (state) => {
+        // Silent failure - just clear the invalid token without setting error status
+        state.status = "idle";
+        state.error = null;
+        state.user = null;
+        state.accessToken = null;
+        state.token = null;
+        state.isAuthenticated = false;
         // Clear invalid token from localStorage
         localStorage.removeItem('accessToken');
         // Clear the API token

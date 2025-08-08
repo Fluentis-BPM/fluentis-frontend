@@ -88,24 +88,24 @@ export const BPMDashboard: React.FC = () => {
         </div>
 
         {/* Main Content Tabs */}
-        <div className="rounded-xl border border-[#dbe7f3] bg-white shadow-lg p-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 bg-[#f6fafd] rounded-t-xl border-b border-[#eaf3fa]">
-              <TabsTrigger value="overview" className="flex items-center gap-2 text-[#1a4e8a] px-4 py-3 font-medium">
+        <div className="rounded-xl border border-[#dbe7f3] bg-white shadow-lg overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-[#f6fafd] rounded-none border-b border-[#eaf3fa] h-auto">
+              <TabsTrigger value="overview" className="flex items-center gap-2 text-[#1a4e8a] px-4 py-4 font-medium rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-[#1a4e8a]">
                 <BarChart3 className="w-4 h-4" />
                 Resumen
               </TabsTrigger>
-              <TabsTrigger value="solicitudes" className="flex items-center gap-2 text-[#1a4e8a] px-4 py-3 font-medium">
+              <TabsTrigger value="solicitudes" className="flex items-center gap-2 text-[#1a4e8a] px-4 py-4 font-medium rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-[#1a4e8a]">
                 <FileText className="w-4 h-4" />
                 Solicitudes
               </TabsTrigger>
-              <TabsTrigger value="flujos" className="flex items-center gap-2 text-[#1a4e8a] px-4 py-3 font-medium">
+              <TabsTrigger value="flujos" className="flex items-center gap-2 text-[#1a4e8a] px-4 py-4 font-medium rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-[#1a4e8a]">
                 <Workflow className="w-4 h-4" />
                 Flujos
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-6 p-8">
+            <TabsContent value="overview" className="space-y-6 p-8 m-0">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card className="border-none shadow-none bg-[#f6fafd]">
                   <CardHeader>
@@ -170,14 +170,14 @@ export const BPMDashboard: React.FC = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="solicitudes" className="space-y-4 p-8">
+            <TabsContent value="solicitudes" className="space-y-4 p-8 m-0">
               <ModuloSolicitudes 
                 solicitudesData={solicitudesData}
                 onNavigateToFlujos={() => setActiveTab('flujos')}
               />
             </TabsContent>
 
-            <TabsContent value="flujos" className="space-y-4 p-8">
+            <TabsContent value="flujos" className="space-y-4 p-8 m-0">
               <ModuloFlujos solicitudesData={solicitudesData} />
             </TabsContent>
           </Tabs>

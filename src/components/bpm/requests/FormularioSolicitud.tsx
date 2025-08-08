@@ -86,36 +86,45 @@ export const FormularioSolicitud: React.FC<Props> = ({
   };
 
   return (
-    <Card className="shadow-soft border-request-primary/20">
-      <CardHeader className="bg-gradient-primary text-white rounded-t-lg">
+    <Card className="shadow-elegant border-0 overflow-hidden animate-slide-up">
+      <CardHeader className="bg-gradient-primary text-white">
         <CardTitle className="flex items-center gap-2">
           <Plus className="w-5 h-5" />
           Nueva Solicitud
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
+      <CardContent className="p-6 bg-gradient-card">
         <Tabs defaultValue="basico" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="basico" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 bg-gray-100 border-0">
+            <TabsTrigger 
+              value="basico" 
+              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-smooth"
+            >
               <User className="w-4 h-4" />
               Datos Básicos
             </TabsTrigger>
-            <TabsTrigger value="aprobacion" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="aprobacion" 
+              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-smooth"
+            >
               <Users className="w-4 h-4" />
               Aprobación
             </TabsTrigger>
-            <TabsTrigger value="dinamicos" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="dinamicos" 
+              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-smooth"
+            >
               <Settings className="w-4 h-4" />
               Campos Dinámicos
             </TabsTrigger>
           </TabsList>
 
           <form onSubmit={handleSubmit} className="mt-6">
-            <TabsContent value="basico" className="space-y-4">
+            <TabsContent value="basico" className="space-y-6 animate-fade-in">
               {/* ID del Solicitante */}
               <div className="space-y-2">
-                <Label htmlFor="solicitante" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
+                <Label htmlFor="solicitante" className="flex items-center gap-2 font-medium">
+                  <User className="w-4 h-4 text-primary" />
                   ID del Solicitante
                 </Label>
                 <Input
@@ -134,8 +143,8 @@ export const FormularioSolicitud: React.FC<Props> = ({
 
               {/* Plantilla de Flujo (Opcional) */}
               <div className="space-y-2">
-                <Label htmlFor="flujo" className="flex items-center gap-2">
-                  <Workflow className="w-4 h-4" />
+                <Label htmlFor="flujo" className="flex items-center gap-2 font-medium">
+                  <Workflow className="w-4 h-4 text-primary" />
                   Plantilla de Flujo (Opcional)
                 </Label>
                 <Input
@@ -147,13 +156,12 @@ export const FormularioSolicitud: React.FC<Props> = ({
                     flujo_base_id: e.target.value ? parseInt(e.target.value) : undefined
                   }))}
                   placeholder="ID de plantilla predefinida"
-                  className="transition-smooth focus:ring-request-primary/50"
                 />
               </div>
 
               {/* Estado Inicial */}
               <div className="space-y-2">
-                <Label>Estado Inicial</Label>
+                <Label className="font-medium">Estado Inicial</Label>
                 <Select
                   value={formData.estado}
                   onValueChange={(value: EstadoSolicitud) => 
@@ -186,7 +194,7 @@ export const FormularioSolicitud: React.FC<Props> = ({
 
             </TabsContent>
 
-            <TabsContent value="aprobacion" className="space-y-4">
+            <TabsContent value="aprobacion" className="space-y-6 animate-fade-in">
               <SelectorGrupoAprobacion
                 gruposDisponibles={gruposAprobacion}
                 grupoSeleccionado={grupoAprobacionSeleccionado}
@@ -195,20 +203,30 @@ export const FormularioSolicitud: React.FC<Props> = ({
               />
             </TabsContent>
 
-            <TabsContent value="dinamicos" className="space-y-4">
+            <TabsContent value="dinamicos" className="space-y-6 animate-fade-in">
               <SelectorCamposDinamicos
                 camposDinamicos={formData.campos_dinamicos || {}}
                 onChange={handleCamposDinamicosChange}
               />
             </TabsContent>
 
-            <div className="mt-6 pt-6 border-t">
+            <div className="mt-8 pt-6 border-t border-gray-200">
               <Button 
                 type="submit" 
                 disabled={isLoading || formData.solicitante_id === 0}
-                className="w-full bg-gradient-primary hover:opacity-90 transition-smooth shadow-soft"
+                className="w-full bg-gradient-primary hover:opacity-90 hover:scale-105 disabled:hover:scale-100 disabled:opacity-50 transition-smooth shadow-elegant text-white font-medium h-12"
               >
-                {isLoading ? 'Creando...' : 'Crear Solicitud'}
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Creando...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Crear Solicitud
+                  </div>
+                )}
               </Button>
             </div>
           </form>

@@ -120,19 +120,19 @@ export const ModuloSolicitudes: React.FC<{
       {/* Container principal con ancho máximo y centrado */}
       <div className="max-w-7xl mx-auto p-4 space-y-6">
         {/* Header compacto */}
-        <div className="flex items-center justify-between bg-gradient-card rounded-lg p-6 shadow-soft">
+        <div className="flex items-center justify-between bg-gradient-card rounded-xl p-6 shadow-elegant animate-slide-up">
           <div>
             <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               Gestión de Solicitudes
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-gray-600 mt-1">
               Sistema base para manejo de solicitudes con identificadores únicos
             </p>
           </div>
           
           <Button 
             onClick={() => setMostrarFormulario(!mostrarFormulario)}
-            className="bg-gradient-primary hover:opacity-90 transition-smooth shadow-soft"
+            className="bg-gradient-primary hover:opacity-90 hover:scale-105 transition-smooth shadow-elegant"
             size="sm"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -145,8 +145,11 @@ export const ModuloSolicitudes: React.FC<{
 
         {/* Pestañas principales */}
         <Tabs defaultValue="solicitudes" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
-            <TabsTrigger value="solicitudes" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto bg-gray-100 border-0">
+            <TabsTrigger 
+              value="solicitudes" 
+              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-smooth"
+            >
               <Layers className="w-4 h-4" />
               Solicitudes
             </TabsTrigger>

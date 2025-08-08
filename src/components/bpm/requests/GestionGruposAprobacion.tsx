@@ -80,27 +80,27 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Users className="w-5 h-5" />
-          <h2 className="text-xl font-semibold">Gestión de Grupos de Aprobación</h2>
+          <Users className="w-5 h-5 text-primary" />
+          <h2 className="text-xl font-semibold text-gray-800">Gestión de Grupos de Aprobación</h2>
         </div>
         
         <Dialog open={mostrarCrear} onOpenChange={setMostrarCrear}>
           <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
+            <Button onClick={() => resetForm()} className="bg-gradient-primary hover:opacity-90 shadow-soft">
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Grupo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md animate-scale-in">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-lg text-gray-800">
                 {grupoEditando ? 'Editar Grupo' : 'Crear Nuevo Grupo'}
               </DialogTitle>
             </DialogHeader>
             
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre del Grupo</Label>
+                <Label htmlFor="nombre" className="font-medium text-gray-700">Nombre del Grupo</Label>
                 <Input
                   id="nombre"
                   value={nombreGrupo}
@@ -110,7 +110,7 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
               </div>
 
               <div className="space-y-2">
-                <Label>Miembros del Grupo</Label>
+                <Label className="font-medium text-gray-700">Miembros del Grupo</Label>
                 <div className="flex gap-2">
                   <Input
                     value={nuevoMiembroId}
@@ -125,21 +125,22 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
                     size="sm"
                     onClick={agregarMiembro}
                     disabled={!nuevoMiembroId}
+                    className="hover:bg-primary hover:text-white transition-smooth"
                   >
                     <UserPlus className="w-4 h-4" />
                   </Button>
                 </div>
 
                 {miembros.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-md">
+                  <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     {miembros.map(id => (
-                      <Badge key={id} variant="secondary" className="flex items-center gap-1">
+                      <Badge key={id} variant="secondary" className="flex items-center gap-1 bg-white border border-gray-200 shadow-sm">
                         Usuario {id}
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-auto p-0 w-4 h-4"
+                          className="p-0 w-4 h-4 hover:bg-red-100 hover:text-red-600 transition-smooth"
                           onClick={() => removerMiembro(id)}
                         >
                           <X className="w-3 h-3" />
@@ -150,11 +151,11 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
                 )}
               </div>
 
-              <div className="flex gap-2 pt-4">
+              <div className="flex gap-3 pt-4">
                 <Button
                   onClick={grupoEditando ? handleEditar : handleCrear}
                   disabled={!nombreGrupo.trim()}
-                  className="flex-1"
+                  className="flex-1 bg-gradient-primary hover:opacity-90 transition-smooth"
                 >
                   {grupoEditando ? 'Guardar Cambios' : 'Crear Grupo'}
                 </Button>

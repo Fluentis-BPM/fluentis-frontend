@@ -108,28 +108,32 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-smooth">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="opacity-0 group-hover:opacity-100 transition-smooth hover:bg-gray-100 hover:scale-105"
+              >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-popover border shadow-elevated">
+            <DropdownMenuContent align="end" className="animate-scale-in">
               <DropdownMenuItem 
                 onClick={() => onActualizarEstado(solicitud.id_solicitud, 'aprobado')}
-                className="text-request-success"
+                className="text-green-600 hover:bg-green-50 transition-smooth cursor-pointer"
               >
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Aprobar
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => onActualizarEstado(solicitud.id_solicitud, 'rechazado')}
-                className="text-request-danger"
+                className="text-red-600 hover:bg-red-50 transition-smooth cursor-pointer"
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Rechazar
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => onActualizarEstado(solicitud.id_solicitud, 'pendiente')}
-                className="text-request-warning"
+                className="text-yellow-600 hover:bg-yellow-50 transition-smooth cursor-pointer"
               >
                 <Clock className="w-4 h-4 mr-2" />
                 Marcar Pendiente
