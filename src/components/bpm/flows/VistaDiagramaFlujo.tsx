@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { DiagramaFlujo } from './DiagramaFlujo';
 import { EditorPaso } from './EditorPaso';
+import FlowViewerPage from '@/pages/bpm/FlowViewerPage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { FlujoActivo, PasoSolicitud, CaminoParalelo } from '@/types/bpm/flow';
-import { RelacionInput } from '@/types/bpm/inputs';
 import { 
   Workflow, 
   Eye, 
@@ -17,7 +18,7 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  X
+  Maximize2
 } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
 
@@ -47,6 +48,9 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
   const [diagramaKey, setDiagramaKey] = useState(0); // Para forzar re-render
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [editorWidth, setEditorWidth] = useState(480); // Width for resizable editor
+  const [isResizing, setIsResizing] = useState(false);
+  const [mostrarPantallaCompleta, setMostrarPantallaCompleta] = useState(false);
 
   const estadisticasPasos = {
     total: pasos.length,
@@ -115,6 +119,38 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     setDiagramaKey(prev => prev + 1);
   }, [pasos.length, caminos.length]); // No incluir pasos o caminos completos
 
+  // Resize handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      const newWidth = window.innerWidth - e.clientX;
+      const minWidth = 320;
+      const maxWidth = window.innerWidth * 0.6;
+      
+      setEditorWidth(Math.min(Math.max(newWidth, minWidth), maxWidth));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
   const getEstadoBadge = (estado: string) => {
     const variants = {
       'encurso': 'default',
@@ -126,13 +162,13 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
           {/* Header del flujo */}
-      <Card className="shadow-soft">
+      <Card className="shadow-soft animate-slide-up">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center shadow-glow">
                 <Workflow className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -178,6 +214,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={onVolverALista}
+                  className="hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-300"
                 >
                   ← Volver a la Lista
                 </Button>
@@ -186,16 +223,25 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setDiagramaKey(prev => prev + 1)}
-                className="mr-2"
+                className="mr-2 hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-300"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refrescar
               </Button>
               <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setMostrarPantallaCompleta(true)}
+                className="mr-2 hover:bg-blue-600 hover:scale-105 transition-all duration-300"
+              >
+                <Maximize2 className="w-4 h-4 mr-2" />
+                Pantalla Completa
+              </Button>
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setModoEdicion(!modoEdicion)}
-                className={modoEdicion ? "border-primary text-primary" : ""}
+                className={modoEdicion ? "border-primary text-primary bg-primary/10" : "hover:bg-primary/10 hover:border-primary"}
               >
                 {modoEdicion ? (
                   <>
@@ -215,20 +261,30 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
       </Card>
 
       <Tabs defaultValue="diagrama" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="diagrama" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-2 bg-gradient-card p-1 rounded-lg shadow-soft">
+          <TabsTrigger 
+            value="diagrama" 
+            className="flex items-center gap-2 transition-all duration-300 hover:bg-primary/10 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-glow"
+          >
             <Workflow className="w-4 h-4" />
             Diagrama de Flujo
           </TabsTrigger>
-          <TabsTrigger value="estadisticas" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="estadisticas" 
+            className="flex items-center gap-2 transition-all duration-300 hover:bg-primary/10 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-glow"
+          >
             <CheckCircle2 className="w-4 h-4" />
             Estadísticas
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="diagrama" className="space-y-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
+          <div className="relative h-[600px] border rounded-lg overflow-hidden bg-gray-50">
+            {/* Main React Flow Area */}
+            <div 
+              className={`h-full transition-all duration-300`}
+              style={{ marginRight: pasoEditando ? `${editorWidth}px` : '0' }}
+            >
               <DiagramaFlujo
                 key={diagramaKey}
                 pasos={pasos}
@@ -240,56 +296,61 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 readOnly={!modoEdicion}
                 selectedNodeId={selectedNodeId || undefined}
                 onNodeSelect={handleNodeSelect}
-                camposDinamicosIniciales={
-                  flujo.campos_dinamicos && Array.isArray(flujo.campos_dinamicos) 
-                    ? flujo.campos_dinamicos.reduce((acc: Record<string, string>, campo: RelacionInput) => {
-                        if (campo.valor !== undefined) {
-                          acc[`Campo ${campo.input_id}`] = campo.valor;
-                        }
-                        return acc;
-                      }, {})
-                    : flujo.campos_dinamicos
-                }
+                camposDinamicosIniciales={flujo.campos_dinamicos}
               />
             </div>
             
-            {/* Panel de propiedades */}
+            {/* Integrated Step Editor Panel */}
             {pasoEditando && (
-              <div className="w-96 min-w-96 max-w-2xl border-l bg-muted/30 resize-x overflow-hidden">
-                <div className="p-4 border-b">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">Propiedades del Paso</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleNodeSelect(null)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+              <motion.div
+                initial={{ x: editorWidth }}
+                animate={{ x: 0 }}
+                exit={{ x: editorWidth }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="absolute top-0 right-0 h-full bg-white border-l shadow-xl flex flex-col z-10"
+                style={{ width: `${editorWidth}px` }}
+              >
+                {/* Resize Handle */}
+                <div 
+                  className="absolute left-0 top-0 w-1 h-full bg-gray-200 hover:bg-primary cursor-col-resize z-20 transition-colors"
+                  onMouseDown={handleMouseDown}
+                  style={{ marginLeft: '-2px' }}
+                />
+                
+                <div className="px-6 py-4 border-b bg-white">
+                  <div className="flex items-center gap-2">
+                    <Edit className="w-5 h-5" />
+                    <h3 className="font-semibold">{pasoEditando.nombre}</h3>
+                    <Badge variant={
+                      pasoEditando.tipo_paso === 'aprobacion' ? 'secondary' : 'success'
+                    }>
+                      {pasoEditando.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución'}
+                    </Badge>
                   </div>
                 </div>
-                <div className="h-[500px] overflow-y-auto p-1">
+                
+                <div className="flex-1 overflow-hidden bg-white">
                   <EditorPaso
-                    paso={pasoEditando}
-                    isOpen={false} // No usar como dialog, sino como panel
-                    onClose={() => handleNodeSelect(null)}
-                    onGuardar={handleGuardarPasoEditado}
-                    responsablesDisponibles={[
-                      { id: 1, nombre: 'Ana García', rol: 'Supervisor', departamento: 'Operaciones' },
-                      { id: 2, nombre: 'Carlos López', rol: 'Gerente', departamento: 'Finanzas' },
-                      { id: 3, nombre: 'María Silva', rol: 'Analista', departamento: 'Calidad' },
-                      { id: 4, nombre: 'Juan Pérez', rol: 'Director', departamento: 'General' }
-                    ]}
-                     isPanel={true}
-                     // Pasar datos necesarios para los diferentes tipos de pasos
-                     inputsDisponibles={[
-                       {
-                         id_input: 1,
-                         tipo_input: 'textocorto',
-                         etiqueta: 'Título de la solicitud',
-                         placeholder: 'Ingrese un título descriptivo',
-                         validacion: { required: true, max: 100 }
-                       },
+                      paso={pasoEditando}
+                      isOpen={false} // No usar dialog anidado
+                      onClose={() => handleNodeSelect(null)}
+                      onGuardar={handleGuardarPasoEditado}
+                      responsablesDisponibles={[
+                        { id: 1, nombre: 'Ana García', rol: 'Supervisor', departamento: 'Operaciones' },
+                        { id: 2, nombre: 'Carlos López', rol: 'Gerente', departamento: 'Finanzas' },
+                        { id: 3, nombre: 'María Silva', rol: 'Analista', departamento: 'Calidad' },
+                        { id: 4, nombre: 'Juan Pérez', rol: 'Director', departamento: 'General' }
+                      ]}
+                      isPanel={true}
+                      // Pasar datos necesarios para los diferentes tipos de pasos
+                      inputsDisponibles={[
+                        {
+                          id_input: 1,
+                          tipo_input: 'textocorto',
+                          etiqueta: 'Título de la solicitud',
+                          placeholder: 'Ingrese un título descriptivo',
+                          validacion: { required: true, max: 100 }
+                        },
                        {
                          id_input: 2,
                          tipo_input: 'textolargo',
@@ -326,9 +387,16 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                        { id_grupo: 5, nombre: 'Operaciones' }
                      ]}
                      usuarioActualId={1} // Simular usuario actual
+                     // Nuevas props para campos dinámicos
+                     camposDinamicosIniciales={pasoEditando?.tipo === 'inicio' ? flujo.campos_dinamicos : undefined}
+                     onValidarCamposDinamicos={(campos) => {
+                       // Validación personalizada - por ahora devolver true
+                       console.log('Validando campos dinámicos:', campos);
+                       return true;
+                     }}
                   />
                 </div>
-              </div>
+              </motion.div>
             )}
           </div>
         </TabsContent>
@@ -452,6 +520,22 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de Pantalla Completa */}
+      <Dialog open={mostrarPantallaCompleta} onOpenChange={setMostrarPantallaCompleta}>
+        <DialogContent className="max-w-full w-screen h-screen max-h-screen p-0 gap-0 border-0">
+          <FlowViewerPage
+            flujo={flujo}
+            pasos={pasos}
+            caminos={caminos}
+            onActualizarPaso={onActualizarPaso}
+            onAgregarPaso={onAgregarPaso}
+            onCrearCamino={onCrearCamino}
+            onEditarPaso={onEditarPaso}
+            onVolverALista={() => setMostrarPantallaCompleta(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* El editor ahora está integrado como panel lateral */}
     </div>

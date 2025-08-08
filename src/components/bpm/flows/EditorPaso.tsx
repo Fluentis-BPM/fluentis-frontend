@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PasoSolicitud } from '@/types/bpm/flow';
-import { RelacionInput, Input as InputType } from '@/types/bpm/inputs';
+import { RelacionInput, Input as InputType, CamposDinamicos } from '@/types/bpm/inputs';
 import { GrupoAprobacion, RelacionGrupoAprobacion, RelacionDecisionUsuario, TipoDecision } from '@/types/bpm/approval';
 import {
   Dialog,
@@ -16,10 +16,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, Save, X, Users, FileText, Settings } from 'lucide-react';
+import { Edit, Save, X, Users, FileText, Settings, Database } from 'lucide-react';
 import { EditorPasoEjecucion } from './EditorPasoEjecucion';
 import { EditorPasoAprobacion } from './EditorPasoAprobacion';
 import { ConfiguracionReglasFlujo } from './ConfiguracionReglasFlujo';
+import { EditorCamposDinamicos } from './EditorCamposDinamicos';
 
 interface EditorPasoProps {
   paso: PasoSolicitud | null;
@@ -37,6 +38,9 @@ interface EditorPasoProps {
   usuarioActualId?: number;
   onMarcarCompletado?: () => void;
   onRegistrarDecision?: (decision: TipoDecision) => void;
+  // Nuevos props para campos dinámicos
+  camposDinamicosIniciales?: RelacionInput[] | CamposDinamicos;
+  onValidarCamposDinamicos?: (campos: RelacionInput[]) => boolean;
 }
 
 export const EditorPaso: React.FC<EditorPasoProps> = ({
@@ -53,17 +57,133 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
   decisionesUsuarios = [],
   usuarioActualId,
   onMarcarCompletado,
-  onRegistrarDecision
+  onRegistrarDecision,
+  // Nuevas props para campos dinámicos
+  camposDinamicosIniciales,
+  onValidarCamposDinamicos
 }) => {
   const [datosEditados, setDatosEditados] = useState<PasoSolicitud | null>(paso);
+  const [camposDinamicosEditados, setCamposDinamicosEditados] = useState<RelacionInput[]>([]);
+  const [erroresValidacion, setErroresValidacion] = useState<string[]>([]);
 
   React.useEffect(() => {
     setDatosEditados(paso);
-  }, [paso]);
+    // Inicializar campos dinámicos si es paso inicial
+    if (paso && paso.tipo === 'inicio' && camposDinamicosIniciales) {
+      if (Array.isArray(camposDinamicosIniciales)) {
+        setCamposDinamicosEditados([...camposDinamicosIniciales]);
+      } else {
+        // Convertir objeto CamposDinamicos a array RelacionInput
+        const camposArray: RelacionInput[] = Object.entries(camposDinamicosIniciales).map(([input_id, campo]) => ({
+          id_relacion: parseInt(input_id),
+          input_id: parseInt(input_id),
+          paso_solicitud_id: paso.id_paso_solicitud,
+          valor: campo.valor,
+          requerido: campo.requerido,
+          input: inputsDisponibles.find(inp => inp.id_input === parseInt(input_id))
+        }));
+        setCamposDinamicosEditados(camposArray);
+      }
+    }
+  }, [paso, camposDinamicosIniciales, inputsDisponibles]);
+
+  // Función para validar campos dinámicos
+  const validarCamposDinamicos = (campos: RelacionInput[]): string[] => {
+    const errores: string[] = [];
+    
+    campos.forEach(campo => {
+      if (campo.requerido && (!campo.valor || campo.valor.trim() === '')) {
+        const inputNombre = campo.input?.etiqueta || `Campo ${campo.input_id}`;
+        errores.push(`${inputNombre} es requerido`);
+      }
+      
+      // Validaciones específicas por tipo
+      if (campo.input?.validacion && campo.valor) {
+        const validacion = campo.input.validacion;
+        
+        if (validacion.min && campo.valor.length < validacion.min) {
+          errores.push(`${campo.input.etiqueta} debe tener al menos ${validacion.min} caracteres`);
+        }
+        
+        if (validacion.max && campo.valor.length > validacion.max) {
+          errores.push(`${campo.input.etiqueta} no puede exceder ${validacion.max} caracteres`);
+        }
+        
+        if (validacion.pattern && !new RegExp(validacion.pattern).test(campo.valor)) {
+          errores.push(`${campo.input.etiqueta} no tiene el formato correcto`);
+        }
+        
+        if (campo.input.tipo_input === 'number') {
+          const numValue = parseFloat(campo.valor);
+          if (isNaN(numValue)) {
+            errores.push(`${campo.input.etiqueta} debe ser un número válido`);
+          } else {
+            if (validacion.min && numValue < validacion.min) {
+              errores.push(`${campo.input.etiqueta} debe ser mayor o igual a ${validacion.min}`);
+            }
+            if (validacion.max && numValue > validacion.max) {
+              errores.push(`${campo.input.etiqueta} debe ser menor o igual a ${validacion.max}`);
+            }
+          }
+        }
+      }
+    });
+    
+    return errores;
+  };
+
+  const handleCambioCampoDinamico = (inputId: number, valor: string) => {
+    setCamposDinamicosEditados(prev => 
+      prev.map(campo => 
+        campo.input_id === inputId 
+          ? { ...campo, valor }
+          : campo
+      )
+    );
+    
+    // Validar en tiempo real
+    const camposActualizados = camposDinamicosEditados.map(campo => 
+      campo.input_id === inputId ? { ...campo, valor } : campo
+    );
+    const errores = validarCamposDinamicos(camposActualizados);
+    setErroresValidacion(errores);
+  };
+
+  const handleToggleRequerido = (inputId: number, requerido: boolean) => {
+    setCamposDinamicosEditados(prev => 
+      prev.map(campo => 
+        campo.input_id === inputId 
+          ? { ...campo, requerido }
+          : campo
+      )
+    );
+  };
 
   const handleGuardar = () => {
     if (datosEditados) {
-      onGuardar(datosEditados);
+      // Validar campos dinámicos si es paso inicial
+      if (datosEditados.tipo === 'inicio' && camposDinamicosEditados.length > 0) {
+        const errores = validarCamposDinamicos(camposDinamicosEditados);
+        setErroresValidacion(errores);
+        
+        if (errores.length > 0) {
+          return; // No guardar si hay errores
+        }
+        
+        // Llamar validación personalizada si existe
+        if (onValidarCamposDinamicos && !onValidarCamposDinamicos(camposDinamicosEditados)) {
+          return;
+        }
+        
+        // Actualizar campos dinámicos en el paso
+        const pasoConCampos = {
+          ...datosEditados,
+          campos_dinamicos: camposDinamicosEditados
+        };
+        onGuardar(pasoConCampos);
+      } else {
+        onGuardar(datosEditados);
+      }
       onClose();
     }
   };
@@ -98,10 +218,10 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
   // Si es panel, renderizar sin Dialog
   if (isPanel) {
     return (
-      <>
-        <div className="p-4 space-y-6">
-          <Tabs defaultValue="configuracion" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <Tabs defaultValue="configuracion" className="w-full h-full">
+            <TabsList className="grid w-full grid-cols-5 mb-6">
               <TabsTrigger value="configuracion" className="flex items-center gap-2">
                 <Edit className="w-4 h-4" />
                 Configuración
@@ -109,6 +229,14 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
               <TabsTrigger value="reglas" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Reglas
+              </TabsTrigger>
+              <TabsTrigger 
+                value="campos-dinamicos"
+                disabled={datosEditados.tipo !== 'inicio'}
+                className="flex items-center gap-2"
+              >
+                <Database className="w-4 h-4" />
+                Campos
               </TabsTrigger>
               <TabsTrigger 
                 value="ejecucion" 
@@ -264,20 +392,30 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
                 />
               )}
             </TabsContent>
+
+            <TabsContent value="campos-dinamicos">
+              <EditorCamposDinamicos
+                camposDinamicos={camposDinamicosEditados}
+                erroresValidacion={erroresValidacion}
+                onCambioCampo={handleCambioCampoDinamico}
+                onToggleRequerido={handleToggleRequerido}
+                esInicial={datosEditados.tipo === 'inicio'}
+              />
+            </TabsContent>
           </Tabs>
         </div>
         
-        <div className="flex gap-2 pt-4 border-t mx-4">
-          <Button variant="outline" onClick={onClose} className="flex-1">
+        <div className="flex gap-3 p-6 border-t bg-gray-50/50">
+          <Button variant="outline" onClick={onClose} className="flex-1 h-12">
             <X className="w-4 h-4 mr-2" />
             Cancelar
           </Button>
-          <Button onClick={handleGuardar} className="flex-1">
+          <Button onClick={handleGuardar} className="flex-1 h-12 bg-primary text-primary-foreground hover:bg-primary/90">
             <Save className="w-4 h-4 mr-2" />
-            Guardar
+            Guardar Cambios
           </Button>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -294,7 +432,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
 
         <div className="space-y-6">
           <Tabs defaultValue="configuracion" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="configuracion" className="flex items-center gap-2">
                 <Edit className="w-4 h-4" />
                 Configuración
@@ -302,6 +440,14 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
               <TabsTrigger value="reglas" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Reglas
+              </TabsTrigger>
+              <TabsTrigger 
+                value="campos-dinamicos"
+                disabled={datosEditados.tipo !== 'inicio'}
+                className="flex items-center gap-2"
+              >
+                <Database className="w-4 h-4" />
+                Campos
               </TabsTrigger>
               <TabsTrigger 
                 value="ejecucion" 
@@ -457,6 +603,16 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
                 />
               )}
             </TabsContent>
+
+            <TabsContent value="campos-dinamicos">
+              <EditorCamposDinamicos
+                camposDinamicos={camposDinamicosEditados}
+                erroresValidacion={erroresValidacion}
+                onCambioCampo={handleCambioCampoDinamico}
+                onToggleRequerido={handleToggleRequerido}
+                esInicial={datosEditados.tipo === 'inicio'}
+              />
+            </TabsContent>
           </Tabs>
         </div>
 
@@ -465,7 +621,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
             <X className="w-4 h-4 mr-2" />
             Cancelar
           </Button>
-          <Button onClick={handleGuardar}>
+          <Button onClick={handleGuardar} className="bg-primary text-primary-foreground hover:bg-primary/90">
             <Save className="w-4 h-4 mr-2" />
             Guardar Cambios
           </Button>
