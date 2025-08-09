@@ -196,7 +196,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
         <Handle
           type="target"
           position={Position.Left}
-          className="w-4 h-4 bg-primary border-2 border-background rounded-full"
+          className="w-4 h-4 border-2 border-white rounded-full"
+          style={{ backgroundColor: '#3b82f6' }} // Azul específico
           id="target"
         />
       )}
@@ -205,7 +206,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-4 h-4 bg-secondary border-2 border-background rounded-full"
+        className="w-4 h-4 border-2 border-white rounded-full"
+        style={{ backgroundColor: '#10b981' }} // Verde específico
         id="source"
       />
     </Card>
@@ -265,28 +267,30 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
       id: camino.id_camino.toString(),
       source: camino.paso_origen_id.toString(),
       target: camino.paso_destino_id.toString(),
-      type: 'smoothstep',
+      type: 'default', // Cambiado de 'smoothstep' a 'default' para evitar problemas con líneas punteadas
       animated: !camino.es_excepcion,
       style: { 
-        stroke: camino.es_excepcion ? 'hsl(var(--warning))' : 'hsl(var(--primary))',
+        stroke: camino.es_excepcion ? '#f59e0b' : '#3b82f6', // Colores específicos: amarillo para excepción, azul para normal
         strokeWidth: 3,
-        strokeDasharray: camino.es_excepcion ? '5,5' : undefined
+        strokeDasharray: 'none', // Forzar línea sólida
+        strokeLinecap: 'round', // Extremos redondeados
+        strokeLinejoin: 'round' // Uniones redondeadas
       },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        width: 20,
-        height: 20,
-        color: camino.es_excepcion ? 'hsl(var(--warning))' : 'hsl(var(--primary))'
+        width: 12, // Reducido de 20 a 12
+        height: 12, // Reducido de 20 a 12
+        color: camino.es_excepcion ? '#f59e0b' : '#3b82f6' // Mismos colores para las flechas
       },
       label: camino.nombre,
       labelStyle: { 
         fontSize: 11, 
         fontWeight: 500,
-        color: camino.es_excepcion ? 'hsl(var(--warning))' : 'hsl(var(--primary))',
-        backgroundColor: 'hsl(var(--background))',
+        color: camino.es_excepcion ? '#f59e0b' : '#3b82f6',
+        backgroundColor: '#ffffff',
         padding: '2px 6px',
         borderRadius: '4px',
-        border: `1px solid ${camino.es_excepcion ? 'hsl(var(--warning))' : 'hsl(var(--primary))'}`,
+        border: `1px solid ${camino.es_excepcion ? '#f59e0b' : '#3b82f6'}`,
       },
     })), [caminos]
   );
@@ -340,49 +344,72 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
     });
   }, [onNodesChange, pasos, onEditarPaso]);
 
-  // Sincronizar nodos cuando cambien los pasos (sin resetear posiciones durante drag)
+  // Sincronizar nodos cuando cambien los pasos (MEJORADO para mantener posiciones)
   useEffect(() => {
     setNodes(currentNodes => {
-      // Si ya tenemos nodos, mantener las posiciones actuales y solo actualizar datos
-      if (currentNodes.length > 0) {
-        return initialNodes.map(newNode => {
-          const existingNode = currentNodes.find(n => n.id === newNode.id);
-          if (existingNode) {
-            // Mantener la posición actual si el nodo existe
-            return {
-              ...newNode,
-              position: existingNode.position
-            };
-          }
-          return newNode;
-        });
+      // Si no tenemos nodos actuales, usar los iniciales
+      if (currentNodes.length === 0) {
+        return initialNodes;
       }
-      // Si no hay nodos previos, usar las posiciones iniciales
-      return initialNodes;
-    });
-  }, [pasos.length, setNodes]); // Solo re-sincronizar cuando cambie el número de pasos
 
-  // Sincronizar edges cuando cambien los caminos CON PROTECCIÓN
+      // Crear un mapa de nodos existentes por ID para búsqueda rápida
+      const existingNodesMap = new Map(currentNodes.map(node => [node.id, node]));
+
+      // Actualizar nodos existentes y agregar nuevos
+      const updatedNodes = initialNodes.map(newNode => {
+        const existingNode = existingNodesMap.get(newNode.id);
+        
+        if (existingNode) {
+          // Mantener la posición actual del nodo existente
+          return {
+            ...newNode,
+            position: existingNode.position, // Preservar posición
+            selected: existingNode.selected, // Preservar estado de selección
+            data: {
+              ...newNode.data,
+              // Actualizar solo los datos del paso, no la posición
+            }
+          };
+        }
+        
+        // Si es un nodo nuevo, usar la posición inicial
+        return newNode;
+      });
+
+      return updatedNodes;
+    });
+  }, [pasos.map(p => `${p.id_paso_solicitud}-${p.nombre}-${p.estado}`).join(',')]); // Solo actualizar si cambian los datos relevantes, no las posiciones
+
+  // Sincronizar edges cuando cambien los caminos (MEJORADO para mantener conexiones)
   useEffect(() => {
     setEdges(currentEdges => {
-      // Mantener edges temporales (conexiones en proceso) y permanentes existentes
+      // Separar edges temporales y permanentes
       const tempEdges = currentEdges.filter(edge => edge.id.startsWith('connecting-'));
       const permanentEdges = currentEdges.filter(edge => !edge.id.startsWith('connecting-'));
       
-      // Solo actualizar si realmente hay cambios en los caminos principales
-      const hasNewPermanentEdges = initialEdges.some(newEdge => 
-        !permanentEdges.some(existingEdge => existingEdge.id === newEdge.id)
-      );
+      // Crear un mapa de edges permanentes existentes
+      const existingPermanentMap = new Map(permanentEdges.map(edge => [edge.id, edge]));
       
-      if (hasNewPermanentEdges || tempEdges.length > 0) {
-        // Combinar edges iniciales con los temporales
-        return [...initialEdges, ...tempEdges];
-      }
-      
-      // Si no hay cambios significativos, mantener el estado actual
-      return currentEdges;
+      // Actualizar edges permanentes existentes y agregar nuevos
+      const updatedPermanentEdges = initialEdges.map(newEdge => {
+        const existingEdge = existingPermanentMap.get(newEdge.id);
+        
+        if (existingEdge) {
+          // Mantener el edge existente pero actualizar sus propiedades si es necesario
+          return {
+            ...existingEdge,
+            ...newEdge, // Aplicar actualizaciones de estilo o etiquetas
+          };
+        }
+        
+        // Si es un edge nuevo, agregarlo
+        return newEdge;
+      });
+
+      // Combinar edges permanentes actualizados con temporales
+      return [...updatedPermanentEdges, ...tempEdges];
     });
-  }, [initialEdges.length]); // Solo cuando cambie la cantidad de caminos
+  }, [caminos.map(c => `${c.id_camino}-${c.paso_origen_id}-${c.paso_destino_id}-${c.nombre}`).join(',')]); // Solo actualizar si cambian los datos del camino
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -403,17 +430,20 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
           id: `connecting-${params.source}-${params.target}`,
           source: params.source,
           target: params.target,
-          type: 'smoothstep',
+          type: 'default', // Cambiado de 'smoothstep' a 'default'
           animated: true,
           style: { 
-            stroke: 'hsl(var(--primary))',
-            strokeWidth: 3
+            stroke: '#3b82f6', // Azul específico
+            strokeWidth: 3,
+            strokeDasharray: 'none', // Forzar línea sólida
+            strokeLinecap: 'round', // Extremos redondeados
+            strokeLinejoin: 'round' // Uniones redondeadas
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            width: 20,
-            height: 20,
-            color: 'hsl(var(--primary))'
+            width: 12, // Reducido de 20 a 12
+            height: 12, // Reducido de 20 a 12
+            color: '#3b82f6' // Azul específico
           }
         };
         
