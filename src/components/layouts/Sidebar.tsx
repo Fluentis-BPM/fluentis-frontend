@@ -83,7 +83,7 @@ export default function Sidebar({ user }: SidebarProps) {
         { path: '/flujos/solicitudes', label: 'Solicitudes' },
         { path: '/flujos/activos', label: 'Flujos Activos' },
         { path: '/flujos/mis-pasos', label: 'Mis Pasos' },
-        { path: '/flujos/propuestas-votaciones', label: 'Propuestas y Votaciones' }
+        { path: '/flujos/propuestas-votaciones', label: 'Propuestas y Votaciones' },
       ]
     },
     {
