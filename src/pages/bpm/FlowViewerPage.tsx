@@ -86,8 +86,10 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
   };
 
   useEffect(() => {
-    setDiagramaKey(prev => prev + 1);
-  }, [pasos.length, caminos.length]);
+    // Solo resetear el diagrama en casos específicos, no por cambios normales en pasos/caminos
+    // El key se incrementa solo cuando hay cambios estructurales importantes
+    // Los cambios normales (agregar/editar pasos) se manejan internamente en DiagramaFlujo
+  }, []); // Removido el setDiagramaKey automático
 
   // Resize handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -169,7 +171,13 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setDiagramaKey(prev => prev + 1)}
+              onClick={() => {
+                setDiagramaKey(prev => prev + 1);
+                toast({
+                  title: "Diagrama actualizado",
+                  description: "El diagrama se ha refrescado correctamente",
+                });
+              }}
               className="flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
