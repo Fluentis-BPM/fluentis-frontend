@@ -18,6 +18,7 @@ interface EstadisticasAprobacion {
 interface Props {
   solicitud_id: number;
   miembrosGrupo: number[]; // IDs de los usuarios del grupo
+  usuarioActualId: number; // ID del usuario autenticado
   relacionGrupoAprobacionId?: number; // ID de la relación grupo-aprobación
   onEstadoCambiado?: (nuevoEstado: 'aprobado' | 'rechazado') => void;
   // Funciones del hook useAprobacion
@@ -29,8 +30,9 @@ interface Props {
 }
 
 export const ProcesoAprobacion: React.FC<Props> = ({ 
-  solicitud_id, 
-  miembrosGrupo, 
+  solicitud_id,
+  miembrosGrupo,
+  usuarioActualId,
   relacionGrupoAprobacionId,
   onEstadoCambiado,
   obtenerGrupoPorSolicitud,
@@ -40,8 +42,15 @@ export const ProcesoAprobacion: React.FC<Props> = ({
   obtenerEstadisticasAprobacion
 }) => {
 
-  const [usuarioActual, setUsuarioActual] = useState<number>(miembrosGrupo[0] || 1);
+  // Estado local para simular persistencia
+  const [usuarioActual, setUsuarioActual] = useState<number>(miembrosGrupo[0] || usuarioActualId);
   const [decisionSeleccionada, setDecisionSeleccionada] = useState<TipoDecision>('si');
+  const [decisionesLocal, setDecisionesLocal] = useState<Record<string, TipoDecision>>(() => {
+    // Cargar decisiones desde localStorage
+    const key = `aprobacion_${solicitud_id}`;
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : {};
+  });
 
   const grupo = obtenerGrupoPorSolicitud(solicitud_id);
   const estadisticas = obtenerEstadisticasAprobacion(solicitud_id, miembrosGrupo);
@@ -53,22 +62,29 @@ export const ProcesoAprobacion: React.FC<Props> = ({
       console.log('Error: No hay usuario actual');
       return;
     }
-
+    
     // Usar el relacionGrupoAprobacionId proporcionado o crear uno temporal
     let relacionId = relacionGrupoAprobacionId;
     
     if (!relacionId) {
       // Crear un ID temporal basado en la solicitud
       relacionId = solicitud_id * 1000 + (grupo?.id_grupo || 1);
-      console.log('Usando ID de relación temporal:', relacionId);
+    
     }
-
-    if (relacionId !== undefined) {
+    // Guardar en localStorage
+    const key = `aprobacion_${solicitud_id}`;
+    const nuevasDecisiones = { ...decisionesLocal, [usuarioActual]: decisionSeleccionada };
+    localStorage.setItem(key, JSON.stringify(nuevasDecisiones));
+    setDecisionesLocal(nuevasDecisiones);
+    // Llamar lógica original si se requiere
+    if (registrarDecision) {
       registrarDecision(usuarioActual, relacionId, decisionSeleccionada, onEstadoCambiado);
     }
   };
 
   const obtenerDecisionUsuario = (idUsuario: number): TipoDecision | null => {
+    // Primero buscar en localStorage
+    if (decisionesLocal[idUsuario]) return decisionesLocal[idUsuario];
     const decision = grupo?.decisiones?.find((d: DecisionConUsuario) => d.id_usuario === idUsuario);
     return decision?.decision || null;
   };
@@ -209,7 +225,9 @@ export const ProcesoAprobacion: React.FC<Props> = ({
                         type="button"
                         variant={decisionSeleccionada === 'si' ? 'default' : 'outline'}
                         onClick={() => setDecisionSeleccionada('si')}
-                        className="flex-1"
+                        className={
+                          `flex-1 border border-primary/40 bg-white text-primary hover:bg-primary hover:text-white transition-smooth shadow-sm ${decisionSeleccionada === 'si' ? 'bg-gradient-primary text-white hover:opacity-90' : ''}`
+                        }
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
                         Aprobar
@@ -218,7 +236,9 @@ export const ProcesoAprobacion: React.FC<Props> = ({
                         type="button"
                         variant={decisionSeleccionada === 'no' ? 'destructive' : 'outline'}
                         onClick={() => setDecisionSeleccionada('no')}
-                        className="flex-1"
+                        className={
+                          `flex-1 border border-destructive/40 bg-white text-destructive hover:bg-destructive hover:text-white transition-smooth shadow-sm ${decisionSeleccionada === 'no' ? 'bg-destructive text-white hover:bg-red-600' : ''}`
+                        }
                       >
                         <XCircle className="w-4 h-4 mr-2" />
                         Rechazar
@@ -229,7 +249,7 @@ export const ProcesoAprobacion: React.FC<Props> = ({
                     <Button
                       onClick={handleRegistrarDecision}
                       disabled={!miembrosGrupo.includes(usuarioActual)}
-                      className="w-full"
+                      className="w-full bg-gradient-primary hover:opacity-90 shadow-md text-white"
                     >
                       Registrar Decisión
                     </Button>

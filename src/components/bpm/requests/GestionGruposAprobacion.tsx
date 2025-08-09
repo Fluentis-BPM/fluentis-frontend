@@ -30,6 +30,31 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
   const [miembros, setMiembros] = useState<number[]>([]);
   const [nuevoMiembroId, setNuevoMiembroId] = useState('');
   const [grupoEditando, setGrupoEditando] = useState<number | null>(null);
+  // Simulación de usuario logueado
+  const usuarioLogueadoId = Number(localStorage.getItem('usuarioLogueadoId') || '1');
+
+  // Simulación de pasos BPM asignados al usuario logueado
+  const pasosIniciales = [
+    { id: 1, nombre: 'Aprobar solicitud de compra', grupoId: 2 },
+    { id: 2, nombre: 'Revisar contrato', grupoId: 1 },
+    { id: 3, nombre: 'Validar presupuesto', grupoId: 2 },
+  ];
+
+  // Persistencia simulada de aprobaciones/rechazos
+  const getEstadoPaso = (id: number) => {
+    const estados = JSON.parse(localStorage.getItem('aprobacionesBPM') || '{}');
+    return estados[id];
+  };
+
+  const setEstadoPaso = (id: number, estado: 'aprobado' | 'rechazado') => {
+    const estados = JSON.parse(localStorage.getItem('aprobacionesBPM') || '{}');
+    estados[id] = estado;
+    localStorage.setItem('aprobacionesBPM', JSON.stringify(estados));
+    setPasosAprobacion(prev => prev.map(p => p.id === id ? { ...p } : p)); // Forzar render
+  };
+
+  // TEMPORAL: Mostrar todos los pasos simulados para el usuario logueado, sin filtrar por grupo
+  const [pasosAprobacion, setPasosAprobacion] = useState(pasosIniciales);
 
   const resetForm = () => {
     setNombreGrupo('');
@@ -155,7 +180,8 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
                 <Button
                   onClick={grupoEditando ? handleEditar : handleCrear}
                   disabled={!nombreGrupo.trim()}
-                  className="flex-1 bg-gradient-primary hover:opacity-90 transition-smooth"
+                  className="flex-1 font-bold shadow-md"
+                  style={{ background: '#fff', color: '#111', border: '2px solid #000' }}
                 >
                   {grupoEditando ? 'Guardar Cambios' : 'Crear Grupo'}
                 </Button>
@@ -245,6 +271,40 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
               </CardContent>
             </Card>
           ))
+        )}
+      </div>
+
+      {/* Sección de aprobación/rechazo de pasos BPM asignados al usuario logueado */}
+      <div className="mt-10">
+        <h3 className="text-lg font-bold mb-4 text-primary">Aprobación de Pasos BPM Asignados</h3>
+        {pasosAprobacion.length === 0 ? (
+          <div className="text-muted-foreground">No tienes pasos pendientes para aprobar/rechazar.</div>
+        ) : (
+          <div className="space-y-4">
+            {pasosAprobacion.map(paso => {
+              const estado = getEstadoPaso(paso.id);
+              return (
+                <Card key={paso.id} className="border-l-4 border-primary">
+                  <CardContent className="flex flex-col gap-2 py-4">
+                    <div className="font-semibold">{paso.nombre}</div>
+                    <div className="text-sm text-muted-foreground">Grupo asignado: {paso.grupoId}</div>
+                    <div className="flex gap-2 items-center mt-2">
+                      {!estado ? (
+                        <>
+                          <Button size="sm" className="bg-green-600 text-white" onClick={() => setEstadoPaso(paso.id, 'aprobado')}>Aprobar</Button>
+                          <Button size="sm" className="bg-red-600 text-white" onClick={() => setEstadoPaso(paso.id, 'rechazado')}>Rechazar</Button>
+                        </>
+                      ) : (
+                        <Badge variant={estado === 'aprobado' ? 'success' : 'destructive'}>
+                          {estado === 'aprobado' ? 'Aprobado' : 'Rechazado'}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
