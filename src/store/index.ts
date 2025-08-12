@@ -1,9 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './auth/authSlice';
+import approvalGroupsReducer from './approvalGroups/approvalGroupsSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    approvalGroups: approvalGroupsReducer,
   },
 });
 
