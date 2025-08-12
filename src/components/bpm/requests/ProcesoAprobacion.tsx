@@ -11,15 +11,15 @@ interface EstadisticasAprobacion {
   aprobaciones: number;
   rechazos: number;
   pendientes: number;
-  total: number; // agregado para compatibilidad
+  total: number; 
   total_miembros: number;
 }
 
 interface Props {
   solicitud_id: number;
-  miembrosGrupo: number[]; // IDs de los usuarios del grupo
-  usuarioActualId: number; // ID del usuario autenticado
-  relacionGrupoAprobacionId?: number; // ID de la relación grupo-aprobación
+  miembrosGrupo: number[]; 
+  usuarioActualId: number; 
+  relacionGrupoAprobacionId?: number; 
   onEstadoCambiado?: (nuevoEstado: 'aprobado' | 'rechazado') => void;
   // Funciones del hook useAprobacion
   obtenerGrupoPorSolicitud: (solicitud_id: number) => GrupoAprobacionCompleto | undefined;

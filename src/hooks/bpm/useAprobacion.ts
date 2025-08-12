@@ -15,21 +15,21 @@ import {
 export const useAprobacion = () => {
   const [relacionesGrupo, setRelacionesGrupo] = useState<RelacionGrupoAprobacion[]>([]);
   const [decisiones, setDecisiones] = useState<RelacionDecisionUsuario[]>([]);
-  const [miembrosGrupos] = useState<{ [grupoId: number]: number[] }>({}); // deprecado, miembros ahora vienen en grupo.usuarios
+  const [miembrosGrupos] = useState<{ [grupoId: number]: number[] }>({}); 
 
-  // Generar IDs únicos (solo para relaciones y decisiones locales por ahora)
+
   const generarIdUnico = useCallback(() => {
     return Date.now() + Math.floor(Math.random() * 1000);
   }, []);
 
-  // DEPRECADO: crearGrupoAprobacion -> backend
+
   const crearGrupoAprobacion = useCallback((nombre: string, _miembros: number[] = []): GrupoAprobacion => {
     console.warn('[useAprobacion] crearGrupoAprobacion está deprecado. Usar backend useAprobations.createGrupo');
-    // Retorna stub para no romper formularios antiguos
+
     return { id_grupo: generarIdUnico(), nombre };
   }, [generarIdUnico]);
 
-  // Asociar grupo a solicitud (relación local hasta implementar backend)
+
   const asociarGrupoASolicitud = useCallback((grupo_aprobacion_id: number, solicitud_id: number): RelacionGrupoAprobacion => {
     const nuevaRelacion: RelacionGrupoAprobacion = {
       id_relacion: generarIdUnico(),
@@ -40,7 +40,7 @@ export const useAprobacion = () => {
     return nuevaRelacion;
   }, [generarIdUnico]);
 
-  // Registrar decisión de usuario
+
   const registrarDecision = useCallback((
     id_usuario: number, 
     relacion_grupo_aprobacion_id: number, 
@@ -73,7 +73,7 @@ export const useAprobacion = () => {
         setTimeout(() => {
           const relacion = relacionesGrupo.find(r => r.id_relacion === relacion_grupo_aprobacion_id);
           if (relacion) {
-            // Intentar obtener miembros desde stub legacy (vacío) -> no se emite estado hasta integrar backend de decisiones
+        
             const miembrosDelGrupo: number[] = miembrosGrupos[relacion.grupo_aprobacion_id] || [];
             const decisionesMiembros = nuevasDecisiones.filter(d => 
               d.relacion_grupo_aprobacion_id === relacion.grupo_aprobacion_id && 
@@ -92,11 +92,11 @@ export const useAprobacion = () => {
     });
   }, [generarIdUnico, relacionesGrupo, miembrosGrupos]);
 
-  // Obtener grupo de aprobación de una solicitud (sin datos reales de grupo aquí)
+
   const obtenerGrupoPorSolicitud = useCallback((solicitud_id: number): GrupoAprobacionCompleto | undefined => {
     const relacion = relacionesGrupo.find(r => r.solicitud_id === solicitud_id);
     if (!relacion) return undefined;
-    // TODO: Integrar lookup al hook backend (context o prop) para enriquecer con usuarios reales
+
     return { id_grupo: relacion.grupo_aprobacion_id, nombre: 'Grupo', miembros: [], decisiones: decisiones.filter(d => d.relacion_grupo_aprobacion_id === relacion.id_relacion), usuarios: [] } as GrupoAprobacionCompleto;
   }, [relacionesGrupo, decisiones]);
 
@@ -145,7 +145,7 @@ export const useAprobacion = () => {
     relacionesGrupo,
     decisiones,
     miembrosGrupos: {},
-    crearGrupoAprobacion, // deprecado
+    crearGrupoAprobacion, 
     asociarGrupoASolicitud,
     registrarDecision,
     obtenerGrupoPorSolicitud,
