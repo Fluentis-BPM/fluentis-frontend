@@ -25,21 +25,16 @@ export const ModuloSolicitudes: React.FC<{
     crearSolicitud, 
     actualizarEstado, 
     eliminarSolicitud, 
-    filtrarPorEstado,
     estadisticas,
     asignarGrupoAprobacion,
     // Funcionalidades de aprobación desde useSolicitudes
     obtenerGrupoPorSolicitud,
     relacionesGrupo,
-    miembrosGrupos,
-    gruposAprobacion,
-    crearGrupoAprobacion,
     registrarDecision,
     verificarAprobacionCompleta,
     verificarRechazo,
     obtenerEstadisticasAprobacion,
     // Funcionalidades de flujos
-    flujosActivos,
     obtenerFlujoPorSolicitud
   } = solicitudesData;
 
@@ -105,10 +100,12 @@ export const ModuloSolicitudes: React.FC<{
 
   // Filtrar solicitudes
   const solicitudesFiltradas = solicitudes.filter(solicitud => {
+    const descRaw = solicitud.datos_adicionales?.descripcion;
+    const descStr = typeof descRaw === 'string' ? descRaw : '';
     const coincideBusqueda = busqueda === '' || 
       solicitud.id_solicitud.toString().includes(busqueda) ||
       solicitud.solicitante_id.toString().includes(busqueda) ||
-      solicitud.datos_adicionales?.descripcion?.toLowerCase().includes(busqueda.toLowerCase());
+      descStr.toLowerCase().includes(busqueda.toLowerCase());
 
     const coincideEstado = filtroEstado === 'todos' || solicitud.estado === filtroEstado;
 
@@ -165,8 +162,8 @@ export const ModuloSolicitudes: React.FC<{
               <div className="max-w-4xl mx-auto">
                 <FormularioSolicitud 
                   onCrearSolicitud={handleCrearSolicitud}
-                  gruposAprobacion={gruposAprobacion}
-                  onCrearGrupo={crearGrupoAprobacion}
+                  // gruposAprobacion removed (hook internal)
+                  // onCrearGrupo removed
                 />
               </div>
             )}
@@ -300,7 +297,17 @@ export const ModuloSolicitudes: React.FC<{
                               registrarDecision={registrarDecision}
                               verificarAprobacionCompleta={verificarAprobacionCompleta}
                               verificarRechazo={verificarRechazo}
-                              obtenerEstadisticasAprobacion={obtenerEstadisticasAprobacion}
+                              obtenerEstadisticasAprobacion={(sid, miembros) => {
+                                const stats = obtenerEstadisticasAprobacion(sid, miembros);
+                                return { 
+                                  total: stats.total_miembros,
+                                  total_miembros: stats.total_miembros,
+                                  aprobaciones: stats.aprobaciones,
+                                  rechazos: stats.rechazos,
+                                  pendientes: stats.pendientes
+                                };
+                              }}
+                              usuarioActualId={0}
                             />
                           );
                        })()}
@@ -313,11 +320,7 @@ export const ModuloSolicitudes: React.FC<{
 
           <TabsContent value="grupos">
             <div className="max-w-4xl mx-auto">
-              <GestionGruposAprobacion
-                grupos={gruposAprobacion}
-                miembrosGrupos={miembrosGrupos}
-                onCrearGrupo={crearGrupoAprobacion}
-              />
+              <GestionGruposAprobacion />
             </div>
           </TabsContent>
         </Tabs>

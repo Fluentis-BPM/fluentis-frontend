@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react"
 import { motion } from "motion/react"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import { Users as UsersIcon, Search } from 'lucide-react'
 
 import type { User } from "@/types/auth"
 import AprobationsHeader from "@/components/equipos/aprobations/AprobationsHeader"
@@ -15,9 +18,16 @@ export default function AprobationsPage() {
     loading: gruposLoading,
     error,
     refetch,
+    createGrupo,
+    creating,
+    createError,
   } = useAprobations()
-
+  const [nuevoNombre, setNuevoNombre] = useState('')
+  const [esGlobal, setEsGlobal] = useState(false)
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([])
   const [draggedUser, setDraggedUser] = useState<User | null>(null)
+  const [openUsersPicker, setOpenUsersPicker] = useState(false)
+  const [searchMiembros, setSearchMiembros] = useState('')
 
   useEffect(() => {
     console.log('API Users Data in AprobationsPage:', users)
@@ -60,6 +70,32 @@ export default function AprobationsPage() {
   }
 
   const loading = usersLoading || gruposLoading
+
+  const handleCrearGrupo = async () => {
+    if (!nuevoNombre.trim()) return
+    await createGrupo({ nombre: nuevoNombre.trim(), esGlobal, usuarioIds: selectedUserIds })
+    setNuevoNombre('')
+    setEsGlobal(false)
+    setSelectedUserIds([])
+    setSearchMiembros('')
+    setOpenUsersPicker(false)
+  }
+
+  const toggleUsuario = (u: User) => {
+    const id = u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)));
+    if (!id || isNaN(id)) return;
+    setSelectedUserIds(prev => prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]);
+  }
+
+  const usuariosFiltrados = users.filter(u => {
+    const term = searchMiembros.toLowerCase();
+    return [u.nombre, u.email, u.departamentoNombre || '', u.cargoNombre || '']
+      .some(f => f.toLowerCase().includes(term));
+  });
+
+  const selectedUsersObjects = selectedUserIds
+    .map(id => users.find(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === id))
+    .filter(Boolean) as User[];
 
   if (loading) {
     return (
@@ -131,6 +167,98 @@ export default function AprobationsPage() {
                 onDragStart={handleDragStart} 
                 onDragEnd={handleDragEnd} 
               />
+              <div className="p-4 border-t border-[#eaf3fa] space-y-3">
+                <h3 className="text-sm font-semibold text-[#1a4e8a]">Nuevo Grupo</h3>
+                <input
+                  value={nuevoNombre}
+                  onChange={e => setNuevoNombre(e.target.value)}
+                  placeholder="Nombre del grupo"
+                  className="w-full rounded border px-2 py-1 text-sm"
+                />
+                <label className="flex items-center gap-2 text-xs text-[#1a4e8a]">
+                  <input type="checkbox" checked={esGlobal} onChange={e => setEsGlobal(e.target.checked)} />
+                  Es global
+                </label>
+                {/* Selector de miembros */}
+                <div className="space-y-2">
+                  <p className="text-xs text-[#6b7a90]">Miembros del grupo</p>
+                  <Popover open={openUsersPicker} onOpenChange={setOpenUsersPicker}>
+                    <PopoverTrigger asChild>
+                      <button type="button" className="w-full flex items-center justify-between rounded border px-2 py-2 text-xs hover:border-primary/60">
+                        <span className="flex items-center gap-2">
+                          <UsersIcon className="h-4 w-4 text-[#1a4e8a]" />
+                          {selectedUserIds.length === 0 ? 'Seleccionar usuarios' : `${selectedUserIds.length} usuario(s) seleccionados`}
+                        </span>
+                        <span className="text-[10px] text-[#6b7a90]">{openUsersPicker ? 'Cerrar' : 'Abrir'}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-3 space-y-3" align="start">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          value={searchMiembros}
+                          onChange={e => setSearchMiembros(e.target.value)}
+                          placeholder="Buscar..."
+                          className="pl-8 h-8 text-xs"
+                        />
+                      </div>
+                      <div className="max-h-60 overflow-y-auto rounded border bg-white divide-y">
+                        {usuariosFiltrados.map(u => {
+                          const idNum = typeof u.oid === 'string' ? parseInt(u.oid) : u.oid
+                          const checked = selectedUserIds.includes(idNum)
+                          return (
+                            <button
+                              type="button"
+                              key={u.oid}
+                              onClick={() => toggleUsuario(u)}
+                              className={`w-full flex items-start gap-2 text-left px-3 py-2 text-xs hover:bg-primary/5 ${checked ? 'bg-primary/10' : ''}`}
+                            >
+                              <input
+                                type="checkbox"
+                                readOnly
+                                checked={checked}
+                                className="mt-0.5 h-3 w-3"
+                              />
+                              <span className="flex-1">
+                                <span className="font-medium text-[#1a4e8a] block">{u.nombre}</span>
+                                <span className="text-[10px] text-[#6b7a90] block truncate">{u.email}</span>
+                              </span>
+                            </button>
+                          )
+                        })}
+                        {usuariosFiltrados.length === 0 && (
+                          <div className="text-center py-6 text-[11px] text-gray-400">Sin resultados</div>
+                        )}
+                      </div>
+                      {selectedUsersObjects.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedUsersObjects.map(u => {
+                            const idNum = typeof u.oid === 'string' ? parseInt(u.oid) : u.oid
+                            return (
+                              <span key={u.oid} className="flex items-center gap-1 bg-[#1a4e8a] text-white rounded px-2 py-0.5 text-[10px]">
+                                {u.nombre}
+                                <button type="button" onClick={() => setSelectedUserIds(prev => prev.filter(id => id !== idNum))} className="hover:text-red-200">✕</button>
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center pt-1 border-t mt-1">
+                        <button type="button" onClick={() => { setSelectedUserIds([]) }} className="text-[10px] text-red-500 hover:underline">Limpiar</button>
+                        <button type="button" onClick={() => setOpenUsersPicker(false)} className="text-[10px] text-[#1a4e8a] hover:underline">Listo</button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <button
+                  onClick={handleCrearGrupo}
+                  disabled={creating || !nuevoNombre.trim()}
+                  className="w-full bg-[#1a4e8a] text-white rounded py-1 text-sm disabled:opacity-50"
+                >
+                  {creating ? 'Creando...' : 'Crear grupo'}
+                </button>
+                {createError && <p className="text-xs text-red-500">{createError}</p>}
+              </div>
             </div>
           </motion.div>
 
@@ -160,4 +288,4 @@ export default function AprobationsPage() {
       </div>
     </main>
   )
-} 
+}

@@ -1,5 +1,7 @@
 export interface User {
+    idUsuario?: number; // optional while legacy code updates
     oid: string | number;
+    originalOid?: string | number;
     email: string;
     nombre: string;
     cargoNombre: string;

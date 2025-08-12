@@ -11,7 +11,7 @@ interface EstadisticasAprobacion {
   aprobaciones: number;
   rechazos: number;
   pendientes: number;
-  total: number;
+  total: number; // agregado para compatibilidad
   total_miembros: number;
 }
 
@@ -159,12 +159,13 @@ export const ProcesoAprobacion: React.FC<Props> = ({
           <div className="space-y-2">
             {miembrosGrupo.map(idUsuario => {
               const decision = obtenerDecisionUsuario(idUsuario);
+              const nombreReal = grupo?.usuarios?.find(u => u.idUsuario === idUsuario)?.nombre;
               return (
                 <div 
                   key={idUsuario} 
                   className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
                 >
-                  <span className="font-medium">Usuario {idUsuario}</span>
+                  <span className="font-medium">{nombreReal || `Usuario ${idUsuario}`}</span>
                   <div className="flex items-center gap-2">
                     {decision === 'si' && (
                       <Badge variant="success" className="flex items-center gap-1">
