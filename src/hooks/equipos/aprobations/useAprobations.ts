@@ -1,71 +1,21 @@
-import { useState, useEffect } from 'react';
-import api from '@/services/api';
-import { GrupoAprobacion, UseAprobationsReturn } from '@/types/equipos/aprobations';
-import { AxiosError } from 'axios';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '@/store';
+import { fetchGrupos, createGrupoThunk, updateGrupoThunk, addUsuariosThunk, removeUsuarioThunk, deleteGrupoThunk } from '@/store/approvalGroups/approvalGroupsSlice';
+import { GrupoAprobacion, UseAprobationsReturn, CreateGrupoAprobacionInput, UpdateGrupoAprobacionInput } from '@/types/equipos/aprobations';
 
 export const useAprobations = (): UseAprobationsReturn => {
-  const [grupos, setGrupos] = useState<GrupoAprobacion[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const dispatch = useDispatch<AppDispatch>();
+  const { grupos, loading, error, creating, createError, updating, mutatingMembers, deleting, lastActionError } = useSelector((s: RootState) => s.approvalGroups);
 
-  const fetchGrupos = async () => {
-    setLoading(true);
-    setError(null);
+  useEffect(() => { dispatch(fetchGrupos()); }, [dispatch]);
 
-    try {
-      // Por ahora usamos datos de ejemplo ya que el endpoint de grupos no existe aún
-      const mockData: GrupoAprobacion[] = [
-        {
-          id_grupo: 1,
-          nombre: "Grupo de Aprobación Financiera",
-          fecha: "2024-01-15T10:00:00Z",
-          es_global: false,
-          usuarios: []
-        },
-        {
-          id_grupo: 2,
-          nombre: "Grupo de Aprobación IT",
-          fecha: "2024-01-15T10:00:00Z",
-          es_global: true,
-          usuarios: []
-        },
-        {
-          id_grupo: 3,
-          nombre: "Grupo de Aprobación RRHH",
-          fecha: "2024-01-15T10:00:00Z",
-          es_global: false,
-          usuarios: []
-        }
-      ];
-      
-      console.log('Mock Grupos Data:', mockData);
-      setGrupos(mockData);
-      
-      // Cuando el backend esté listo, descomentar:
-      // const response = await api.get<GrupoAprobacion[]>('/api/GrupoAprobacion');
-      // console.log('API Grupos Data:', response.data);
-      // setGrupos(response.data);
-    } catch (err: unknown) {
-      const axiosError = err as AxiosError<{ message?: string }>;
-      setError(axiosError.response?.data?.message || 'Error al cargar grupos de aprobación');
-      console.error('Error fetching grupos:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const refetch = () => { dispatch(fetchGrupos()); };
+  const createGrupo = async (input: CreateGrupoAprobacionInput) => { await dispatch(createGrupoThunk(input)); };
+  const updateGrupo = async (id: number, data: UpdateGrupoAprobacionInput) => { await dispatch(updateGrupoThunk({ id, data })); };
+  const addUsuarios = async (id: number, usuarioIds: number[]) => { await dispatch(addUsuariosThunk({ id, usuarioIds })); };
+  const removeUsuario = async (id: number, usuarioId: number) => { await dispatch(removeUsuarioThunk({ id, usuarioId })); };
+  const deleteGrupo = async (id: number) => { await dispatch(deleteGrupoThunk({ id })); };
 
-  useEffect(() => {
-    fetchGrupos();
-  }, []);
-
-  const refetch = () => {
-    fetchGrupos();
-  };
-
-  return {
-    grupos,
-    loading,
-    error,
-    refetch,
-  };
-}; 
+  return { grupos, loading, error, refetch, creating, createError, createGrupo, updating, updateGrupo, mutatingMembers, addUsuarios, removeUsuario, deleting, deleteGrupo, lastActionError };
+};

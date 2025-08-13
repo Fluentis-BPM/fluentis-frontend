@@ -1,115 +1,150 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { GrupoAprobacion, GrupoAprobacionCompleto } from '@/types/bpm/approval';
-import { Users, Plus, Edit, Trash2, UserPlus, X } from 'lucide-react';
+import { Users, Plus, Edit } from 'lucide-react';
+// NUEVOS IMPORTS PARA MULTI-SELECT
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useUsers } from '@/hooks/users/useUsers';
+import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
+import type { User } from '@/types/auth';
 
-interface Props {
-  grupos: GrupoAprobacion[];
-  miembrosGrupos: { [grupoId: number]: number[] }; // Añadir miembros
-  onCrearGrupo: (nombre: string, miembros: number[]) => void;
-  onEliminarGrupo?: (id: number) => void;
-  onEditarGrupo?: (id: number, nombre: string, miembros: number[]) => void;
-}
+type GestionGruposAprobacionProps = Record<string, never>;
 
-export const GestionGruposAprobacion: React.FC<Props> = ({
-  grupos,
-  miembrosGrupos,
-  onCrearGrupo,
-  onEliminarGrupo,
-  onEditarGrupo
-}) => {
-  console.log('🎯 GESTION GRUPOS - miembrosGrupos recibidos:', miembrosGrupos);
-  console.log('🎯 GESTION GRUPOS - grupos recibidos:', grupos);
+export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = () => {
+  // Obtener grupos backend
+  const { grupos, createGrupo, creating, refetch, deleteGrupo, deleting } = useAprobations();
   const [mostrarCrear, setMostrarCrear] = useState(false);
   const [nombreGrupo, setNombreGrupo] = useState('');
-  const [miembros, setMiembros] = useState<number[]>([]);
-  const [nuevoMiembroId, setNuevoMiembroId] = useState('');
-  const [grupoEditando, setGrupoEditando] = useState<number | null>(null);
-  // Simulación de usuario logueado
-  const usuarioLogueadoId = Number(localStorage.getItem('usuarioLogueadoId') || '1');
+  // Reemplaza miembros & nuevoMiembroId por selectedUserIds y UI moderna
+  // Usamos string para soportar IDs GUID o numéricos de forma consistente
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  // const [grupoEditando, setGrupoEditando] = useState<number | null>(null); // eliminado: edición aún no implementada
+  const [openUsersPicker, setOpenUsersPicker] = useState(false);
+  const [searchInput, setSearchInput] = useState(''); // valor mientras el usuario escribe
+  const [searchQuery, setSearchQuery] = useState(''); // valor aplicado (debounced)
+  const [deptFilter, setDeptFilter] = useState<string>('todos');
+  const [roleFilter, setRoleFilter] = useState<string>('todos');
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [esGlobal, setEsGlobal] = useState(false); // nuevo estado para marcar grupo global
 
-  // Simulación de pasos BPM asignados al usuario logueado
+  // Hooks para usuarios y backend
+  const { users, loading: usersLoading } = useUsers();
+
+  // ---- Pasos BPM simulados (reinsert) ----
   const pasosIniciales = [
     { id: 1, nombre: 'Aprobar solicitud de compra', grupoId: 2 },
     { id: 2, nombre: 'Revisar contrato', grupoId: 1 },
     { id: 3, nombre: 'Validar presupuesto', grupoId: 2 },
   ];
-
-  // Persistencia simulada de aprobaciones/rechazos
+  const [pasosAprobacion, setPasosAprobacion] = useState(pasosIniciales);
   const getEstadoPaso = (id: number) => {
     const estados = JSON.parse(localStorage.getItem('aprobacionesBPM') || '{}');
     return estados[id];
   };
-
   const setEstadoPaso = (id: number, estado: 'aprobado' | 'rechazado') => {
     const estados = JSON.parse(localStorage.getItem('aprobacionesBPM') || '{}');
     estados[id] = estado;
     localStorage.setItem('aprobacionesBPM', JSON.stringify(estados));
-    setPasosAprobacion(prev => prev.map(p => p.id === id ? { ...p } : p)); // Forzar render
+    setPasosAprobacion(prev => prev.map(p => p.id === id ? { ...p } : p));
   };
 
-  // TEMPORAL: Mostrar todos los pasos simulados para el usuario logueado, sin filtrar por grupo
-  const [pasosAprobacion, setPasosAprobacion] = useState(pasosIniciales);
+  // Devuelve siempre la representación string del ID original
+  const getUserIdStr = (u: User) => String(u.idUsuario ?? u.oid);
+  const getUserIdNum = (u: User) => {
+    const base = u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid), 10));
+    return isNaN(Number(base)) ? null : Number(base);
+  };
+
+  // Normalizar texto (remover acentos y convertir a lower)
+  const normalize = (s?: string) => (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    // Quitar acentos (sin \p{Diacritic} por compatibilidad amplia)
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // Debounce de búsqueda
+  useEffect(() => {
+    const h = setTimeout(() => setSearchQuery(searchInput.trim()), 250);
+    return () => clearTimeout(h);
+  }, [searchInput]);
+
+  // Conjuntos para filtros
+  const departamentos = useMemo(() => Array.from(new Set(users.map(u => u.departamentoNombre).filter(Boolean))), [users]);
+  const roles = useMemo(() => Array.from(new Set(users.map(u => u.rolNombre).filter(Boolean))), [users]);
+
+  const usuariosFiltrados = useMemo(() => {
+    const q = normalize(searchQuery);
+    return users
+      .filter(u => {
+        if (showOnlySelected && !selectedUserIds.includes(getUserIdStr(u))) return false;
+        if (deptFilter !== 'todos' && u.departamentoNombre !== deptFilter) return false;
+        if (roleFilter !== 'todos' && u.rolNombre !== roleFilter) return false;
+        if (!q) return true;
+        const target = [u.nombre, u.email, u.departamentoNombre, u.cargoNombre, u.rolNombre].map(normalize).join(' ');
+        return target.includes(q);
+      })
+      .sort((a, b) => {
+        const aSel = selectedUserIds.includes(getUserIdStr(a)) ? -1 : 1;
+        const bSel = selectedUserIds.includes(getUserIdStr(b)) ? -1 : 1;
+        if (aSel !== bSel) return aSel - bSel; // seleccionados primero
+        return a.nombre.localeCompare(b.nombre);
+      });
+  }, [users, searchQuery, deptFilter, roleFilter, selectedUserIds, showOnlySelected]);
+
+  const selectedUsersObjects = selectedUserIds
+    .map(idStr => users.find(u => getUserIdStr(u) === idStr))
+    .filter(Boolean) as User[];
+
+  const toggleUsuario = (idStr: string) => {
+    setSelectedUserIds(prev => prev.includes(idStr) ? prev.filter(id => id !== idStr) : [...prev, idStr]);
+  };
 
   const resetForm = () => {
     setNombreGrupo('');
-    setMiembros([]);
-    setNuevoMiembroId('');
-    setGrupoEditando(null);
+    setSelectedUserIds([]);
+    // setGrupoEditando(null); // eliminado
+    setSearchInput('');
+    setSearchQuery('');
+    setDeptFilter('todos');
+    setRoleFilter('todos');
+    setShowOnlySelected(false);
+    setEsGlobal(false); // reset
   };
 
-  const handleCrear = () => {
-    if (nombreGrupo.trim()) {
-      console.log('🚀 CREANDO GRUPO DESDE GESTION:', { nombreGrupo: nombreGrupo.trim(), miembros });
-      onCrearGrupo(nombreGrupo.trim(), miembros);
+  const handleCrear = async () => {
+    if (!nombreGrupo.trim()) return;
+    try {
+      const numericIds = selectedUsersObjects
+        .map(getUserIdNum)
+        .filter((v): v is number => v !== null);
+      if (numericIds.length === 0) {
+        console.warn('Debe seleccionar al menos un usuario (idUsuario)');
+        return;
+      }
+      await createGrupo({ nombre: nombreGrupo.trim(), esGlobal, usuarioIds: numericIds }); // usar estado esGlobal
       resetForm();
       setMostrarCrear(false);
+      refetch();
+    } catch (e) {
+      console.error('Error creando grupo de aprobación BPM:', e);
     }
   };
 
-  const handleEditar = () => {
-    if (grupoEditando && nombreGrupo.trim() && onEditarGrupo) {
-      onEditarGrupo(grupoEditando, nombreGrupo.trim(), miembros);
-      resetForm();
-      setMostrarCrear(false);
-    }
-  };
-
-  const iniciarEdicion = (grupo: GrupoAprobacion) => {
-    setGrupoEditando(grupo.id_grupo);
-    setNombreGrupo(grupo.nombre);
-    // Cargar miembros reales del grupo
-    const miembrosReales = miembrosGrupos[grupo.id_grupo] || [];
-    setMiembros(miembrosReales);
-    setMostrarCrear(true);
-  };
-
-  const agregarMiembro = () => {
-    const id = parseInt(nuevoMiembroId);
-    if (id && !miembros.includes(id)) {
-      setMiembros([...miembros, id]);
-      setNuevoMiembroId('');
-    }
-  };
-
-  const removerMiembro = (id: number) => {
-    setMiembros(miembros.filter(m => m !== id));
-  };
-
+  // Eliminado iniciarEdicion hasta implementar PUT backend
   return (
     <div className="space-y-6">
+      {/* Header + Modal */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-primary" />
           <h2 className="text-xl font-semibold text-gray-800">Gestión de Grupos de Aprobación</h2>
         </div>
-        
-        <Dialog open={mostrarCrear} onOpenChange={setMostrarCrear}>
+        <Dialog open={mostrarCrear} onOpenChange={(o) => { if(!o) resetForm(); setMostrarCrear(o); }}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()} className="bg-gradient-primary hover:opacity-90 shadow-soft">
               <Plus className="w-4 h-4 mr-2" />
@@ -119,79 +154,115 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
           <DialogContent className="max-w-md animate-scale-in">
             <DialogHeader>
               <DialogTitle className="text-lg text-gray-800">
-                {grupoEditando ? 'Editar Grupo' : 'Crear Nuevo Grupo'}
+                Crear Nuevo Grupo
               </DialogTitle>
             </DialogHeader>
-            
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="nombre" className="font-medium text-gray-700">Nombre del Grupo</Label>
-                <Input
-                  id="nombre"
-                  value={nombreGrupo}
-                  onChange={(e) => setNombreGrupo(e.target.value)}
-                  placeholder="Ej: Aprobadores de IT"
-                />
+                <Input id="nombre" value={nombreGrupo} onChange={(e) => setNombreGrupo(e.target.value)} placeholder="Ej: Aprobadores de IT" />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input id="esGlobal" type="checkbox" checked={esGlobal} onChange={e => setEsGlobal(e.target.checked)} className="h-4 w-4 accent-primary" />
+                <Label htmlFor="esGlobal" className="text-sm text-gray-700 select-none">Grupo Global (visible para todos)</Label>
               </div>
 
               <div className="space-y-2">
                 <Label className="font-medium text-gray-700">Miembros del Grupo</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={nuevoMiembroId}
-                    onChange={(e) => setNuevoMiembroId(e.target.value)}
-                    placeholder="ID de usuario"
-                    type="number"
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={agregarMiembro}
-                    disabled={!nuevoMiembroId}
-                    className="hover:bg-primary hover:text-white transition-smooth"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                {miembros.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    {miembros.map(id => (
-                      <Badge key={id} variant="secondary" className="flex items-center gap-1 bg-white border border-gray-200 shadow-sm">
-                        Usuario {id}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="p-0 w-4 h-4 hover:bg-red-100 hover:text-red-600 transition-smooth"
-                          onClick={() => removerMiembro(id)}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </Badge>
-                    ))}
+                {/* Selector avanzado de usuarios */}
+                <Popover open={openUsersPicker} onOpenChange={setOpenUsersPicker}>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="outline" className="w-full justify-between text-sm">
+                      {selectedUserIds.length === 0 ? 'Seleccionar usuarios' : `${selectedUserIds.length} usuario(s) seleccionados`}
+                      <span className="text-[10px] text-muted-foreground">{openUsersPicker ? 'Cerrar' : 'Abrir'}</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-[520px] p-3 space-y-3">
+                    <div className="flex flex-col gap-2">
+                      <Input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Buscar (nombre, email, depto, cargo, rol)" className="text-xs" autoFocus />
+                      <div className="flex flex-wrap gap-2 text-[10px]">
+                        <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} className="border rounded px-2 py-1 bg-background">
+                          <option value="todos">Depto: Todos</option>
+                          {departamentos.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="border rounded px-2 py-1 bg-background">
+                          <option value="todos">Rol: Todos</option>
+                          {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                        <label className="flex items-center gap-1 cursor-pointer select-none">
+                          <input type="checkbox" className="accent-primary" checked={showOnlySelected} onChange={e => setShowOnlySelected(e.target.checked)} />
+                          Solo seleccionados
+                        </label>
+                        <button type="button" onClick={() => { setSelectedUserIds([]); }} className="underline text-red-500">Limpiar</button>
+                        <button type="button" onClick={() => { setSelectedUserIds(users.map(getUserIdStr)); }} className="underline text-primary">Todos</button>
+                        <button type="button" onClick={() => setOpenUsersPicker(false)} className="underline text-muted-foreground ml-auto">Cerrar</button>
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground -mt-1">
+                      {searchQuery && `Filtrando por: "${searchQuery}"`} {creating && 'Guardando...'}
+                    </div>
+                    <div className="max-h-72 overflow-y-auto pr-1 space-y-1 border rounded p-1">
+                      {usersLoading && <div className="text-xs text-muted-foreground px-1">Cargando usuarios...</div>}
+                      {!usersLoading && usuariosFiltrados.length === 0 && (
+                        <div className="text-xs text-muted-foreground px-1">Sin resultados</div>
+                      )}
+                      {usuariosFiltrados.map(u => {
+                        const idStr = getUserIdStr(u);
+                        const checked = selectedUserIds.includes(idStr);
+                        return (
+                          <label key={idStr} className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer text-xs transition-colors ${checked ? 'bg-primary/10' : 'hover:bg-accent'}`}>
+                            <Checkbox checked={checked} onCheckedChange={() => toggleUsuario(idStr)} />
+                             <div className="flex flex-col leading-tight">
+                               <span className="font-medium">{u.nombre}</span>
+                               <span className="text-[10px] text-muted-foreground">{u.email}</span>
+                             </div>
+                            <div className="ml-auto flex flex-col items-end text-[10px] text-muted-foreground text-right">
+                              {u.departamentoNombre && <span>{u.departamentoNombre}</span>}
+                              <span>{u.rolNombre}</span>
+                              {u.cargoNombre && <span className="opacity-70">{u.cargoNombre}</span>}
+                            </div>
+                           </label>
+                         );
+                       })}
+                     </div>
+                     {selectedUsersObjects.length > 0 && (
+                       <div className="flex flex-wrap gap-1 border-t pt-2">
+                         {selectedUsersObjects.map(u => {
+                           const idStr = getUserIdStr(u);
+                           return (
+                             <span key={idStr} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[10px] flex items-center gap-1">
+                               {u.nombre}
+                               <button type="button" onClick={() => toggleUsuario(idStr)} className="hover:text-red-500">✕</button>
+                             </span>
+                           );
+                         })}
+                        <button type="button" onClick={() => setSelectedUserIds([])} className="text-[10px] text-red-500 hover:underline">Limpiar</button>
+                        <button type="button" onClick={() => setOpenUsersPicker(false)} className="text-[10px] text-primary hover:underline">Listo</button>
+                       </div>
+                     )}
+                   </PopoverContent>
+                 </Popover>
+                {selectedUsersObjects.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2 p-2 border rounded bg-muted/30 max-h-32 overflow-y-auto">
+                    {selectedUsersObjects.map(u => {
+                      const idStr = getUserIdStr(u);
+                      return (
+                        <span key={idStr} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[11px] flex items-center gap-1">
+                          {u.nombre}
+                          <button type="button" onClick={() => toggleUsuario(idStr)} className="hover:text-red-500">✕</button>
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
-              </div>
+               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button
-                  onClick={grupoEditando ? handleEditar : handleCrear}
-                  disabled={!nombreGrupo.trim()}
-                  className="flex-1 font-bold shadow-md"
-                  style={{ background: '#fff', color: '#111', border: '2px solid #000' }}
-                >
-                  {grupoEditando ? 'Guardar Cambios' : 'Crear Grupo'}
+                <Button onClick={handleCrear} disabled={!nombreGrupo.trim() || creating} className="flex-1 font-bold shadow-md" style={{ background: '#fff', color: '#111', border: '2px solid #000' }}>
+                  {creating ? 'Creando...' : 'Crear Grupo'}
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    resetForm();
-                    setMostrarCrear(false);
-                  }}
-                >
+                <Button variant="outline" onClick={() => { resetForm(); setMostrarCrear(false); }}>
                   Cancelar
                 </Button>
               </div>
@@ -221,24 +292,26 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
             <Card key={grupo.id_grupo}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{grupo.nombre}</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2">{grupo.nombre}{grupo.es_global && <Badge variant="outline" className="text-[10px]">Global</Badge>}</CardTitle>
                   <div className="flex gap-2">
+                    {/* Botón de edición deshabilitado temporalmente */}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => iniciarEdicion(grupo)}
+                      disabled
+                      title="Edición aún no disponible"
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
-                    {onEliminarGrupo && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEliminarGrupo(grupo.id_grupo)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={deleting}
+                      onClick={() => deleteGrupo(grupo.id_grupo)}
+                      title="Eliminar grupo"
+                    >
+                      {deleting ? '...' : 'Eliminar'}
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -248,24 +321,19 @@ export const GestionGruposAprobacion: React.FC<Props> = ({
                     <Users className="w-4 h-4" />
                     ID del Grupo: {grupo.id_grupo}
                   </div>
-                  {/* Mostrar miembros reales */}
                   <div className="text-sm">
                     <span className="text-muted-foreground">Miembros: </span>
-                    {(() => {
-                      const miembrosDelGrupo = miembrosGrupos[grupo.id_grupo] || [];
-                      if (miembrosDelGrupo.length === 0) {
-                        return <span className="text-muted-foreground">No hay miembros asignados</span>;
-                      }
-                      return (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {miembrosDelGrupo.map(id => (
-                            <Badge key={id} variant="secondary" className="text-xs">
-                              Usuario {id}
-                            </Badge>
-                          ))}
-                        </div>
-                      );
-                    })()}
+                    {(!grupo.usuarios || grupo.usuarios.length === 0) ? (
+                      <span className="text-muted-foreground">No hay miembros</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {grupo.usuarios.map(u => (
+                          <Badge key={u.idUsuario ?? u.oid} variant="secondary" className="text-xs">
+                            {u.nombre}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

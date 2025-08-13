@@ -2,10 +2,15 @@
  * Tipos para el sistema de aprobación
  * Estructura para manejar grupos de aprobación y decisiones de usuarios
  */
+import type { User } from '@/types/auth';
 
 export interface GrupoAprobacion {
   id_grupo: number;
   nombre: string;
+  // Campos añadidos desde backend (equipos) para unificación
+  fecha?: string; // opcional en BPM
+  es_global?: boolean; // indicador global
+  usuarios?: User[] | null; // miembros con información completa
 }
 
 export interface RelacionGrupoAprobacion {
@@ -30,6 +35,6 @@ export interface DecisionConUsuario extends RelacionDecisionUsuario {
 }
 
 export interface GrupoAprobacionCompleto extends GrupoAprobacion {
-  miembros?: number[]; // IDs de usuarios del grupo
+  miembros?: number[]; // IDs de usuarios del grupo (redundante, derivable de usuarios)
   decisiones?: DecisionConUsuario[];
 }

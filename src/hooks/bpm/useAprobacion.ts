@@ -9,66 +9,38 @@ import {
 
 /**
  * Hook para manejar el proceso de aprobación
- * Gestiona grupos, relaciones y decisiones de usuarios
+ * Gestiona relaciones y decisiones de usuarios.
+ * NOTA: La gestión de grupos ahora proviene del backend (useAprobations).
  */
 export const useAprobacion = () => {
-  const [gruposAprobacion, setGruposAprobacion] = useState<GrupoAprobacion[]>([]);
   const [relacionesGrupo, setRelacionesGrupo] = useState<RelacionGrupoAprobacion[]>([]);
   const [decisiones, setDecisiones] = useState<RelacionDecisionUsuario[]>([]);
-  const [miembrosGrupos, setMiembrosGrupos] = useState<{ [grupoId: number]: number[] }>({});
+  const [miembrosGrupos] = useState<{ [grupoId: number]: number[] }>({}); 
 
-  // Generar IDs únicos
+
   const generarIdUnico = useCallback(() => {
     return Date.now() + Math.floor(Math.random() * 1000);
   }, []);
 
-  // Crear grupo de aprobación
-  const crearGrupoAprobacion = useCallback((nombre: string, miembros: number[] = []): GrupoAprobacion => {
-    console.log('🔥 CREANDO GRUPO:', { nombre, miembros });
-    
-    const nuevoGrupo: GrupoAprobacion = {
-      id_grupo: generarIdUnico(),
-      nombre
-    };
-    
-    console.log('🔥 GRUPO CREADO:', nuevoGrupo);
-    console.log('🔥 MIEMBROS A GUARDAR:', miembros);
-    
-    setGruposAprobacion(prev => [...prev, nuevoGrupo]);
-    // Guardar miembros del grupo
-    setMiembrosGrupos(prev => {
-      const nuevosMinembros = {
-        ...prev,
-        [nuevoGrupo.id_grupo]: miembros
-      };
-      console.log('🔥 ESTADO MIEMBROS ACTUALIZADO:', nuevosMinembros);
-      return nuevosMinembros;
-    });
-    return nuevoGrupo;
+
+  const crearGrupoAprobacion = useCallback((nombre: string, _miembros: number[] = []): GrupoAprobacion => {
+    console.warn('[useAprobacion] crearGrupoAprobacion está deprecado. Usar backend useAprobations.createGrupo');
+
+    return { id_grupo: generarIdUnico(), nombre };
   }, [generarIdUnico]);
 
-  // Asociar grupo a solicitud
+
   const asociarGrupoASolicitud = useCallback((grupo_aprobacion_id: number, solicitud_id: number): RelacionGrupoAprobacion => {
-    console.log('🚨 ASOCIANDO GRUPO A SOLICITUD:', { grupo_aprobacion_id, solicitud_id });
-    
     const nuevaRelacion: RelacionGrupoAprobacion = {
       id_relacion: generarIdUnico(),
       grupo_aprobacion_id,
       solicitud_id
     };
-    
-    console.log('🚨 RELACIÓN CREADA:', nuevaRelacion);
-    
-    setRelacionesGrupo(prev => {
-      const nuevasRelaciones = [...prev, nuevaRelacion];
-      console.log('🚨 ESTADO RELACIONES ACTUALIZADO:', nuevasRelaciones);
-      return nuevasRelaciones;
-    });
-    
+    setRelacionesGrupo(prev => [...prev, nuevaRelacion]);
     return nuevaRelacion;
   }, [generarIdUnico]);
 
-  // Registrar decisión de usuario
+
   const registrarDecision = useCallback((
     id_usuario: number, 
     relacion_grupo_aprobacion_id: number, 
@@ -76,121 +48,72 @@ export const useAprobacion = () => {
     onEstadoCambiado?: (nuevoEstado: 'aprobado' | 'rechazado') => void
   ) => {
     setDecisiones(prev => {
-      // Verificar si ya existe una decisión para este usuario y relación
       const decisionExistente = prev.find(
         d => d.id_usuario === id_usuario && d.relacion_grupo_aprobacion_id === relacion_grupo_aprobacion_id
       );
 
-      let nuevasDecisiones;
+      let nuevasDecisiones: RelacionDecisionUsuario[];
       if (decisionExistente) {
-        // Actualizar decisión existente
         nuevasDecisiones = prev.map(d => 
           d.id_relacion === decisionExistente.id_relacion 
             ? { ...d, decision }
             : d
         );
       } else {
-        // Crear nueva decisión
         const nuevaDecision: RelacionDecisionUsuario = {
           id_relacion: generarIdUnico(),
           id_usuario,
-          relacion_grupo_aprobacion_id,
+            relacion_grupo_aprobacion_id,
           decision
         };
         nuevasDecisiones = [...prev, nuevaDecision];
       }
 
-      // Verificar cambio de estado después de actualizar
       if (onEstadoCambiado) {
         setTimeout(() => {
-          // Buscar la solicitud relacionada
           const relacion = relacionesGrupo.find(r => r.id_relacion === relacion_grupo_aprobacion_id);
           if (relacion) {
-            const grupo = gruposAprobacion.find(g => g.id_grupo === relacion.grupo_aprobacion_id);
-            const miembrosDelGrupo = miembrosGrupos[grupo?.id_grupo || 0] || [];
-            
-            // Verificar con las nuevas decisiones
+        
+            const miembrosDelGrupo: number[] = miembrosGrupos[relacion.grupo_aprobacion_id] || [];
             const decisionesMiembros = nuevasDecisiones.filter(d => 
-              d.relacion_grupo_aprobacion_id === relacion_grupo_aprobacion_id && 
+              d.relacion_grupo_aprobacion_id === relacion.grupo_aprobacion_id && 
               miembrosDelGrupo.includes(d.id_usuario)
             );
-            
-            const todosDecidieron = decisionesMiembros.length === miembrosDelGrupo.length;
-            const todosAprobaron = decisionesMiembros.every(d => d.decision === 'si');
+            const todosDecidieron = miembrosDelGrupo.length > 0 && decisionesMiembros.length === miembrosDelGrupo.length;
+            const todosAprobaron = todosDecidieron && decisionesMiembros.every(d => d.decision === 'si');
             const algunoRechazo = decisionesMiembros.some(d => d.decision === 'no');
-            
-            if (todosDecidieron && todosAprobaron) {
-              console.log('✅ SOLICITUD APROBADA - Notificando cambio');
-              onEstadoCambiado('aprobado');
-            } else if (algunoRechazo) {
-              console.log('❌ SOLICITUD RECHAZADA - Notificando cambio');
-              onEstadoCambiado('rechazado');
-            }
+            if (todosAprobaron) onEstadoCambiado('aprobado');
+            else if (algunoRechazo) onEstadoCambiado('rechazado');
           }
         }, 50);
       }
 
       return nuevasDecisiones;
     });
-  }, [generarIdUnico, relacionesGrupo, gruposAprobacion, miembrosGrupos]);
+  }, [generarIdUnico, relacionesGrupo, miembrosGrupos]);
 
-  // Obtener grupo de aprobación de una solicitud
+
   const obtenerGrupoPorSolicitud = useCallback((solicitud_id: number): GrupoAprobacionCompleto | undefined => {
-    console.log('Buscando grupo para solicitud:', solicitud_id);
-    console.log('Relaciones disponibles:', relacionesGrupo);
-    
     const relacion = relacionesGrupo.find(r => r.solicitud_id === solicitud_id);
-    if (!relacion) {
-      console.log('No se encontró relación para la solicitud');
-      return undefined;
-    }
+    if (!relacion) return undefined;
 
-    console.log('Relación encontrada:', relacion);
-    
-    const grupo = gruposAprobacion.find(g => g.id_grupo === relacion.grupo_aprobacion_id);
-    if (!grupo) {
-      console.log('No se encontró grupo de aprobación');
-      return undefined;
-    }
+    return { id_grupo: relacion.grupo_aprobacion_id, nombre: 'Grupo', miembros: [], decisiones: decisiones.filter(d => d.relacion_grupo_aprobacion_id === relacion.id_relacion), usuarios: [] } as GrupoAprobacionCompleto;
+  }, [relacionesGrupo, decisiones]);
 
-    console.log('Grupo encontrado:', grupo);
-    
-    const decisionesGrupo = decisiones.filter(d => d.relacion_grupo_aprobacion_id === relacion.id_relacion);
-    console.log('Decisiones del grupo:', decisionesGrupo);
-    
-    const miembrosDelGrupo = miembrosGrupos[grupo.id_grupo] || [];
-    console.log('Miembros del grupo:', miembrosDelGrupo);
-
-    return {
-      ...grupo,
-      miembros: miembrosDelGrupo,
-      decisiones: decisionesGrupo
-    };
-  }, [relacionesGrupo, gruposAprobacion, decisiones, miembrosGrupos]);
-
-  // Verificar si una solicitud está completamente aprobada
   const verificarAprobacionCompleta = useCallback((solicitud_id: number, miembrosGrupo: number[]): boolean => {
     const grupo = obtenerGrupoPorSolicitud(solicitud_id);
     if (!grupo || !grupo.decisiones) return false;
-
-    // Verificar que todos los miembros hayan decidido
     const decisionesMiembros = grupo.decisiones.filter(d => miembrosGrupo.includes(d.id_usuario));
     if (decisionesMiembros.length !== miembrosGrupo.length) return false;
-
-    // Verificar que todas las decisiones sean 'si'
     return decisionesMiembros.every(d => d.decision === 'si');
   }, [obtenerGrupoPorSolicitud]);
 
-  // Verificar si una solicitud está rechazada
   const verificarRechazo = useCallback((solicitud_id: number): boolean => {
     const grupo = obtenerGrupoPorSolicitud(solicitud_id);
     if (!grupo || !grupo.decisiones) return false;
-
-    // Si al menos una decisión es 'no', la solicitud está rechazada
     return grupo.decisiones.some(d => d.decision === 'no');
   }, [obtenerGrupoPorSolicitud]);
 
-  // Obtener estadísticas del proceso de aprobación
   const obtenerEstadisticasAprobacion = useCallback((solicitud_id: number, miembrosGrupo: number[]) => {
     const grupo = obtenerGrupoPorSolicitud(solicitud_id);
     if (!grupo || !grupo.decisiones) {
@@ -202,11 +125,9 @@ export const useAprobacion = () => {
         pendientes: miembrosGrupo.length
       };
     }
-
     const decisionesMiembros = grupo.decisiones.filter(d => miembrosGrupo.includes(d.id_usuario));
     const aprobaciones = decisionesMiembros.filter(d => d.decision === 'si').length;
     const rechazos = decisionesMiembros.filter(d => d.decision === 'no').length;
-
     return {
       total_miembros: miembrosGrupo.length,
       decisiones_tomadas: decisionesMiembros.length,
@@ -216,17 +137,15 @@ export const useAprobacion = () => {
     };
   }, [obtenerGrupoPorSolicitud]);
 
-  // Obtener miembros de un grupo
   const obtenerMiembrosGrupo = useCallback((grupoId: number): number[] => {
     return miembrosGrupos[grupoId] || [];
   }, [miembrosGrupos]);
 
   return {
-    gruposAprobacion,
     relacionesGrupo,
     decisiones,
-    miembrosGrupos,
-    crearGrupoAprobacion,
+    miembrosGrupos: {},
+    crearGrupoAprobacion, 
     asociarGrupoASolicitud,
     registrarDecision,
     obtenerGrupoPorSolicitud,

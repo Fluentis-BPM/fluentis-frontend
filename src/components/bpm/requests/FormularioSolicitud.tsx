@@ -10,22 +10,19 @@ import { CrearSolicitudInput, EstadoSolicitud } from '@/types/bpm/request';
 import { CamposDinamicos } from '@/types/bpm/inputs';
 import { SelectorCamposDinamicos } from './SelectorCamposDinamicos';
 import { SelectorGrupoAprobacion } from './SelectorGrupoAprobacion';
-import { GrupoAprobacion } from '@/types/bpm/approval';
 import { Plus, User, Workflow, Settings, Users } from 'lucide-react';
+import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
 
 interface Props {
   onCrearSolicitud: (input: CrearSolicitudInput, grupoAprobacionId?: number) => void;
-  gruposAprobacion: GrupoAprobacion[];
-  onCrearGrupo: (nombre: string, miembros: number[]) => GrupoAprobacion;
   isLoading?: boolean;
 }
 
 export const FormularioSolicitud: React.FC<Props> = ({ 
   onCrearSolicitud, 
-  gruposAprobacion, 
-  onCrearGrupo, 
   isLoading = false 
 }) => {
+  const { grupos: gruposBackend } = useAprobations();
   const [formData, setFormData] = useState<CrearSolicitudInput>({
     solicitante_id: 0,
     flujo_base_id: undefined,
@@ -79,10 +76,6 @@ export const FormularioSolicitud: React.FC<Props> = ({
       ...prev,
       campos_dinamicos: campos
     }));
-  };
-
-  const handleCrearGrupo = (nombre: string, miembros: number[]): GrupoAprobacion => {
-    return onCrearGrupo(nombre, miembros);
   };
 
   return (
@@ -196,10 +189,9 @@ export const FormularioSolicitud: React.FC<Props> = ({
 
             <TabsContent value="aprobacion" className="space-y-6 animate-fade-in">
               <SelectorGrupoAprobacion
-                gruposDisponibles={gruposAprobacion}
+                gruposDisponibles={gruposBackend}
                 grupoSeleccionado={grupoAprobacionSeleccionado}
                 onGrupoSeleccionado={setGrupoAprobacionSeleccionado}
-                onCrearGrupo={handleCrearGrupo}
               />
             </TabsContent>
 

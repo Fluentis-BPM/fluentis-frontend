@@ -32,9 +32,31 @@ export interface AprobationGroupCardProps {
   draggedUser: User | null
 }
 
+export interface CreateGrupoAprobacionInput {
+  nombre: string;
+  esGlobal: boolean; // Backend expects camelCase
+  usuarioIds: number[]; // IDs de usuarios a asociar
+}
+
+export interface UpdateGrupoAprobacionInput {
+  nombre?: string;
+  esGlobal?: boolean;
+}
+
 export interface UseAprobationsReturn {
   grupos: GrupoAprobacion[];
   loading: boolean;
   error: string | null;
   refetch: () => void;
-} 
+  creating: boolean;
+  createError: string | null;
+  createGrupo: (input: CreateGrupoAprobacionInput) => Promise<void>;
+  updating: boolean;
+  updateGrupo: (id: number, data: UpdateGrupoAprobacionInput) => Promise<void>;
+  mutatingMembers: boolean;
+  addUsuarios: (id: number, usuarioIds: number[]) => Promise<void>;
+  removeUsuario: (id: number, usuarioId: number) => Promise<void>;
+  deleting: boolean;
+  deleteGrupo: (id: number) => Promise<void>;
+  lastActionError: string | null;
+}
