@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useSolicitudes } from '@/hooks/bpm/useSolicitudes';
+import React, { useEffect } from 'react';
+import { useBpm } from '@/hooks/bpm/useBpm';
 import { TarjetaFlujo } from './TarjetaFlujo';
 import { EstadisticasFlujos } from './EstadisticasFlujos';
 import { VistaDiagramaFlujo } from './VistaDiagramaFlujo';
@@ -12,104 +12,87 @@ import { EstadoFlujo } from '@/types/bpm/flow';
 import { Search, Filter, SortDesc, FileX, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
 
-export const ModuloFlujos: React.FC<{
-  solicitudesData: ReturnType<typeof useSolicitudes>;
-}> = ({ solicitudesData }) => {
-  const { 
+export const ModuloFlujos: React.FC = () => {
+  const {
     flujosActivos,
-    ejecucionesPasos,
-    actualizarEstadoFlujo,
-    obtenerPasosDeFlujo,
-    obtenerEstadisticas,
-    verificarFinalizacion,
-    // Nuevas funciones para diagrama
-    obtenerPasosSolicitudPorFlujo,
-    obtenerCaminosPorFlujo,
-    actualizarPasoSolicitud,
-    editarPasoSolicitud,
-    agregarPasoAlDiagrama,
-    crearCamino,
-    asignarResponsableAutomatico
-  } = solicitudesData;
-
+    pasosPorFlujo,
+    caminosPorFlujo,
+    loading,
+    error,
+    flujoSeleccionado,
+    loadFlujosActivos,
+    selectFlujo,
+  } = useBpm();
   const { toast } = useToast();
-  const [filtroEstado, setFiltroEstado] = useState<EstadoFlujo | 'todos'>('todos');
-  const [busqueda, setBusqueda] = useState('');
-  const [flujoSeleccionado, setFlujoSeleccionado] = useState<number | null>(null);
+  const [filtroEstado, setFiltroEstado] = React.useState<EstadoFlujo | 'todos'>('todos');
+  const [busqueda, setBusqueda] = React.useState('');
+  
 
-  const estadisticas = obtenerEstadisticas();
+  // Cargar flujos al montar el componente
+  useEffect(() => {
+    toast({
+      title: 'Cargando flujos...',
+      description: 'Por favor, espera mientras se obtienen los flujos activos.',
+      duration: 2000,
+    });
+    loadFlujosActivos();
+  }, [loadFlujosActivos, toast]);
 
-  const handleActualizarEstado = (flujo_id: number, estado: EstadoFlujo) => {
-    try {
-      actualizarEstadoFlujo(flujo_id, estado);
-      
-      if (estado === 'finalizado') {
-        verificarFinalizacion(flujo_id);
-      }
-      
+  // Mostrar notificaciones basadas en el estado
+  useEffect(() => {
+    if (error) {
       toast({
-        title: "Estado actualizado",
-        description: `Flujo #${flujo_id} marcado como ${estado}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el estado del flujo",
-        variant: "destructive",
+        title: 'Error',
+        description: error,
+        variant: 'destructive',
+        duration: 5000,
       });
     }
-  };
+  }, [error, toast]);
 
-  const handleVerDetalles = (flujo_id: number) => {
-    console.log('Ver detalles del flujo:', flujo_id);
-    toast({
-      title: "Detalles del flujo",
-      description: `Mostrando detalles del flujo #${flujo_id}`,
-    });
+  useEffect(() => {
+    if (!loading && Array.isArray(flujosActivos) && flujosActivos.length > 0 && !error) {
+      toast({
+        title: 'Éxito',
+        description: `Se cargaron ${flujosActivos.length} flujos activos.`,
+        duration: 3000,
+      });
+    }
+  }, [loading, Array.isArray(flujosActivos) ? flujosActivos.length : 0, error, toast]);
+
+  // Simulación de estadísticas (puedes integrar un thunk si hay un endpoint)
+  const estadisticas = {
+    total_flujos: Array.isArray(flujosActivos) ? flujosActivos.length : 0,
+    en_curso: Array.isArray(flujosActivos) ? flujosActivos.filter(f => f.estado === 'encurso').length : 0,
+    finalizados: Array.isArray(flujosActivos) ? flujosActivos.filter(f => f.estado === 'finalizado').length : 0,
+    cancelados: Array.isArray(flujosActivos) ? flujosActivos.filter(f => f.estado === 'cancelado').length : 0,
   };
 
   const handleVerDiagrama = (flujo_id: number) => {
-    console.log('🔍 VER DIAGRAMA - Flujo seleccionado:', flujo_id);
-    console.log('📊 Pasos disponibles:', obtenerPasosSolicitudPorFlujo(flujo_id));
-    console.log('🔗 Caminos disponibles:', obtenerCaminosPorFlujo(flujo_id));
-    setFlujoSeleccionado(flujo_id);
+    selectFlujo(flujo_id);
   };
 
   const handleVolverALista = () => {
-    setFlujoSeleccionado(null);
+    selectFlujo(null);
   };
 
   // Filtrar flujos
-  const flujosFiltrados = flujosActivos.filter(flujo => {
-    const coincideBusqueda = busqueda === '' || 
+  const flujosFiltrados = Array.isArray(flujosActivos) ? flujosActivos.filter(flujo => {
+    const coincideBusqueda =
+      busqueda === '' ||
       flujo.id_flujo_activo.toString().includes(busqueda) ||
       flujo.solicitud_id.toString().includes(busqueda);
-
     const coincideEstado = filtroEstado === 'todos' || flujo.estado === filtroEstado;
-
     return coincideBusqueda && coincideEstado;
-  });
+  }) : [];
 
   // Si hay un flujo seleccionado, mostrar vista de diagrama
-  if (flujoSeleccionado) {
+  if (flujoSeleccionado !== null && Array.isArray(flujosActivos)) {
     const flujo = flujosActivos.find(f => f.id_flujo_activo === flujoSeleccionado);
     if (flujo) {
-      const pasosDiagrama = obtenerPasosSolicitudPorFlujo(flujoSeleccionado);
-      const caminos = obtenerCaminosPorFlujo(flujoSeleccionado);
-      
       return (
         <VistaDiagramaFlujo
           flujo={flujo}
-          pasos={pasosDiagrama}
-          caminos={caminos}
-          onActualizarPaso={actualizarPasoSolicitud}
-          onAgregarPaso={(flujoId, x, y, tipo_paso) => {
-            const nuevoPaso = agregarPasoAlDiagrama(flujoId, x, y, tipo_paso);
-            // Asignar responsable automáticamente
-            setTimeout(() => asignarResponsableAutomatico(nuevoPaso.id_paso_solicitud, tipo_paso || 'ejecucion'), 100);
-          }}
-          onCrearCamino={crearCamino}
-          onEditarPaso={editarPasoSolicitud}
           onVolverALista={handleVolverALista}
         />
       );
@@ -128,8 +111,7 @@ export const ModuloFlujos: React.FC<{
             Seguimiento y control de flujos activos generados desde solicitudes aprobadas
           </p>
         </div>
-        
-        <Button 
+        <Button
           variant="outline"
           className="border-primary text-primary hover:bg-primary hover:text-white hover:scale-105 hover:shadow-glow transition-all duration-300"
         >
@@ -161,7 +143,6 @@ export const ModuloFlujos: React.FC<{
               />
             </div>
           </div>
-          
           <Select value={filtroEstado} onValueChange={(value: EstadoFlujo | 'todos') => setFiltroEstado(value)}>
             <SelectTrigger className="w-48 transition-all duration-300 focus:ring-primary/50 hover:border-primary/50 hover:shadow-soft">
               <SelectValue placeholder="Filtrar por estado" />
@@ -173,7 +154,6 @@ export const ModuloFlujos: React.FC<{
               <SelectItem value="cancelado" className="hover:bg-primary/10 transition-colors">Cancelados</SelectItem>
             </SelectContent>
           </Select>
-
           <div className="flex items-center gap-2">
             <SortDesc className="w-4 h-4 text-muted-foreground" />
             <Badge variant="outline" className="border-primary/30 text-primary/80 hover:bg-primary/10 transition-colors">
@@ -191,34 +171,28 @@ export const ModuloFlujos: React.FC<{
               <FileX className="w-12 h-12 text-muted-foreground/50 mb-4 animate-bounce-subtle" />
               <h3 className="text-lg font-semibold mb-2">No hay flujos</h3>
               <p className="text-muted-foreground text-center max-w-md">
-                {flujosActivos.length === 0 
-                  ? "Aún no se han creado flujos. Los flujos se generan automáticamente cuando se aprueban solicitudes."
-                  : "No se encontraron flujos que coincidan con los filtros aplicados."
+                {flujosActivos.length === 0
+                  ? 'Aún no se han creado flujos. Los flujos se generan automáticamente cuando se aprueban solicitudes.'
+                  : 'No se encontraron flujos que coincidan con los filtros aplicados.'
                 }
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {flujosFiltrados.map((flujo, index) => {
-              const pasos = obtenerPasosDeFlujo(flujo.id_flujo_activo);
-              
-              return (
-                <div
-                  key={flujo.id_flujo_activo}
-                  className="animate-scale-in"
-                  style={{ animationDelay: `${0.1 * index}s` }}
-                >
-                  <TarjetaFlujo
-                    flujo={flujo}
-                    pasos={pasos}
-                    onActualizarEstado={handleActualizarEstado}
-                    onVerDetalles={handleVerDetalles}
-                    onVerDiagrama={handleVerDiagrama}
-                  />
-                </div>
-              );
-            })}
+            {flujosFiltrados.map((flujo, index) => (
+              <div
+                key={flujo.id_flujo_activo}
+                className="animate-scale-in"
+                style={{ animationDelay: `${0.1 * index}s` }}
+              >
+                <TarjetaFlujo
+                  flujo={flujo}
+                  onVerDiagrama={handleVerDiagrama} onActualizarEstado={function (flujo_id: number, estado: EstadoFlujo): void {
+                    throw new Error('Function not implemented.');
+                  } }                />
+              </div>
+            ))}
           </div>
         )}
       </div>

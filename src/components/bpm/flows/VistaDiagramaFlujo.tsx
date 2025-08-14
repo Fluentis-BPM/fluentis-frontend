@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { DiagramaFlujo } from './DiagramaFlujo';
 import { EditorPaso } from './EditorPaso';
@@ -21,28 +21,18 @@ import {
   Maximize2
 } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
+import { useBpm } from '@/hooks/bpm/useBpm'; // Nuevo import para usar el estado global
 
 interface VistaDiagramaFlujoProps {
   flujo: FlujoActivo;
-  pasos: PasoSolicitud[];
-  caminos: CaminoParalelo[];
-  onActualizarPaso: (pasoId: number, estado: PasoSolicitud['estado']) => void;
-  onAgregarPaso: (flujoId: number, x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => void;
-  onCrearCamino: (origen: number, destino: number) => void;
-  onEditarPaso?: (pasoActualizado: PasoSolicitud) => void;
-  onVolverALista?: () => void;
+  onVolverALista?: () => void; // Solo mantenemos esta prop para volver a la lista
 }
 
 export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   flujo,
-  pasos,
-  caminos,
-  onActualizarPaso,
-  onAgregarPaso,
-  onCrearCamino,
-  onEditarPaso,
-  onVolverALista
+  onVolverALista,
 }) => {
+  const { pasosPorFlujo, caminosPorFlujo, loading, error, selectFlujo, loadPasosYConexiones } = useBpm();
   const { toast } = useToast();
   const [modoEdicion, setModoEdicion] = useState(true); // Empezar en modo edición por defecto
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
@@ -52,6 +42,11 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const [mostrarPantallaCompleta, setMostrarPantallaCompleta] = useState(false);
 
+  // Obtener pasos y caminos del estado global
+  const pasos = pasosPorFlujo[flujo.id_flujo_activo] || [];
+  const caminos = caminosPorFlujo[flujo.id_flujo_activo] || [];
+
+  // Estadísticas calculadas localmente
   const estadisticasPasos = {
     total: pasos.length,
     pendientes: pasos.filter(p => p.estado === 'pendiente').length,
@@ -60,18 +55,37 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     excepciones: pasos.filter(p => p.estado === 'excepcion').length,
   };
 
-  const handleAgregarPaso = (x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => {
-    onAgregarPaso(flujo.id_flujo_activo, x, y, tipo_paso);
-    // El nuevo paso aparecerá automáticamente sin necesidad de forzar re-render
+  // Cargar pasos y caminos al montar el componente
+  useEffect(() => {
     toast({
-      title: "Paso agregado",
-      description: `Nuevo paso de ${tipo_paso || 'ejecucion'} agregado al diagrama`,
+      title: 'Cargando diagrama...',
+      description: `Obteniendo pasos y conexiones para el flujo #${flujo.id_flujo_activo}.`,
+      duration: 2000,
     });
-  };
+    loadPasosYConexiones(flujo.id_flujo_activo);
+  }, [loadPasosYConexiones, flujo.id_flujo_activo, toast]);
 
-  const handleEditarPaso = (paso: PasoSolicitud) => {
-    setPasoEditando(paso);
-  };
+  // Mostrar notificaciones basadas en el estado
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Error',
+        description: `No se pudo cargar el diagrama del flujo #${flujo.id_flujo_activo}: ${error}`,
+        variant: 'destructive',
+        duration: 5000,
+      });
+    }
+  }, [error, flujo.id_flujo_activo, toast]);
+
+  useEffect(() => {
+    if (!loading && pasos.length > 0 && caminos.length > 0 && !error) {
+      toast({
+        title: 'Éxito',
+        description: `Diagrama del flujo #${flujo.id_flujo_activo} cargado.`,
+        duration: 3000,
+      });
+    }
+  }, [loading, pasos.length, caminos.length, error, flujo.id_flujo_activo, toast]);
 
   const handleNodeSelect = (paso: PasoSolicitud | null) => {
     if (paso) {
@@ -83,39 +97,8 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     }
   };
 
-  const handleGuardarPasoEditado = (pasoActualizado: PasoSolicitud) => {
-    if (onEditarPaso) {
-      onEditarPaso(pasoActualizado);
-      // No forzar re-render para evitar problemas con el drag
-      toast({
-        title: "Paso actualizado",
-        description: `Los cambios en "${pasoActualizado.nombre}" se han guardado`,
-      });
-    }
-  };
-
-  const handleCrearCamino = (origen: number, destino: number) => {
-    onCrearCamino(origen, destino);
-    // No forzar re-render para evitar problemas con el estado
-    toast({
-      title: "Conexión creada", 
-      description: "Nueva conexión agregada entre pasos",
-    });
-  };
-
-  const handleActualizarPaso = (pasoId: number, estado: PasoSolicitud['estado']) => {
-    onActualizarPaso(pasoId, estado);
-    // No forzar re-render para evitar problemas con el estado
-    toast({
-      title: "Paso actualizado",
-      description: `Estado cambiado a ${estado}`,
-    });
-  };
-
   // Efectos para refrescar diagrama solo cuando sea necesario
   useEffect(() => {
-    // Solo forzar re-render cuando hay cambios significativos en estructura
-    // No cuando solo cambian posiciones
     setDiagramaKey(prev => prev + 1);
   }, [pasos.length, caminos.length]); // No incluir pasos o caminos completos
 
@@ -128,11 +111,9 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      
       const newWidth = window.innerWidth - e.clientX;
       const minWidth = 320;
       const maxWidth = window.innerWidth * 0.6;
-      
       setEditorWidth(Math.min(Math.max(newWidth, minWidth), maxWidth));
     };
 
@@ -157,13 +138,12 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
       'finalizado': 'default', 
       'cancelado': 'destructive'
     } as const;
-    
     return <Badge variant={variants[estado as keyof typeof variants] || 'outline'}>{estado}</Badge>;
   };
 
   return (
     <div className="space-y-6 animate-fadeIn">
-          {/* Header del flujo */}
+      {/* Header del flujo */}
       <Card className="shadow-soft animate-slide-up">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -179,7 +159,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 <p className="text-sm text-muted-foreground">
                   Solicitud #{flujo.solicitud_id} • Iniciado {flujo.fecha_inicio.toLocaleDateString()}
                 </p>
-                {/* Mostrar datos de la solicitud original */}
                 {flujo.datos_solicitud && (
                   <div className="mt-2 p-2 bg-muted/30 rounded-md">
                     <p className="text-xs text-muted-foreground mb-1">Datos de Solicitud:</p>
@@ -192,7 +171,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                     </div>
                   </div>
                 )}
-                {/* Mostrar campos dinámicos */}
                 {flujo.campos_dinamicos && Object.keys(flujo.campos_dinamicos).length > 0 && (
                   <div className="mt-2 p-2 bg-primary/5 rounded-md">
                     <p className="text-xs text-muted-foreground mb-1">Campos Dinámicos:</p>
@@ -207,7 +185,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 )}
               </div>
             </div>
-            
             <div className="flex items-center gap-2">
               {onVolverALista && (
                 <Button
@@ -280,7 +257,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
 
         <TabsContent value="diagrama" className="space-y-4">
           <div className="relative h-[600px] border rounded-lg overflow-hidden bg-gray-50">
-            {/* Main React Flow Area */}
             <div 
               className={`h-full transition-all duration-300`}
               style={{ marginRight: pasoEditando ? `${editorWidth}px` : '0' }}
@@ -289,18 +265,12 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 key={diagramaKey}
                 pasos={pasos}
                 caminos={caminos}
-                onActualizarPaso={handleActualizarPaso}
-                onAgregarPaso={handleAgregarPaso}
-                onCrearCamino={handleCrearCamino}
-                onEditarPaso={handleEditarPaso}
                 readOnly={!modoEdicion}
                 selectedNodeId={selectedNodeId || undefined}
                 onNodeSelect={handleNodeSelect}
                 camposDinamicosIniciales={flujo.campos_dinamicos}
               />
             </div>
-            
-            {/* Integrated Step Editor Panel */}
             {pasoEditando && (
               <motion.div
                 initial={{ x: editorWidth }}
@@ -310,13 +280,11 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 className="absolute top-0 right-0 h-full bg-white border-l shadow-xl flex flex-col z-10"
                 style={{ width: `${editorWidth}px` }}
               >
-                {/* Resize Handle */}
                 <div 
                   className="absolute left-0 top-0 w-1 h-full bg-gray-200 hover:bg-primary cursor-col-resize z-20 transition-colors"
                   onMouseDown={handleMouseDown}
                   style={{ marginLeft: '-2px' }}
                 />
-                
                 <div className="px-6 py-4 border-b bg-white">
                   <div className="flex items-center gap-2">
                     <Edit className="w-5 h-5" />
@@ -328,72 +296,75 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                     </Badge>
                   </div>
                 </div>
-                
                 <div className="flex-1 overflow-hidden bg-white">
                   <EditorPaso
-                      paso={pasoEditando}
-                      isOpen={false} // No usar dialog anidado
-                      onClose={() => handleNodeSelect(null)}
-                      onGuardar={handleGuardarPasoEditado}
-                      responsablesDisponibles={[
-                        { id: 1, nombre: 'Ana García', rol: 'Supervisor', departamento: 'Operaciones' },
-                        { id: 2, nombre: 'Carlos López', rol: 'Gerente', departamento: 'Finanzas' },
-                        { id: 3, nombre: 'María Silva', rol: 'Analista', departamento: 'Calidad' },
-                        { id: 4, nombre: 'Juan Pérez', rol: 'Director', departamento: 'General' }
-                      ]}
-                      isPanel={true}
-                      // Pasar datos necesarios para los diferentes tipos de pasos
-                      inputsDisponibles={[
-                        {
-                          id_input: 1,
-                          tipo_input: 'textocorto',
-                          etiqueta: 'Título de la solicitud',
-                          placeholder: 'Ingrese un título descriptivo',
-                          validacion: { required: true, max: 100 }
-                        },
-                       {
-                         id_input: 2,
-                         tipo_input: 'textolargo',
-                         etiqueta: 'Justificación detallada',
-                         placeholder: 'Explique los motivos de la solicitud...',
-                         validacion: { required: true, max: 1000 }
-                       },
-                       {
-                         id_input: 3,
-                         tipo_input: 'combobox',
-                         etiqueta: 'Departamento solicitante',
-                         opciones: ['Recursos Humanos', 'Finanzas', 'Tecnología', 'Operaciones', 'Marketing'],
-                         validacion: { required: true }
-                       },
-                       {
-                         id_input: 4,
-                         tipo_input: 'date',
-                         etiqueta: 'Fecha requerida',
-                         validacion: { required: false }
-                       },
-                       {
-                         id_input: 5,
-                         tipo_input: 'number',
-                         etiqueta: 'Presupuesto estimado',
-                         placeholder: '0.00',
-                         validacion: { min: 0, max: 1000000 }
-                       }
-                     ]}
-                     gruposAprobacion={[
-                       { id_grupo: 1, nombre: 'Gerencia General' },
-                       { id_grupo: 2, nombre: 'Finanzas y Contabilidad' },
-                       { id_grupo: 3, nombre: 'Recursos Humanos' },
-                       { id_grupo: 4, nombre: 'Tecnología' },
-                       { id_grupo: 5, nombre: 'Operaciones' }
-                     ]}
-                     usuarioActualId={1} // Simular usuario actual
-                     // Nuevas props para campos dinámicos
-                     camposDinamicosIniciales={pasoEditando?.tipo === 'inicio' ? flujo.campos_dinamicos : undefined}
-                     onValidarCamposDinamicos={(campos) => {
-                       // Validación personalizada - por ahora devolver true
-                       console.log('Validando campos dinámicos:', campos);
-                       return true;
-                     }}
+                    paso={pasoEditando}
+                    isOpen={false}
+                    onClose={() => handleNodeSelect(null)}
+                    onGuardar={(pasoActualizado) => {
+                      // Placeholder: Necesitarás un thunk para actualizar el paso
+                      console.log('Guardar paso actualizado:', pasoActualizado);
+                      toast({
+                        title: 'Paso actualizado',
+                        description: `Los cambios en "${pasoActualizado.nombre}" se han guardado`,
+                      });
+                      handleNodeSelect(null); // Cerrar el editor
+                    }}
+                    responsablesDisponibles={[
+                      { id: 1, nombre: 'Ana García', rol: 'Supervisor', departamento: 'Operaciones' },
+                      { id: 2, nombre: 'Carlos López', rol: 'Gerente', departamento: 'Finanzas' },
+                      { id: 3, nombre: 'María Silva', rol: 'Analista', departamento: 'Calidad' },
+                      { id: 4, nombre: 'Juan Pérez', rol: 'Director', departamento: 'General' }
+                    ]}
+                    isPanel={true}
+                    inputsDisponibles={[
+                      {
+                        id_input: 1,
+                        tipo_input: 'textocorto',
+                        etiqueta: 'Título de la solicitud',
+                        placeholder: 'Ingrese un título descriptivo',
+                        validacion: { required: true, max: 100 }
+                      },
+                      {
+                        id_input: 2,
+                        tipo_input: 'textolargo',
+                        etiqueta: 'Justificación detallada',
+                        placeholder: 'Explique los motivos de la solicitud...',
+                        validacion: { required: true, max: 1000 }
+                      },
+                      {
+                        id_input: 3,
+                        tipo_input: 'combobox',
+                        etiqueta: 'Departamento solicitante',
+                        opciones: ['Recursos Humanos', 'Finanzas', 'Tecnología', 'Operaciones', 'Marketing'],
+                        validacion: { required: true }
+                      },
+                      {
+                        id_input: 4,
+                        tipo_input: 'date',
+                        etiqueta: 'Fecha requerida',
+                        validacion: { required: false }
+                      },
+                      {
+                        id_input: 5,
+                        tipo_input: 'number',
+                        etiqueta: 'Presupuesto estimado',
+                        placeholder: '0.00',
+                        validacion: { min: 0, max: 1000000 }
+                      }
+                    ]}
+                    gruposAprobacion={[
+                      { id_grupo: 1, nombre: 'Gerencia General' },
+                      { id_grupo: 2, nombre: 'Finanzas y Contabilidad' },
+                      { id_grupo: 3, nombre: 'Recursos Humanos' },
+                      { id_grupo: 4, nombre: 'Tecnología' },
+                      { id_grupo: 5, nombre: 'Operaciones' }
+                    ]}
+                    usuarioActualId={1}
+                    onValidarCamposDinamicos={(campos) => {
+                      console.log('Validando campos dinámicos:', campos);
+                      return true;
+                    }}
                   />
                 </div>
               </motion.div>
@@ -480,7 +451,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
             </motion.div>
           </div>
 
-          {/* Lista detallada de pasos */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Detalles de Pasos</CardTitle>
@@ -491,12 +461,12 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                   <div key={paso.id_paso_solicitud} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <Badge variant="outline">{index + 1}</Badge>
-                       <div>
-                         <h4 className="font-medium">{paso.nombre}</h4>
-                         <p className="text-sm text-muted-foreground">
-                           {paso.descripcion || 'Sin descripción'} • {paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución'}
-                         </p>
-                       </div>
+                      <div>
+                        <h4 className="font-medium">{paso.nombre}</h4>
+                        <p className="text-sm text-muted-foreground">
+                        {paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución'}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {paso.responsable_id && (
@@ -521,23 +491,15 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
         </TabsContent>
       </Tabs>
 
-      {/* Modal de Pantalla Completa */}
       <Dialog open={mostrarPantallaCompleta} onOpenChange={setMostrarPantallaCompleta}>
         <DialogContent className="max-w-full w-screen h-screen max-h-screen p-0 gap-0 border-0">
           <FlowViewerPage
             flujo={flujo}
             pasos={pasos}
             caminos={caminos}
-            onActualizarPaso={onActualizarPaso}
-            onAgregarPaso={onAgregarPaso}
-            onCrearCamino={onCrearCamino}
-            onEditarPaso={onEditarPaso}
-            onVolverALista={() => setMostrarPantallaCompleta(false)}
-          />
+           />
         </DialogContent>
       </Dialog>
-
-      {/* El editor ahora está integrado como panel lateral */}
     </div>
   );
 };

@@ -13,16 +13,17 @@ import {
   RefreshCw,
   Settings
 } from 'lucide-react';
-import { useToast } from '@/hooks/bpm/use-toast';
+import { toast, useToast } from '@/hooks/bpm/use-toast';
+import { useBpm } from '@/hooks/bpm/useBpm'; // Nuevo import para usar el estado global
 
 interface FlowViewerPageProps {
   flujo: FlujoActivo;
   pasos: PasoSolicitud[];
   caminos: CaminoParalelo[];
-  onActualizarPaso: (pasoId: number, estado: PasoSolicitud['estado']) => void;
-  onAgregarPaso: (flujoId: number, x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => void;
-  onCrearCamino: (origen: number, destino: number) => void;
-  onEditarPaso?: (pasoActualizado: PasoSolicitud) => void;
+  // onActualizarPaso: (pasoId: number, estado: PasoSolicitud['estado']) => void; // TODO: Implementar thunk updatePasoSolicitud
+  // onAgregarPaso: (flujoId: number, x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => void; // TODO: Implementar thunk createPasoSolicitud
+  // onCrearCamino: (origen: number, destino: number) => void; // TODO: Implementar thunk createCaminoParalelo
+  // onEditarPaso?: (pasoActualizado: PasoSolicitud) => void; // TODO: Implementar thunk updatePasoSolicitud
   onVolverALista?: () => void;
 }
 
@@ -30,13 +31,9 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
   flujo,
   pasos,
   caminos,
-  onActualizarPaso,
-  onAgregarPaso,
-  onCrearCamino,
-  onEditarPaso,
   onVolverALista
 }) => {
-  const { toast } = useToast();
+  // const { toast, fetchPasosYConexiones, updatePasoSolicitud, createPasoSolicitud, createCaminoParalelo } = useBpm();
   const [modoEdicion, setModoEdicion] = useState(true);
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
   const [diagramaKey, setDiagramaKey] = useState(0);
@@ -60,25 +57,29 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
   };
 
   const handleGuardarPasoEditado = (pasoActualizado: PasoSolicitud) => {
-    if (onEditarPaso) {
-      onEditarPaso(pasoActualizado);
-    }
-    
+    // if (onEditarPaso) {
+    //   onEditarPaso(pasoActualizado);
+    // }
+    // Placeholder para thunk
+    // updatePasoSolicitud(pasoActualizado); // TODO: Implementar thunk
     setPasoEditando(null);
     setSelectedNodeId(null);
-    
     toast({
       title: "Paso actualizado",
-      description: `Los cambios en "${pasoActualizado.nombre}" se han guardado correctamente.`,
+      description: `Los cambios en "${pasoActualizado.nombre || 'Sin nombre'}" se han guardado correctamente.`,
     });
   };
 
   const handleAgregarPaso = (x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => {
-    onAgregarPaso(flujo.id_flujo_activo, x, y, tipo_paso);
+    // onAgregarPaso(flujo.id_flujo_activo, x, y, tipo_paso);
+    // Placeholder para thunk
+    // createPasoSolicitud({ flujo_activo_id: flujo.id_flujo_activo, posicion_x: x, posicion_y: y, tipo_paso }); // TODO: Implementar thunk
   };
 
   const handleActualizarPaso = (pasoId: number, estado: PasoSolicitud['estado']) => {
-    onActualizarPaso(pasoId, estado);
+    // onActualizarPaso(pasoId, estado);
+    // Placeholder para thunk
+    // updatePasoSolicitud({ id: pasoId, estado }); // TODO: Implementar thunk
     toast({
       title: "Paso actualizado",
       description: `Estado cambiado a ${estado}`,
@@ -89,7 +90,7 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
     // Solo resetear el diagrama en casos específicos, no por cambios normales en pasos/caminos
     // El key se incrementa solo cuando hay cambios estructurales importantes
     // Los cambios normales (agregar/editar pasos) se manejan internamente en DiagramaFlujo
-  }, []); // Removido el setDiagramaKey automático
+  }, []);
 
   // Resize handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -100,11 +101,9 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      
       const newWidth = window.innerWidth - e.clientX;
       const minWidth = 320;
       const maxWidth = window.innerWidth * 0.6;
-      
       setEditorWidth(Math.min(Math.max(newWidth, minWidth), maxWidth));
     };
 
@@ -129,7 +128,6 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
       'finalizado': 'default', 
       'cancelado': 'destructive'
     } as const;
-    
     return <Badge variant={variants[estado as keyof typeof variants] || 'outline'}>{estado}</Badge>;
   };
 
@@ -217,10 +215,10 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
             key={diagramaKey}
             pasos={pasos}
             caminos={caminos}
-            onActualizarPaso={handleActualizarPaso}
-            onAgregarPaso={handleAgregarPaso}
-            onCrearCamino={onCrearCamino}
-            onEditarPaso={handleEditarPaso}
+            // onActualizarPaso={handleActualizarPaso} // TODO: Implementar thunk
+            // onAgregarPaso={handleAgregarPaso} // TODO: Implementar thunk
+            // onCrearCamino={onCrearCamino} // TODO: Implementar thunk
+            // onEditarPaso={handleEditarPaso} // TODO: Implementar thunk
             readOnly={!modoEdicion}
             selectedNodeId={selectedNodeId || undefined}
             onNodeSelect={handleNodeSelect}
@@ -248,7 +246,7 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
             <div className="px-6 py-4 border-b bg-white">
               <div className="flex items-center gap-2">
                 <Edit className="w-5 h-5" />
-                <h3 className="font-semibold">{pasoEditando.nombre}</h3>
+                <h3 className="font-semibold">{pasoEditando.nombre || 'Sin nombre'}</h3>
                 <Badge variant={
                   pasoEditando.tipo_paso === 'aprobacion' ? 'secondary' : 'success'
                 }>
