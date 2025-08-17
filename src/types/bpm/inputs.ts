@@ -26,15 +26,15 @@ export interface Input {
   };
 }
 
+// Entidad RelacionInput (relación de inputs dinámicos con un paso)
 export interface RelacionInput {
   id_relacion: number;
   input_id: number;
-  solicitud_id?: number; // Opcional para mantener compatibilidad
-  paso_solicitud_id?: number; // Nuevo - para pasos de ejecución
-  valor: string;
+  nombre?: string;
+  valor: string; // JSON string con el valor del campo
+  placeholder?: string | null;
   requerido: boolean;
-  // Campos computados para la UI
-  input?: Input;
+  paso_solicitud_id: number;
 }
 
 export interface CamposDinamicos {

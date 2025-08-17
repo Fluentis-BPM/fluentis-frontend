@@ -4,8 +4,6 @@
 
 import { RelacionInput, CamposDinamicos } from './inputs';
 
-// Estados posibles de un flujo
-export type EstadoFlujo = 'encurso' | 'finalizado' | 'cancelado';
 
 // Interfaz para datos de solicitud
 export interface DatosSolicitud {
@@ -38,17 +36,6 @@ export interface ResultadoPaso {
   errores?: string[];
 }
 
-// Flujo activo - representa un flujo en ejecución
-export interface FlujoActivo {
-  id_flujo_activo: number;
-  solicitud_id: number;
-  flujo_ejecucion_id?: number; // Opcional - referencia a plantilla
-  estado: EstadoFlujo;
-  fecha_inicio: Date;
-  fecha_finalizacion?: Date;
-  datos_solicitud?: DatosSolicitud; // Datos de la solicitud original
-  campos_dinamicos?: RelacionInput[] | CamposDinamicos; // Campos dinámicos - puede ser array o objeto
-}
 
 // Plantilla de flujo (opcional)
 export interface PlantillaFlujo {
@@ -82,26 +69,7 @@ export interface EjecucionPaso {
   responsable_id?: number;
 }
 
-// Paso de solicitud en un flujo activo (nuevo para diagrama)
-export interface PasoSolicitud {
-  id_paso_solicitud: number;
-  flujo_activo_id: number;
-  paso_id?: number; // Opcional si viene de plantilla
-  camino_id?: number; // Referencia al camino
-  responsable_id?: number;
-  estado: 'pendiente' | 'aprobado' | 'rechazado' | 'excepcion' | 'completado';
-  fecha_inicio: Date;
-  fecha_finalizacion?: Date;
-  nombre: string;
-  descripcion?: string;
-  posicion_x: number; // Para el diagrama
-  posicion_y: number; // Para el diagrama
-  tipo: 'inicio' | 'proceso' | 'decision' | 'fin';
-  tipo_paso: 'ejecucion' | 'aprobacion'; // Nuevo campo para diferenciar tipos
-  tipo_flujo: 'normal' | 'bifurcacion' | 'union'; // Tipo de flujo del paso
-  regla_aprobacion: 'unanime' | 'individual' | 'ancla'; // Regla de aprobación para pasos de aprobación
-  campos_dinamicos?: RelacionInput[] | CamposDinamicos; // Campos dinámicos del paso
-}
+
 
 // Camino paralelo para conexiones entre pasos
 export interface CaminoParalelo {
@@ -120,4 +88,92 @@ export interface EstadisticasFlujos {
   finalizados: number;
   cancelados: number;
   promedio_duracion?: number; // En días
+}
+
+// src/types/bpm/flow.ts
+
+// Tipos básicos
+export type EstadoFlujo = 'encurso' | 'finalizado' | 'cancelado';
+type TipoPaso = 'ejecucion' | 'aprobacion';
+type EstadoPaso = 'aprobado' | 'rechazado' | 'excepcion' | 'pendiente' | 'entregado' | 'cancelado';
+type TipoFlujoPaso = 'normal' | 'bifurcacion' | 'union';
+type ReglaAprobacion = 'unanime' | 'individual' | 'ancla';
+
+// Entidad FlujoActivo
+export interface FlujoActivo {
+  id_flujo_activo: number;
+  solicitud_id: number;
+  nombre: string;
+  descripcion?: string;
+  version_actual?: number;
+  flujo_ejecucion_id: number;
+  fecha_inicio: Date;
+  fecha_finalizacion?: Date;
+  estado: EstadoFlujo;
+  datos_solicitud?: Record<string, string>;
+  campos_dinamicos?: Record<string, string>;
+}
+
+// Entidad PasoSolicitud
+export interface PasoSolicitud {
+  id_paso_solicitud: number;
+  flujo_activo_id: number;
+  paso_id?: number;
+  camino_id?: number;
+  responsable_id?: number;
+  fecha_inicio: Date;
+  fecha_fin?: Date;
+  tipo_paso: TipoPaso;
+  estado: EstadoPaso;
+  nombre?: string;
+  tipo_flujo: TipoFlujoPaso;
+  regla_aprobacion?: ReglaAprobacion;
+  posicion_x?: number;
+  posicion_y?: number;
+  relacionesInput: RelacionInput[];
+  relacionesGrupoAprobacion: RelacionGrupoAprobacion[];
+  comentarios: Comentario[];
+  excepciones: Excepcion[];
+}
+
+// Entidad CaminoParalelo (conexión entre pasos)
+export interface CaminoParalelo {
+  id_camino: number;
+  paso_origen_id: number;
+  paso_destino_id: number;
+  es_excepcion: boolean;
+  nombre?: string;
+}
+
+
+// Entidad RelacionGrupoAprobacion (asignación de grupos de aprobación)
+export interface RelacionGrupoAprobacion {
+  id_relacion: number;
+  grupo_aprobacion_id: number;
+  paso_solicitud_id: number;
+}
+
+// Entidad Comentario (comentarios asociados a un paso)
+export interface Comentario {
+  id_comentario: number;
+  paso_solicitud_id: number;
+  usuario_id: number;
+  contenido: string;
+  fecha_creacion: Date;
+}
+
+// Entidad Excepcion (excepciones asociadas a un paso)
+export interface Excepcion {
+  id_excepcion: number;
+  paso_solicitud_id: number;
+  descripcion: string;
+  fecha_registro: Date;
+  estado: 'activa' | 'resuelta';
+}
+
+// Tipo de respuesta del endpoint GET /api/FlujosActivos/Pasos/{id}
+export interface FlujoActivoResponse {
+  flujoActivoId: number;
+  pasos: PasoSolicitud[];
+  caminos: CaminoParalelo[];
 }

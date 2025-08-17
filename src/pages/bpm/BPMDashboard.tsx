@@ -178,7 +178,7 @@ export const BPMDashboard: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="flujos" className="space-y-4 p-8 m-0">
-              <ModuloFlujos solicitudesData={solicitudesData} />
+              <ModuloFlujos/>
             </TabsContent>
           </Tabs>
         </div>
