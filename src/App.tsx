@@ -8,6 +8,7 @@ import { msalConfig } from "./authConfig";
 import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { setAccessToken, silentVerifyToken } from './store/auth/authSlice';
+import { fetchSolicitudes } from './store/solicitudes/solicitudesSlice';
 
 import { router } from './routes/index';
 const msalInstance = new PublicClientApplication(msalConfig);
@@ -29,6 +30,8 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
           
           // Verify the token with the backend silently
           await dispatch(silentVerifyToken(storedToken));
+          // After token is set and user verified, prefetch solicitudes
+          await dispatch(fetchSolicitudes());
         }
       } catch (error) {
         console.error('Error initializing authentication:', error);

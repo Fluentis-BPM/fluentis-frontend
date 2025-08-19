@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import { SelectorCamposDinamicos } from './SelectorCamposDinamicos';
 import { SelectorGrupoAprobacion } from './SelectorGrupoAprobacion';
 import { Plus, User, Workflow, Settings, Users } from 'lucide-react';
 import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 interface Props {
   onCrearSolicitud: (input: CrearSolicitudInput, grupoAprobacionId?: number) => void;
@@ -23,8 +25,10 @@ export const FormularioSolicitud: React.FC<Props> = ({
   isLoading = false 
 }) => {
   const { grupos: gruposBackend } = useAprobations();
+  const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario);
+  const initialSolicitante = useMemo(() => currentUserId || 0, [currentUserId]);
   const [formData, setFormData] = useState<CrearSolicitudInput>({
-    solicitante_id: 0,
+    solicitante_id: initialSolicitante,
     flujo_base_id: undefined,
     estado: 'pendiente',
     datos_adicionales: {},

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSolicitudes } from '@/hooks/bpm/useSolicitudes';
 import { FormularioSolicitud } from './FormularioSolicitud';
 import { TarjetaSolicitud } from './TarjetaSolicitud';
@@ -15,6 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EstadoSolicitud } from '@/types/bpm/request';
 import { Search, Filter, SortDesc, FileX, Layers, Users, Plus, ArrowRight, Workflow } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
+import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 export const ModuloSolicitudes: React.FC<{
   solicitudesData: ReturnType<typeof useSolicitudes>;
@@ -30,7 +33,8 @@ export const ModuloSolicitudes: React.FC<{
     // Funcionalidades de aprobación desde useSolicitudes
     obtenerGrupoPorSolicitud,
     relacionesGrupo,
-    registrarDecision,
+  registrarDecisionSolicitud,
+    asociarGrupoASolicitud,
     verificarAprobacionCompleta,
     verificarRechazo,
     obtenerEstadisticasAprobacion,
@@ -42,16 +46,29 @@ export const ModuloSolicitudes: React.FC<{
   const [filtroEstado, setFiltroEstado] = useState<EstadoSolicitud | 'todos'>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const { grupos: gruposBackend } = useAprobations();
+  const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario || 0);
 
-  const handleCrearSolicitud = (input: CrearSolicitudInput, grupoAprobacionId?: number) => {
+  // Seed local relacionesGrupo from solicitudes that include backend grupo id
+  useEffect(() => {
+    if (!solicitudes || solicitudes.length === 0) return;
+    solicitudes.forEach((s) => {
+      const gid = (s && typeof s === 'object' ? (s as { grupo_aprobacion_id?: number }).grupo_aprobacion_id : undefined);
+      if (gid && !relacionesGrupo.some(r => r.solicitud_id === s.id_solicitud)) {
+        try { asociarGrupoASolicitud(gid, s.id_solicitud); } catch (e) { /* noop */ }
+      }
+    });
+  }, [solicitudes, relacionesGrupo, asociarGrupoASolicitud]);
+
+  const handleCrearSolicitud = async (input: CrearSolicitudInput, grupoAprobacionId?: number) => {
     try {
-      const nuevaSolicitud = crearSolicitud(input);
-      
-      // Asignar grupo de aprobación si se seleccionó uno
+      const nuevaSolicitud = await crearSolicitud(input);
+
+  
       if (grupoAprobacionId) {
         asignarGrupoAprobacion(nuevaSolicitud.id_solicitud, grupoAprobacionId);
       }
-      
+
       toast({
         title: "Solicitud creada",
         description: `Solicitud #${nuevaSolicitud.id_solicitud} creada exitosamente`,
@@ -137,7 +154,6 @@ export const ModuloSolicitudes: React.FC<{
           </Button>
         </div>
 
-        {/* Estadísticas compactas */}
         <EstadisticasSolicitudes estadisticas={estadisticas} />
 
         {/* Pestañas principales */}
@@ -158,10 +174,11 @@ export const ModuloSolicitudes: React.FC<{
 
           <TabsContent value="solicitudes" className="space-y-4">
             {/* Formulario de creación */}
-            {mostrarFormulario && (
+    {mostrarFormulario && (
               <div className="max-w-4xl mx-auto">
                 <FormularioSolicitud 
                   onCrearSolicitud={handleCrearSolicitud}
+      isLoading={solicitudesData.isLoading}
                   // gruposAprobacion removed (hook internal)
                   // onCrearGrupo removed
                 />
@@ -229,13 +246,43 @@ export const ModuloSolicitudes: React.FC<{
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  {solicitudesFiltradas.map((solicitud) => (
+                  {solicitudesFiltradas.map((solicitud) => {
+                    const relacion = relacionesGrupo.find(r => r.solicitud_id === solicitud.id_solicitud);
+                    const assignedGroupId = relacion?.grupo_aprobacion_id ?? (solicitud as { grupo_aprobacion_id?: number }).grupo_aprobacion_id;
+                    const g = gruposBackend.find(gr => gr.id_grupo === assignedGroupId);
+                    const miembrosReales = ((g?.usuarios || []).map(u => u.idUsuario).filter(Boolean) as number[]) || [];
+                    const esMiembro = currentUserId && miembrosReales.includes(currentUserId);
+
+                    const quickApprove = async () => {
+                      if (!currentUserId) return;
+                      registrarDecisionSolicitud(solicitud.id_solicitud, currentUserId, 'si', (nuevoEstado) => actualizarEstado(solicitud.id_solicitud, nuevoEstado));
+                      toast({ title: 'Decisión registrada', description: 'Has aprobado la solicitud.' });
+                    };
+                    const quickReject = async () => {
+                      if (!currentUserId) return;
+                      registrarDecisionSolicitud(solicitud.id_solicitud, currentUserId, 'no', (nuevoEstado) => actualizarEstado(solicitud.id_solicitud, nuevoEstado));
+                      toast({ title: 'Decisión registrada', description: 'Has rechazado la solicitud.' });
+                    };
+
+                    return (
                     <div key={solicitud.id_solicitud} className="space-y-3">
                        <TarjetaSolicitud
                          solicitud={solicitud}
                          onActualizarEstado={handleActualizarEstado}
                          onEliminar={handleEliminar}
                        />
+
+                       {/* Acciones rápidas para miembros del grupo */}
+                       {assignedGroupId && solicitud.estado === 'pendiente' && esMiembro && (
+                         <div className="flex gap-2 px-1">
+                           <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={quickApprove}>
+                             Aprobar
+                           </Button>
+                           <Button size="sm" variant="destructive" onClick={quickReject}>
+                             Rechazar
+                           </Button>
+                         </div>
+                       )}
                        
                        {/* Notificación de flujo creado */}
                        {solicitud.estado === 'aprobado' && obtenerFlujoPorSolicitud(solicitud.id_solicitud) && (
@@ -268,14 +315,8 @@ export const ModuloSolicitudes: React.FC<{
                        )}
                        {/* Proceso de Aprobación */}
                        {(() => {
-                         const grupo = obtenerGrupoPorSolicitud(solicitud.id_solicitud);
-                         const miembrosReales = grupo?.miembros || [];
-                         const relacion = relacionesGrupo.find(r => r.solicitud_id === solicitud.id_solicitud);
-                         
-                         console.log('Solicitud:', solicitud.id_solicitud, 'Grupo:', grupo, 'Miembros:', miembrosReales);
-                         
-                         // Solo mostrar si hay grupo y miembros asignados
-                         if (miembrosReales.length === 0) {
+                         // Mostrar el proceso si hay relación; si no, mostrar mensaje
+             if (!assignedGroupId) {
                            return (
                              <div className="p-3 bg-muted/50 rounded-lg border border-dashed">
                                <p className="text-xs text-muted-foreground text-center">
@@ -285,34 +326,36 @@ export const ModuloSolicitudes: React.FC<{
                            );
                          }
 
-                          return (
-                            <ProcesoAprobacion
-                              solicitud_id={solicitud.id_solicitud}
-                              miembrosGrupo={miembrosReales}
-                              relacionGrupoAprobacionId={relacion?.id_relacion}
-                              onEstadoCambiado={(nuevoEstado) => 
-                                handleActualizarEstado(solicitud.id_solicitud, nuevoEstado)
-                              }
-                              obtenerGrupoPorSolicitud={obtenerGrupoPorSolicitud}
-                              registrarDecision={registrarDecision}
-                              verificarAprobacionCompleta={verificarAprobacionCompleta}
-                              verificarRechazo={verificarRechazo}
-                              obtenerEstadisticasAprobacion={(sid, miembros) => {
-                                const stats = obtenerEstadisticasAprobacion(sid, miembros);
-                                return { 
-                                  total: stats.total_miembros,
-                                  total_miembros: stats.total_miembros,
-                                  aprobaciones: stats.aprobaciones,
-                                  rechazos: stats.rechazos,
-                                  pendientes: stats.pendientes
-                                };
-                              }}
-                              usuarioActualId={0}
-                            />
-                          );
+                         return (
+                           <ProcesoAprobacion
+                             solicitud_id={solicitud.id_solicitud}
+                             miembrosGrupo={miembrosReales}
+               relacionGrupoAprobacionId={relacion?.id_relacion}
+                             onEstadoCambiado={(nuevoEstado) => 
+                               handleActualizarEstado(solicitud.id_solicitud, nuevoEstado)
+                             }
+                             obtenerGrupoPorSolicitud={obtenerGrupoPorSolicitud}
+                             registrarDecision={(idUsuario, _relacionId, dec, onChange) =>
+                               registrarDecisionSolicitud(solicitud.id_solicitud, idUsuario, dec, onChange)
+                             }
+                             verificarAprobacionCompleta={verificarAprobacionCompleta}
+                             verificarRechazo={verificarRechazo}
+                             obtenerEstadisticasAprobacion={(sid, miembros) => {
+                               const stats = obtenerEstadisticasAprobacion(sid, miembros);
+                               return { 
+                                 total: stats.total_miembros,
+                                 total_miembros: stats.total_miembros,
+                                 aprobaciones: stats.aprobaciones,
+                                 rechazos: stats.rechazos,
+                                 pendientes: stats.pendientes
+                               };
+                             }}
+                             usuarioActualId={currentUserId}
+                           />
+                         );
                        })()}
                     </div>
-                  ))}
+                  );})}
                 </div>
               )}
             </div>
