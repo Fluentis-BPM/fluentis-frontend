@@ -22,8 +22,21 @@ export interface DatosAdicionales {
 
 // Interfaz completa que combina los campos base con datos adicionales
 export interface Solicitud extends SolicitudBase {
+  // Nuevos campos alineados al backend
+  nombre?: string;
+  descripcion?: string | null;
+  solicitante?: { idUsuario: number; nombre: string; email: string };
+  grupos_aprobacion?: Array<{
+    id_relacion: number;
+    grupo_aprobacion_id: number;
+    paso_solicitud_id?: number | null;
+    solicitud_id?: number | null;
+    decisiones?: Array<{ id_relacion: number; id_usuario: number; decision: 'si' | 'no' | null; fecha_decision?: string }>
+  }>;
   datos_adicionales?: DatosAdicionales;
   campos_dinamicos?: RelacionInput[];
+  // Grupo de aprobación asociado (si existe en backend)
+  grupo_aprobacion_id?: number;
   // Campos computados para la UI
   estado_texto?: string;
   dias_transcurridos?: number;

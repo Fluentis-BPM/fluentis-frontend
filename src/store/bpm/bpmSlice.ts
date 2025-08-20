@@ -1,7 +1,7 @@
 // src/store/bpm/bpmSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { FlujoActivo, PasoSolicitud, CaminoParalelo, FlujoActivoResponse } from '@/types/bpm/flow';
-import axios from 'axios';
+import api from '@/services/api';
 
 interface BpmState {
   flujosActivos: FlujoActivo[];
@@ -25,7 +25,7 @@ export const fetchFlujosActivos = createAsyncThunk(
   'bpm/fetchFlujosActivos',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get<FlujoActivo[]>('/api/FlujosActivos');
+  const response = await api.get<FlujoActivo[]>('/api/FlujosActivos');
       return response.data;
     } catch (error: unknown) {
       return rejectWithValue('Error al cargar los flujos activos: ' + (error as Error).message);
@@ -37,7 +37,7 @@ export const fetchPasosYConexiones = createAsyncThunk(
   'bpm/fetchPasosYConexiones',
   async (flujoActivoId: number, { rejectWithValue }) => {
     try {
-      const response = await axios.get<FlujoActivoResponse>(`/api/FlujosActivos/Pasos/${flujoActivoId}`);
+  const response = await api.get<FlujoActivoResponse>(`/api/FlujosActivos/Pasos/${flujoActivoId}`);
       return {
         flujoId: response.data.flujoActivoId,
         pasos: response.data.pasos,
@@ -48,6 +48,7 @@ export const fetchPasosYConexiones = createAsyncThunk(
     }
   }
 );
+
 
 const bpmSlice = createSlice({
   name: 'bpm',
@@ -84,7 +85,7 @@ const bpmSlice = createSlice({
       .addCase(fetchPasosYConexiones.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      });
+  });
   },
 });
 

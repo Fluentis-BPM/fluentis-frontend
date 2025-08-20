@@ -17,6 +17,18 @@ export const setApiToken = (token: string | null) => {
   currentAccessToken = token;
 };
 
+// Initialize token from localStorage if available (helps on hard reloads before Redux hydrates)
+try {
+  if (typeof window !== 'undefined') {
+    const stored = window.localStorage?.getItem('accessToken');
+    if (stored) {
+      currentAccessToken = stored;
+    }
+  }
+} catch {
+  // ignore access errors
+}
+
 // Configurar el interceptor para incluir el accessToken
 api.interceptors.request.use(
   (config) => {

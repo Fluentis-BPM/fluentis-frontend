@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ModuloSolicitudes } from '@/components/bpm/requests/ModuloSolicitudes';
 import { ModuloFlujos } from '@/components/bpm/flows/ModuloFlujos';
@@ -18,6 +18,11 @@ import {
 export const BPMDashboard: React.FC = () => {
   const solicitudesData = useSolicitudes();
   const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => {
+    // Best-effort fetch; hook also auto-loads when authenticated
+    try { solicitudesData.cargarSolicitudes(); } catch (e) { /* noop */ }
+  }, []);
 
   const stats = {
     totalSolicitudes: solicitudesData.solicitudes.length,
