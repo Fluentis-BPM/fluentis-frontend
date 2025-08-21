@@ -33,6 +33,16 @@ export const TarjetaFlujo: React.FC<Props> = ({
   onVerDetalles,
   onVerDiagrama
 }) => {
+  // Helper to safely parse different date shapes coming from API
+  const parseDate = (value: unknown): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'number' || typeof value === 'string') {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    return null;
+  };
   
   const getEstadoIcon = () => {
     switch (flujo.estado) {
@@ -61,14 +71,17 @@ export const TarjetaFlujo: React.FC<Props> = ({
   };
 
   const getDuracion = () => {
-    const fechaFin = flujo.fecha_finalizacion || new Date();
-    return formatDistance(flujo.fecha_inicio, fechaFin, { 
+    const start = parseDate(flujo.fecha_inicio);
+    const end = parseDate(flujo.fecha_finalizacion) || new Date();
+    if (!start) return 'Desconocida';
+    return formatDistance(start, end, { 
       locale: es,
       addSuffix: false 
     });
   };
 
-  const pasosCompletados = pasos.filter(p => p.estado === 'completado').length;
+  // Consider a paso completed when it's aprobado or entregado
+  const pasosCompletados = pasos.filter(p => p.estado === 'aprobado' || p.estado === 'entregado').length;
   const progreso = pasos.length > 0 ? (pasosCompletados / pasos.length) * 100 : 0;
 
   return (
@@ -117,7 +130,10 @@ export const TarjetaFlujo: React.FC<Props> = ({
               <span className="text-muted-foreground">Iniciado:</span>
             </div>
             <span className="font-medium">
-              {flujo.fecha_inicio.toLocaleDateString('es-ES')}
+              {(() => {
+                const d = parseDate(flujo.fecha_inicio);
+                return d ? d.toLocaleDateString('es-ES') : 'Desconocido';
+              })()}
             </span>
           </div>
           
@@ -155,7 +171,7 @@ export const TarjetaFlujo: React.FC<Props> = ({
         )}
 
         {/* Datos adicionales */}
-        {(flujo.datos_solicitud || flujo.campos_dinamicos) && (
+        {(flujo.datos_solicitud) && (
           <>
             <Separator />
             <div className="space-y-2">
@@ -167,12 +183,6 @@ export const TarjetaFlujo: React.FC<Props> = ({
               {flujo.datos_solicitud && (
                 <div className="text-xs text-muted-foreground">
                   • Datos base de la solicitud
-                </div>
-              )}
-              
-              {flujo.campos_dinamicos && (
-                <div className="text-xs text-muted-foreground">
-                  • Campos dinámicos personalizados
                 </div>
               )}
             </div>

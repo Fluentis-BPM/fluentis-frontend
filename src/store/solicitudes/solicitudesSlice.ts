@@ -98,9 +98,10 @@ const mapSolicitud = (sObj: unknown): Solicitud => {
     }
   }
   return {
-    id_solicitud: id,
-    solicitante_id: (pick<number>(s, ['solicitanteId', 'SolicitanteId']) ?? 0),
-    fecha_creacion: fecha ? new Date(fecha) : new Date(),
+  id_solicitud: id,
+  solicitante_id: (pick<number>(s, ['solicitanteId', 'SolicitanteId']) ?? 0),
+  // Store dates as ISO strings to keep Redux state serializable
+  fecha_creacion: fecha ? new Date(fecha).toISOString() : new Date().toISOString(),
     flujo_base_id: pick<number>(s, ['flujoBaseId', 'FlujoBaseId']),
     estado: estadoApiToUi(pick<EstadoSolicitudApi>(s, ['estado', 'Estado'])),
     nombre: pick<string>(s, ['nombre', 'Nombre']),

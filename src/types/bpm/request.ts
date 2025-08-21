@@ -10,7 +10,7 @@ export type EstadoSolicitud = 'aprobado' | 'rechazado' | 'pendiente';
 export interface SolicitudBase {
   id_solicitud: number;
   solicitante_id: number;
-  fecha_creacion: Date;
+  fecha_creacion: string | Date;
   flujo_base_id?: number; // Opcional - ID de plantilla predefinida
   estado: EstadoSolicitud;
 }

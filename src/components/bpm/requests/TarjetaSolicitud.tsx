@@ -43,19 +43,22 @@ const getEstadoConfig = (estado: EstadoSolicitud) => {
   }
 };
 
-const formatearFecha = (fecha: Date) => {
+const parseFecha = (f: string | Date) => (typeof f === 'string' ? new Date(f) : f);
+
+const formatearFecha = (fecha: string | Date) => {
+  const d = parseFecha(fecha);
   return new Intl.DateTimeFormat('es-ES', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  }).format(new Date(fecha));
+  }).format(d);
 };
 
-const calcularDiasTranscurridos = (fecha: Date) => {
+const calcularDiasTranscurridos = (fecha: string | Date) => {
   const ahora = new Date();
-  const diferencia = ahora.getTime() - new Date(fecha).getTime();
+  const diferencia = ahora.getTime() - parseFecha(fecha).getTime();
   return Math.floor(diferencia / (1000 * 60 * 60 * 24));
 };
 
@@ -74,7 +77,7 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
     }
   };
 
-  const prioridad = solicitud.datos_adicionales?.prioridad || 'media';
+  const prioridad = String(solicitud.datos_adicionales?.prioridad ?? 'media');
 
   return (
     <motion.div
@@ -177,7 +180,7 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
         {solicitud.datos_adicionales?.descripcion && (
           <div className="p-3 bg-gradient-card rounded-lg border">
             <p className="text-sm text-foreground/90">
-              {solicitud.datos_adicionales.descripcion}
+              {String(solicitud.datos_adicionales.descripcion)}
             </p>
           </div>
         )}

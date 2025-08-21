@@ -42,6 +42,17 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const [mostrarPantallaCompleta, setMostrarPantallaCompleta] = useState(false);
 
+  // Helper to safely parse different date shapes coming from API
+  const parseDate = (value: unknown): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'number' || typeof value === 'string') {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    return null;
+  };
+
   // Obtener pasos y caminos del estado global
   const pasos = pasosPorFlujo[flujo.id_flujo_activo] || [];
   const caminos = caminosPorFlujo[flujo.id_flujo_activo] || [];
@@ -157,25 +168,16 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                   {getEstadoBadge(flujo.estado)}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Solicitud #{flujo.solicitud_id} • Iniciado {flujo.fecha_inicio.toLocaleDateString()}
+                  Solicitud #{flujo.solicitud_id} • Iniciado {(() => {
+                    const d = parseDate(flujo.fecha_inicio);
+                    return d ? d.toLocaleDateString('es-ES') : 'Desconocido';
+                  })()}
                 </p>
                 {flujo.datos_solicitud && (
                   <div className="mt-2 p-2 bg-muted/30 rounded-md">
                     <p className="text-xs text-muted-foreground mb-1">Datos de Solicitud:</p>
                     <div className="text-xs space-y-1">
                       {Object.entries(flujo.datos_solicitud).map(([key, value]) => (
-                        <div key={key}>
-                          <span className="font-medium">{key}:</span> {String(value)}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {flujo.campos_dinamicos && Object.keys(flujo.campos_dinamicos).length > 0 && (
-                  <div className="mt-2 p-2 bg-primary/5 rounded-md">
-                    <p className="text-xs text-muted-foreground mb-1">Campos Dinámicos:</p>
-                    <div className="text-xs space-y-1">
-                      {Object.entries(flujo.campos_dinamicos).map(([key, value]) => (
                         <div key={key}>
                           <span className="font-medium">{key}:</span> {String(value)}
                         </div>
@@ -268,7 +270,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 readOnly={!modoEdicion}
                 selectedNodeId={selectedNodeId || undefined}
                 onNodeSelect={handleNodeSelect}
-                camposDinamicosIniciales={flujo.campos_dinamicos}
+                datosSolicitudIniciales={flujo.datos_solicitud}
               />
             </div>
             {pasoEditando && (
@@ -457,34 +459,71 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {pasos.map((paso, index) => (
-                  <div key={paso.id_paso_solicitud} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline">{index + 1}</Badge>
-                      <div>
-                        <h4 className="font-medium">{paso.nombre}</h4>
-                        <p className="text-sm text-muted-foreground">
-                        {paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución'}
-                        </p>
+                {(() => {
+                  const inicioPaso: PasoSolicitud = {
+                    id_paso_solicitud: 0,
+                    flujo_activo_id: flujo.id_flujo_activo,
+                    paso_id: undefined,
+                    camino_id: undefined,
+                    responsable_id: undefined,
+                    fecha_inicio: new Date(),
+                    tipo_paso: 'ejecucion',
+                    estado: 'pendiente',
+                    nombre: flujo.datos_solicitud && Object.keys(flujo.datos_solicitud).length > 0 ? 'Paso inicial (Solicitud)' : 'Paso inicial',
+                    tipo_flujo: 'normal',
+                    regla_aprobacion: undefined,
+                    posicion_x: 20,
+                    posicion_y: 20,
+                    relacionesInput: [],
+                    relacionesGrupoAprobacion: [],
+                    comentarios: [],
+                    excepciones: []
+                  } as PasoSolicitud;
+
+                  const combined = [inicioPaso, ...pasos];
+                  return combined.map((paso, index) => (
+                    <div
+                      key={paso.id_paso_solicitud}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                      onClick={() => handleNodeSelect(paso)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">{index + 1}</Badge>
+                        <div>
+                          <h4 className="font-medium">{paso.nombre}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {paso.id_paso_solicitud === 0 ? 'Paso inicial' : (paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución')}
+                          </p>
+                          {paso.id_paso_solicitud === 0 && flujo.datos_solicitud && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              <strong>Datos de solicitud:</strong>
+                              <div className="mt-1">
+                                {Object.entries(flujo.datos_solicitud).map(([k,v]) => (
+                                  <div key={k} className="truncate">{k}: {String(v)}</div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {paso.responsable_id && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Users className="w-3 h-3" />
+                            ID: {paso.responsable_id}
+                          </div>
+                        )}
+                        <Badge variant={
+                          paso.estado === 'aprobado' ? 'default' :
+                          paso.estado === 'rechazado' ? 'destructive' :
+                          paso.estado === 'excepcion' ? 'secondary' : 'outline'
+                        }>
+                          {paso.estado}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {paso.responsable_id && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Users className="w-3 h-3" />
-                          ID: {paso.responsable_id}
-                        </div>
-                      )}
-                      <Badge variant={
-                        paso.estado === 'aprobado' ? 'default' :
-                        paso.estado === 'rechazado' ? 'destructive' :
-                        paso.estado === 'excepcion' ? 'secondary' : 'outline'
-                      }>
-                        {paso.estado}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             </CardContent>
           </Card>

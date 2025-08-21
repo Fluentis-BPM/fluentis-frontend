@@ -50,10 +50,10 @@ interface DiagramaFlujoProps {
   pasos: PasoSolicitud[];
   caminos: CaminoParalelo[];
   // onActualizarPaso: (pasoId: number, estado: PasoSolicitud['estado']) => void; // TODO: Implementar thunk updatePasoSolicitud
-  // onAgregarPaso: (x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => void; // TODO: Implementar thunk createPasoSolicitud
+  // onAgregarPaso: (x: number, y: number, tipo_paso?: 'ejecucion' | 'aprdaobacion') => void; // TODO: Implementar thunk createPasoSolicitud
   // onCrearCamino: (origen: number, destino: number) => void; // TODO: Implementar thunk createCaminoParalelo
   readOnly?: boolean;
-  camposDinamicosIniciales?: RelacionInput[] | CamposDinamicos | Record<string, string> | undefined; // Campos dinámicos de la solicitud original
+  datosSolicitudIniciales?: Record<string, string> | undefined; // Campos dinámicos de la solicitud original
   selectedNodeId?: string;
   onNodeSelect?: (paso: PasoSolicitud | null) => void;
 }
@@ -63,6 +63,11 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   const { paso, camposDinamicosIniciales, esInicial, isSelected, onNodeClick } = data;
   
   const getIconByTipo = () => {
+    // Special icon for initial step
+    if (paso.id_paso_solicitud === 0) {
+      return <Play className="w-4 h-4" />;
+    }
+    
     switch (paso.tipo_flujo) { // Corregido de 'tipo' a 'tipo_flujo' según la interfaz PasoSolicitud
       case 'normal': return <Settings className="w-4 h-4" />;
       case 'bifurcacion': return <AlertTriangle className="w-4 h-4" />;
@@ -88,6 +93,9 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   };
 
   const getBadgeVariant = () => {
+    // Don't show estado badge for initial step
+    if (paso.id_paso_solicitud === 0) return null;
+    
     switch (paso.estado) {
       case 'aprobado': return 'default';
       case 'rechazado': return 'destructive';
@@ -108,7 +116,11 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       className={`p-4 min-w-[220px] transition-all duration-300 cursor-pointer ${getColorByEstado()} ${
         isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'
       }`}
-      onClick={() => onNodeClick?.(paso)}
+      onClick={() => {
+        // Don't open editor for initial step
+        if (paso.id_paso_solicitud === 0) return;
+        onNodeClick?.(paso);
+      }}
     >
       <div className="flex items-start gap-3">
         <div className="text-primary mt-1">
@@ -116,7 +128,12 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
         </div>
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
-            <h4 className="font-semibold text-sm">{paso.nombre || 'Sin nombre'}</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-sm">{paso.nombre || 'Sin nombre'}</h4>
+              {paso.id_paso_solicitud === 0 && (
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Inicial</span>
+              )}
+            </div>
           </div>
           
 
@@ -125,12 +142,15 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
             <div className={`flex items-center gap-1 ${getTipoPasoColor()}`}>
               {getIconByTipoPaso()}
               <span className="text-xs font-medium">
-                {paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución'}
+                {paso.id_paso_solicitud === 0 ? 'Inicial' : 
+                 (paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución')}
               </span>
             </div>
-            <Badge variant={getBadgeVariant()} className="text-xs">
-              {paso.estado}
-            </Badge>
+            {getBadgeVariant() && (
+              <Badge variant={getBadgeVariant()} className="text-xs">
+                {paso.estado}
+              </Badge>
+            )}
           </div>
 
           {paso.responsable_id && (
@@ -156,7 +176,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
           )}
 
           {/* Botones deshabilitados hasta que se implemente el thunk */}
-          {data.readOnly !== true && paso.estado === 'pendiente' && (
+          {data.readOnly !== true && paso.estado === 'pendiente' && paso.id_paso_solicitud !== 0 && (
             <div className="flex gap-1">
               {paso.tipo_paso === 'aprobacion' ? (
                 <>
@@ -193,7 +213,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       </div>
       
       {/* Handles para conexiones */}
-      {!esInicial && (
+      {paso.id_paso_solicitud !== 0 && (
         <Handle
           type="target"
           position={Position.Left}
@@ -221,7 +241,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   pasos,
   caminos,
   readOnly = false,
-  camposDinamicosIniciales,
+  datosSolicitudIniciales,
   selectedNodeId,
   onNodeSelect
 }) => {
@@ -231,8 +251,8 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Convertir pasos a nodos de React Flow
-  const initialNodes: Node[] = useMemo(() => 
-    pasos.map(paso => {
+  const initialNodes: Node[] = useMemo(() => {
+    const nodesFromPasos: Node[] = pasos.map(paso => {
       const esInicial = paso.tipo_flujo === 'normal' && !paso.camino_id; // Ajuste basado en lógica de flujo inicial
       const nodeId = paso.id_paso_solicitud.toString();
       return {
@@ -241,10 +261,9 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         position: { x: paso.posicion_x || 0, y: paso.posicion_y || 0 },
         data: { 
           paso, 
-          // onActualizarEstado: (pasoId, estado) => updatePasoSolicitud({ id: pasoId, estado }), // TODO: Implementar thunk
-          // onEditarPaso: updatePasoSolicitud, // TODO: Implementar thunk
           readOnly,
-          camposDinamicosIniciales: esInicial ? camposDinamicosIniciales : undefined,
+          // Pass the initial request data into the initial node only
+          camposDinamicosIniciales: esInicial ? datosSolicitudIniciales : undefined,
           esInicial,
           isSelected: selectedNodeId === nodeId,
           onNodeClick: onNodeSelect
@@ -252,9 +271,45 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
         draggable: !readOnly,
-      };
-    }), [pasos, readOnly, camposDinamicosIniciales, selectedNodeId, onNodeSelect]
-  );
+      } as Node;
+    });
+
+    // Always create the synthetic step 0 node (initial node)
+    const inicioPaso = {
+      id_paso_solicitud: 0,
+      nombre: datosSolicitudIniciales && Object.keys(datosSolicitudIniciales).length > 0 ? 'Paso inicial (Solicitud)' : 'Paso inicial',
+      tipo_flujo: 'normal',
+      tipo_paso: 'ejecucion',
+      estado: 'pendiente',
+      posicion_x: 50,
+      posicion_y: 50,
+      flujo_activo_id: pasos[0]?.flujo_activo_id || 0,
+      fecha_inicio: new Date(),
+      relacionesInput: [],
+      relacionesGrupoAprobacion: [],
+      comentarios: [],
+      excepciones: []
+    } as unknown as PasoSolicitud;
+
+    const inicioNode: Node = {
+      id: '0',
+      type: 'pasoNode',
+      position: { x: 50, y: 50 },
+      data: {
+        paso: inicioPaso,
+        readOnly: false, // Allow moving but not editing content
+        camposDinamicosIniciales: datosSolicitudIniciales,
+        esInicial: true,
+        isSelected: selectedNodeId === '0',
+        onNodeClick: onNodeSelect
+      },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      draggable: true, // Allow moving the initial step
+    };
+
+    return [inicioNode, ...nodesFromPasos];
+  }, [pasos, readOnly, datosSolicitudIniciales, selectedNodeId, onNodeSelect]);
 
   // Convertir caminos a edges de React Flow
   const initialEdges: Edge[] = useMemo(() => 
@@ -375,6 +430,12 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   const onConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target) {
+        // Prevent connections TO the initial node (id '0')
+        if (params.target === '0') {
+          console.warn('No se pueden crear conexiones hacia el paso inicial');
+          return;
+        }
+        
         const pasoTarget = pasos.find(p => p.id_paso_solicitud.toString() === params.target);
         if (pasoTarget?.tipo_flujo === 'normal' && !pasoTarget.camino_id) { // Evitar conexiones hacia el paso inicial
           console.warn('No se pueden crear conexiones hacia el paso inicial');
@@ -411,10 +472,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   const onPaneClick = useCallback(
     (event: React.MouseEvent) => {
       if (!readOnly && event.detail === 2) {
-        const bounds = (event.target as HTMLElement).getBoundingClientRect();
-        const x = event.clientX - bounds.left;
-        const y = event.clientY - bounds.top;
-        // createPasoSolicitud({ flujo_activo_id: pasos[0]?.flujo_activo_id || 0, posicion_x: x, posicion_y: y, tipo_paso: 'ejecucion' }); // TODO: Implementar thunk
+  // TODO: double-click should create a new paso at the clicked position (not implemented yet)
       }
     },
     [readOnly, pasos]
@@ -470,7 +528,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         onPaneClick={onPaneClick}
         onNodeDragStop={handleNodeDragEnd}
         nodeTypes={nodeTypes}
-        fitView={false}
+        fitView={true}
         className="bg-gradient-to-br from-background to-muted/20"
       >
         <Controls className="bg-background border shadow-lg" />
