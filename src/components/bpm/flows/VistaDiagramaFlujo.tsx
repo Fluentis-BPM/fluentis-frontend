@@ -525,9 +525,9 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                         <div>
                           <h4 className="font-medium">{paso.nombre}</h4>
                           <p className="text-sm text-muted-foreground">
-                            {paso.id_paso_solicitud === 0 ? 'Paso inicial' : (paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución')}
+                            {paso.tipo_paso === 'inicio' ? 'Paso inicial' : (paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución')}
                           </p>
-                          {paso.id_paso_solicitud === 0 && flujo.datos_solicitud && (
+                          {paso.tipo_paso === 'inicio' && flujo.datos_solicitud && (
                             <div className="text-xs text-muted-foreground mt-1">
                               <strong>Datos de solicitud:</strong>
                               <div className="mt-1">

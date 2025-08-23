@@ -66,7 +66,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   
   const getIconByTipo = () => {
     // Special icon for initial step
-    if (paso.id_paso_solicitud === 0) {
+    if (paso.tipo_paso === 'inicio') {
       return <Play className="w-4 h-4" />;
     }
     
@@ -96,7 +96,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
 
   const getBadgeVariant = () => {
     // Don't show estado badge for initial step
-    if (paso.id_paso_solicitud === 0) return null;
+    if (paso.tipo_paso === 'inicio') return null;
     
     switch (paso.estado) {
       case 'aprobado': return 'default';
@@ -120,7 +120,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       }`}
       onClick={() => {
         // Don't open editor for initial step
-        if (paso.id_paso_solicitud === 0) return;
+        if (paso.tipo_paso === 'inicio') return;
         onNodeClick?.(paso);
       }}
     >
@@ -132,7 +132,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <h4 className="font-semibold text-sm">{paso.nombre || 'Sin nombre'}</h4>
-              {paso.id_paso_solicitud === 0 && (
+              {paso.tipo_paso === 'inicio' && (
                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Inicial</span>
               )}
             </div>
@@ -144,7 +144,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
             <div className={`flex items-center gap-1 ${getTipoPasoColor()}`}>
               {getIconByTipoPaso()}
               <span className="text-xs font-medium">
-                {paso.id_paso_solicitud === 0 ? 'Inicial' : 
+                {paso.tipo_paso === 'inicio' ? 'Inicial' : 
                  (paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución')}
               </span>
             </div>
@@ -278,7 +278,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   // Convertir pasos a nodos de React Flow
   const initialNodes: Node[] = useMemo(() => {
     const nodesFromPasos: Node[] = pasos.map(paso => {
-      const esInicial = paso.tipo_flujo === 'normal' && !paso.camino_id; // Ajuste basado en lógica de flujo inicial
+      const esInicial = paso.tipo_paso === 'inicio'; // Ahora identificamos por tipo_paso
       const nodeId = paso.id_paso_solicitud.toString();
       return {
         id: nodeId,
@@ -302,44 +302,8 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
       } as Node;
     });
 
-    // Always create the synthetic step 0 node (initial node)
-    const inicioPaso = {
-      id_paso_solicitud: 0,
-      nombre: datosSolicitudIniciales && Object.keys(datosSolicitudIniciales).length > 0 ? 'Paso inicial (Solicitud)' : 'Paso inicial',
-      tipo_flujo: 'normal',
-      tipo_paso: 'ejecucion',
-      estado: 'pendiente',
-      posicion_x: 50,
-      posicion_y: 50,
-      flujo_activo_id: flujoActivoId,
-      fecha_inicio: new Date(),
-      relacionesInput: [],
-      relacionesGrupoAprobacion: [],
-      comentarios: [],
-      excepciones: []
-    } as unknown as PasoSolicitud;
-
-    const inicioNode: Node = {
-      id: '0',
-      type: 'pasoNode',
-      position: { x: 50, y: 50 },
-      data: {
-        paso: inicioPaso,
-        readOnly: false, // Allow moving but not editing content
-        camposDinamicosIniciales: datosSolicitudIniciales,
-        esInicial: true,
-        isSelected: selectedNodeId === '0',
-        onNodeClick: onNodeSelect,
-        onDeletePaso
-      },
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
-      draggable: true, // Allow moving the initial step
-      connectable: true, // Permitir conexiones desde/hacia el nodo inicial
-      selectable: true,
-    };
-
-    return [inicioNode, ...nodesFromPasos];
+    // Ya no creamos el nodo sintético, todos los pasos vienen del backend
+    return nodesFromPasos;
   }, [pasos, readOnly, datosSolicitudIniciales, selectedNodeId, onNodeSelect, onDeletePaso]);
 
   // Convertir caminos a edges de React Flow

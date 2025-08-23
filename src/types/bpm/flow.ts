@@ -94,7 +94,7 @@ export interface EstadisticasFlujos {
 
 // Tipos básicos
 export type EstadoFlujo = 'encurso' | 'finalizado' | 'cancelado';
-export type TipoPaso = 'ejecucion' | 'aprobacion';
+export type TipoPaso = 'inicio' | 'ejecucion' | 'aprobacion' | 'fin';
 export type EstadoPaso = 'aprobado' | 'rechazado' | 'excepcion' | 'pendiente' | 'entregado' | 'cancelado';
 export type TipoFlujoPaso = 'normal' | 'bifurcacion' | 'union';
 export type ReglaAprobacion = 'unanime' | 'individual' | 'ancla';
