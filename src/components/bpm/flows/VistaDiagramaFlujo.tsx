@@ -32,7 +32,22 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   flujo,
   onVolverALista,
 }) => {
-  const { pasosPorFlujo, caminosPorFlujo, loading, error, selectFlujo, loadPasosYConexiones } = useBpm();
+  const { 
+    pasosPorFlujo, 
+    caminosPorFlujo, 
+    loading, 
+    error, 
+    selectFlujo, 
+    loadPasosYConexiones,
+    createPasoSolicitud,
+    updatePasoSolicitud,
+    deletePasoSolicitud,
+    createConexionPaso,
+    putConexionesPaso,
+    deleteConexionPaso,
+    deleting,
+    lastActionError
+  } = useBpm();
   const { toast } = useToast();
   const [modoEdicion, setModoEdicion] = useState(true); // Empezar en modo edición por defecto
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
@@ -87,6 +102,18 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
       });
     }
   }, [error, flujo.id_flujo_activo, toast]);
+
+  // Mostrar errores de acciones
+  useEffect(() => {
+    if (lastActionError) {
+      toast({
+        title: 'Error en la operación',
+        description: lastActionError,
+        variant: 'destructive',
+        duration: 5000,
+      });
+    }
+  }, [lastActionError, toast]);
 
   useEffect(() => {
     if (!loading && pasos.length > 0 && caminos.length > 0 && !error) {
@@ -271,6 +298,13 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 selectedNodeId={selectedNodeId || undefined}
                 onNodeSelect={handleNodeSelect}
                 datosSolicitudIniciales={flujo.datos_solicitud}
+                flujoActivoId={flujo.id_flujo_activo}
+                onCreatePaso={createPasoSolicitud}
+                onUpdatePaso={updatePasoSolicitud}
+                onDeletePaso={deletePasoSolicitud}
+                onCreateConexion={createConexionPaso}
+                onReplaceConexiones={putConexionesPaso}
+                onDeleteConexion={deleteConexionPaso}
               />
             </div>
             {pasoEditando && (
@@ -304,8 +338,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                     isOpen={false}
                     onClose={() => handleNodeSelect(null)}
                     onGuardar={(pasoActualizado) => {
-                      // Placeholder: Necesitarás un thunk para actualizar el paso
-                      console.log('Guardar paso actualizado:', pasoActualizado);
+                      updatePasoSolicitud(pasoActualizado.id_paso_solicitud, pasoActualizado);
                       toast({
                         title: 'Paso actualizado',
                         description: `Los cambios en "${pasoActualizado.nombre}" se han guardado`,
