@@ -94,10 +94,10 @@ export interface EstadisticasFlujos {
 
 // Tipos básicos
 export type EstadoFlujo = 'encurso' | 'finalizado' | 'cancelado';
-type TipoPaso = 'ejecucion' | 'aprobacion';
-type EstadoPaso = 'aprobado' | 'rechazado' | 'excepcion' | 'pendiente' | 'entregado' | 'cancelado';
-type TipoFlujoPaso = 'normal' | 'bifurcacion' | 'union';
-type ReglaAprobacion = 'unanime' | 'individual' | 'ancla';
+export type TipoPaso = 'inicio' | 'ejecucion' | 'aprobacion' | 'fin';
+export type EstadoPaso = 'aprobado' | 'rechazado' | 'excepcion' | 'pendiente' | 'entregado' | 'cancelado';
+export type TipoFlujoPaso = 'normal' | 'bifurcacion' | 'union';
+export type ReglaAprobacion = 'unanime' | 'individual' | 'ancla';
 
 // Entidad FlujoActivo
 export interface FlujoActivo {
@@ -111,7 +111,6 @@ export interface FlujoActivo {
   fecha_finalizacion?: Date;
   estado: EstadoFlujo;
   datos_solicitud?: Record<string, string>;
-  campos_dinamicos?: Record<string, string>;
 }
 
 // Entidad PasoSolicitud

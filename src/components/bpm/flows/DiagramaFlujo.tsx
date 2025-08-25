@@ -32,37 +32,44 @@ import {
   FileText,
   Plus
 } from 'lucide-react';
-import { useBpm } from '@/hooks/bpm/useBpm'; // Nuevo import para usar el estado global
 
 // Tipo para los datos del nodo
 interface PasoNodeData {
   paso: PasoSolicitud;
-  // onActualizarEstado: (pasoId: number, estado: PasoSolicitud['estado']) => void; // TODO: Implementar thunk updatePasoSolicitud
-  // onEditarPaso?: (paso: PasoSolicitud) => void; // TODO: Implementar thunk updatePasoSolicitud
   camposDinamicosIniciales?: RelacionInput[] | CamposDinamicos | Record<string, string> | undefined;
   esInicial: boolean;
   isSelected: boolean;
   onNodeClick?: (paso: PasoSolicitud) => void;
+  onDeletePaso?: (id: number) => void;
   readOnly?: boolean;
 }
 
 interface DiagramaFlujoProps {
   pasos: PasoSolicitud[];
   caminos: CaminoParalelo[];
-  // onActualizarPaso: (pasoId: number, estado: PasoSolicitud['estado']) => void; // TODO: Implementar thunk updatePasoSolicitud
-  // onAgregarPaso: (x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => void; // TODO: Implementar thunk createPasoSolicitud
-  // onCrearCamino: (origen: number, destino: number) => void; // TODO: Implementar thunk createCaminoParalelo
   readOnly?: boolean;
-  camposDinamicosIniciales?: RelacionInput[] | CamposDinamicos | Record<string, string> | undefined; // Campos dinámicos de la solicitud original
+  datosSolicitudIniciales?: Record<string, string> | undefined;
   selectedNodeId?: string;
+  flujoActivoId: number; // Añadir esta prop para evitar el problema del ID 0
   onNodeSelect?: (paso: PasoSolicitud | null) => void;
+  onCreatePaso?: (data: unknown) => void;
+  onUpdatePaso?: (id: number, data: unknown) => void;
+  onDeletePaso?: (id: number) => void;
+  onCreateConexion?: (id: number, destinoId: number, esExcepcion?: boolean) => void;
+  onReplaceConexiones?: (id: number, destinos: number[]) => void;
+  onDeleteConexion?: (id: number, destinoId: number) => void;
 }
 
 // Componente personalizado para nodos de paso
 const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
-  const { paso, camposDinamicosIniciales, esInicial, isSelected, onNodeClick } = data;
+  const { paso, camposDinamicosIniciales, esInicial, isSelected, onNodeClick, onDeletePaso } = data;
   
   const getIconByTipo = () => {
+    // Special icon for initial step
+    if (paso.tipo_paso === 'inicio') {
+      return <Play className="w-4 h-4" />;
+    }
+    
     switch (paso.tipo_flujo) { // Corregido de 'tipo' a 'tipo_flujo' según la interfaz PasoSolicitud
       case 'normal': return <Settings className="w-4 h-4" />;
       case 'bifurcacion': return <AlertTriangle className="w-4 h-4" />;
@@ -88,6 +95,9 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   };
 
   const getBadgeVariant = () => {
+    // Don't show estado badge for initial step
+    if (paso.tipo_paso === 'inicio') return null;
+    
     switch (paso.estado) {
       case 'aprobado': return 'default';
       case 'rechazado': return 'destructive';
@@ -108,7 +118,11 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       className={`p-4 min-w-[220px] transition-all duration-300 cursor-pointer ${getColorByEstado()} ${
         isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'
       }`}
-      onClick={() => onNodeClick?.(paso)}
+      onClick={() => {
+        // Don't open editor for initial step
+        if (paso.tipo_paso === 'inicio') return;
+        onNodeClick?.(paso);
+      }}
     >
       <div className="flex items-start gap-3">
         <div className="text-primary mt-1">
@@ -116,7 +130,12 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
         </div>
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
-            <h4 className="font-semibold text-sm">{paso.nombre || 'Sin nombre'}</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-sm">{paso.nombre || 'Sin nombre'}</h4>
+              {paso.tipo_paso === 'inicio' && (
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Inicial</span>
+              )}
+            </div>
           </div>
           
 
@@ -125,12 +144,15 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
             <div className={`flex items-center gap-1 ${getTipoPasoColor()}`}>
               {getIconByTipoPaso()}
               <span className="text-xs font-medium">
-                {paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución'}
+                {paso.tipo_paso === 'inicio' ? 'Inicial' : 
+                 (paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución')}
               </span>
             </div>
-            <Badge variant={getBadgeVariant()} className="text-xs">
-              {paso.estado}
-            </Badge>
+            {getBadgeVariant() && (
+              <Badge variant={getBadgeVariant()} className="text-xs">
+                {paso.estado}
+              </Badge>
+            )}
           </div>
 
           {paso.responsable_id && (
@@ -155,45 +177,62 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
             </div>
           )}
 
-          {/* Botones deshabilitados hasta que se implemente el thunk */}
-          {data.readOnly !== true && paso.estado === 'pendiente' && (
-            <div className="flex gap-1">
-              {paso.tipo_paso === 'aprobacion' ? (
+          {/* Botones de acción */}
+          {data.readOnly !== true && paso.id_paso_solicitud !== 0 && (
+            <div className="flex gap-1 mt-2">
+              {paso.estado === 'pendiente' && (
                 <>
-                  <Button 
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 text-xs border-success text-success hover:bg-success hover:text-white hover:scale-105 transition-all duration-300"
-                    disabled
-                  >
-                    ✓ Aprobar
-                  </Button>
-                  <Button 
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 text-xs border-destructive text-destructive hover:bg-destructive hover:text-white hover:scale-105 transition-all duration-300"
-                    disabled
-                  >
-                    ✗ Rechazar
-                  </Button>
+                  {paso.tipo_paso === 'aprobacion' ? (
+                    <>
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-xs border-success text-success hover:bg-success hover:text-white hover:scale-105 transition-all duration-300"
+                        disabled
+                      >
+                        ✓ Aprobar
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-xs border-destructive text-destructive hover:bg-destructive hover:text-white hover:scale-105 transition-all duration-300"
+                        disabled
+                      >
+                        ✗ Rechazar
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-xs border-success text-success hover:bg-success hover:text-white hover:scale-105 transition-all duration-300"
+                      disabled
+                    >
+                      ✓ Completar
+                    </Button>
+                  )}
                 </>
-              ) : (
-                <Button 
-                  size="sm"
-                  variant="outline"
-                  className="h-6 px-2 text-xs border-success text-success hover:bg-success hover:text-white hover:scale-105 transition-all duration-300"
-                  disabled
-                >
-                  ✓ Completar
-                </Button>
               )}
+              <Button 
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-xs border-red-500 text-red-600 hover:bg-red-500 hover:text-white hover:scale-105 transition-all duration-300"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onDeletePaso && confirm(`¿Eliminar el paso "${paso.nombre}"?`)) {
+                    onDeletePaso(paso.id_paso_solicitud);
+                  }
+                }}
+              >
+                🗑️
+              </Button>
             </div>
           )}
         </div>
       </div>
       
       {/* Handles para conexiones */}
-      {!esInicial && (
+      {paso.id_paso_solicitud !== 0 && (
         <Handle
           type="target"
           position={Position.Left}
@@ -221,19 +260,25 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   pasos,
   caminos,
   readOnly = false,
-  camposDinamicosIniciales,
+  datosSolicitudIniciales,
   selectedNodeId,
-  onNodeSelect
+  flujoActivoId, // Añadir esta prop
+  onNodeSelect,
+  onCreatePaso,
+  onUpdatePaso,
+  onDeletePaso,
+  onCreateConexion,
+  onReplaceConexiones,
+  onDeleteConexion
 }) => {
-  // const { fetchPasosYConexiones, updatePasoSolicitud, createPasoSolicitud, createCaminoParalelo } = useBpm();
   const [cardPosition, setCardPosition] = useState({ x: 16, y: window.innerHeight - 200 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Convertir pasos a nodos de React Flow
-  const initialNodes: Node[] = useMemo(() => 
-    pasos.map(paso => {
-      const esInicial = paso.tipo_flujo === 'normal' && !paso.camino_id; // Ajuste basado en lógica de flujo inicial
+  const initialNodes: Node[] = useMemo(() => {
+    const nodesFromPasos: Node[] = pasos.map(paso => {
+      const esInicial = paso.tipo_paso === 'inicio'; // Ahora identificamos por tipo_paso
       const nodeId = paso.id_paso_solicitud.toString();
       return {
         id: nodeId,
@@ -241,20 +286,25 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         position: { x: paso.posicion_x || 0, y: paso.posicion_y || 0 },
         data: { 
           paso, 
-          // onActualizarEstado: (pasoId, estado) => updatePasoSolicitud({ id: pasoId, estado }), // TODO: Implementar thunk
-          // onEditarPaso: updatePasoSolicitud, // TODO: Implementar thunk
           readOnly,
-          camposDinamicosIniciales: esInicial ? camposDinamicosIniciales : undefined,
+          // Pass the initial request data into the initial node only
+          camposDinamicosIniciales: esInicial ? datosSolicitudIniciales : undefined,
           esInicial,
           isSelected: selectedNodeId === nodeId,
-          onNodeClick: onNodeSelect
+          onNodeClick: onNodeSelect,
+          onDeletePaso
         },
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
         draggable: !readOnly,
-      };
-    }), [pasos, readOnly, camposDinamicosIniciales, selectedNodeId, onNodeSelect]
-  );
+        connectable: true, // Permitir conexiones desde/hacia este nodo
+        selectable: true,
+      } as Node;
+    });
+
+    // Ya no creamos el nodo sintético, todos los pasos vienen del backend
+    return nodesFromPasos;
+  }, [pasos, readOnly, datosSolicitudIniciales, selectedNodeId, onNodeSelect, onDeletePaso]);
 
   // Convertir caminos a edges de React Flow
   const initialEdges: Edge[] = useMemo(() => 
@@ -297,16 +347,16 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   const handleNodeDragEnd: OnNodeDrag<Node> = useCallback((_event, node) => {
     console.log('🎯 Node drag ended:', { id: node.id, position: node.position });
     const paso = pasos.find(p => p.id_paso_solicitud.toString() === node.id);
-    if (paso /* && updatePasoSolicitud */) { // TODO: Implementar thunk
+    if (paso && onUpdatePaso) {
       const pasoActualizado = {
         ...paso,
         posicion_x: Math.round(node.position.x),
         posicion_y: Math.round(node.position.y)
       };
       console.log('💾 Guardando nueva posición:', pasoActualizado);
-      // updatePasoSolicitud(pasoActualizado); // TODO: Implementar
+      onUpdatePaso(paso.id_paso_solicitud, pasoActualizado);
     }
-  }, [pasos]);
+  }, [pasos, onUpdatePaso]);
 
   // Personalizar onNodesChange para manejar el arrastre
   const customOnNodesChange = useCallback((changes: NodeChange[]) => {
@@ -316,18 +366,18 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         const nodeId = change.id;
         const newPosition = change.position;
         const paso = pasos.find(p => p.id_paso_solicitud.toString() === nodeId);
-        if (paso /* && updatePasoSolicitud */) { // TODO: Implementar thunk
+        if (paso && onUpdatePaso) {
           const pasoActualizado = {
             ...paso,
             posicion_x: Math.round(newPosition.x),
             posicion_y: Math.round(newPosition.y)
           };
           console.log('💾 Actualizando posición del paso:', pasoActualizado);
-          // setTimeout(() => updatePasoSolicitud(pasoActualizado), 0); // TODO: Implementar
+          setTimeout(() => onUpdatePaso(paso.id_paso_solicitud, pasoActualizado), 0);
         }
       }
     });
-  }, [onNodesChange, pasos]);
+  }, [onNodesChange, pasos, onUpdatePaso]);
 
   // Sincronizar nodos cuando cambien los pasos
   useEffect(() => {
@@ -374,12 +424,10 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
 
   const onConnect = useCallback(
     (params: Connection) => {
+      console.log('🔗 Intentando crear conexión:', params);
       if (params.source && params.target) {
-        const pasoTarget = pasos.find(p => p.id_paso_solicitud.toString() === params.target);
-        if (pasoTarget?.tipo_flujo === 'normal' && !pasoTarget.camino_id) { // Evitar conexiones hacia el paso inicial
-          console.warn('No se pueden crear conexiones hacia el paso inicial');
-          return;
-        }
+        // Permitir todas las conexiones sin restricciones
+        console.log('🔗 Creando conexión:', params.source, '→', params.target);
         console.log('🔗 Creando conexión:', params.source, '→', params.target);
         const tempEdge: Edge = {
           id: `connecting-${params.source}-${params.target}`,
@@ -402,22 +450,43 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
           }
         };
         setEdges(currentEdges => addEdge(tempEdge, currentEdges));
-        // createCaminoParalelo({ paso_origen_id: parseInt(params.source), paso_destino_id: parseInt(params.target) }); // TODO: Implementar thunk
+        
+        console.log('📞 Llamando onCreateConexion con:', {
+          source: parseInt(params.source),
+          target: parseInt(params.target),
+          onCreateConexion: !!onCreateConexion
+        });
+        
+        if (onCreateConexion) {
+          onCreateConexion(parseInt(params.source), parseInt(params.target), false);
+        } else {
+          console.warn('⚠️ onCreateConexion no está definido');
+        }
       }
     },
-    [setEdges, pasos]
+    [setEdges, pasos, onCreateConexion]
   );
 
   const onPaneClick = useCallback(
     (event: React.MouseEvent) => {
-      if (!readOnly && event.detail === 2) {
-        const bounds = (event.target as HTMLElement).getBoundingClientRect();
-        const x = event.clientX - bounds.left;
-        const y = event.clientY - bounds.top;
-        // createPasoSolicitud({ flujo_activo_id: pasos[0]?.flujo_activo_id || 0, posicion_x: x, posicion_y: y, tipo_paso: 'ejecucion' }); // TODO: Implementar thunk
+      if (!readOnly && event.detail === 2 && onCreatePaso) {
+        const rect = (event.target as HTMLElement).getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
+        const pasoData = {
+          flujoActivoId: flujoActivoId,
+          reglaAprobacion: "Unanimidad",
+          tipoPaso: "Ejecucion",
+          nombre: `Nuevo Paso ${pasos.length + 1}`,
+          inputs: []
+        };
+        console.log('🆕 Creando nuevo paso:', pasos);
+        onCreatePaso(pasoData);
+        console.log('🆕 Creando nuevo paso en:', { x, y });
       }
     },
-    [readOnly, pasos]
+    [readOnly, pasos, onCreatePaso]
   );
 
   const handleCardMouseDown = useCallback((e: React.MouseEvent) => {
@@ -470,7 +539,9 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         onPaneClick={onPaneClick}
         onNodeDragStop={handleNodeDragEnd}
         nodeTypes={nodeTypes}
-        fitView={false}
+        fitView={true}
+        connectOnClick={false} // Evitar conexiones accidentales al hacer click
+        nodesConnectable={!readOnly} // Permitir conexiones solo si no es readOnly
         className="bg-gradient-to-br from-background to-muted/20"
       >
         <Controls className="bg-background border shadow-lg" />
@@ -517,13 +588,18 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
                 size="sm"
                 variant="outline"
                 className="h-7 px-2 text-xs border-blue-500 text-blue-600 hover:bg-blue-500 hover:text-white hover:scale-105 transition-all duration-300"
-                disabled
-                // onClick={() => {
-                //   const rect = document.querySelector('.react-flow')?.getBoundingClientRect();
-                //   if (rect) {
-                //     createPasoSolicitud({ flujo_activo_id: pasos[0]?.flujo_activo_id || 0, posicion_x: Math.random() * 400 + 100, posicion_y: Math.random() * 300 + 100, tipo_paso: 'ejecucion' });
-                //   }
-                // }}
+                onClick={() => {
+                  if (onCreatePaso) {
+                    const pasoData = {
+                      flujoActivoId: flujoActivoId,
+                      reglaAprobacion: "Unanimidad",
+                      tipoPaso: "Ejecucion",
+                      nombre: `Nuevo Paso Ejecución ${pasos.length + 1}`,
+                      inputs: []
+                    };
+                    onCreatePaso(pasoData);
+                  }
+                }}
               >
                 <Plus className="w-3 h-3 mr-1" />
                 Ejecución
@@ -532,13 +608,18 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
                 size="sm"
                 variant="outline"
                 className="h-7 px-2 text-xs border-purple-500 text-purple-600 hover:bg-purple-500 hover:text-white hover:scale-105 transition-all duration-300"
-                disabled
-                // onClick={() => {
-                //   const rect = document.querySelector('.react-flow')?.getBoundingClientRect();
-                //   if (rect) {
-                //     createPasoSolicitud({ flujo_activo_id: pasos[0]?.flujo_activo_id || 0, posicion_x: Math.random() * 400 + 100, posicion_y: Math.random() * 300 + 100, tipo_paso: 'aprobacion' });
-                //   }
-                // }}
+                onClick={() => {
+                  if (onCreatePaso) {
+                    const pasoData = {
+                      flujoActivoId: flujoActivoId,
+                      reglaAprobacion: "Unanimidad",
+                      tipoPaso: "Aprobacion",
+                      nombre: `Nuevo Paso Aprobación ${pasos.length + 1}`,
+                      inputs: []
+                    };
+                    onCreatePaso(pasoData);
+                  }
+                }}
               >
                 <Plus className="w-3 h-3 mr-1" />
                 Aprobación
