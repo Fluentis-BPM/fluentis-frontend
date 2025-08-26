@@ -12,6 +12,8 @@ interface Props {
   solicitud: Solicitud;
   onActualizarEstado: (id: number, estado: EstadoSolicitud) => void;
   onEliminar: (id: number) => void;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 const getEstadoConfig = (estado: EstadoSolicitud) => {
@@ -62,7 +64,7 @@ const calcularDiasTranscurridos = (fecha: string | Date) => {
   return Math.floor(diferencia / (1000 * 60 * 60 * 24));
 };
 
-export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstado, onEliminar }) => {
+export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstado, onEliminar, isExpanded = false, onToggle }) => {
   const estadoConfig = getEstadoConfig(solicitud.estado);
   const IconoEstado = estadoConfig.icon;
   const diasTranscurridos = calcularDiasTranscurridos(solicitud.fecha_creacion);
@@ -80,7 +82,7 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
   const prioridad = String(solicitud.datos_adicionales?.prioridad ?? 'media');
 
   return (
-    <motion.div
+  <motion.div
       className={`rounded-lg border bg-card text-card-foreground shadow-soft border-l-4 ${getPrioridadColor(prioridad)} group`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -91,7 +93,12 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
       }}
       whileTap={{ scale: 0.98 }}
     >
-      <CardHeader className="flex flex-row items-start justify-between pb-3">
+      <CardHeader
+        className="flex flex-row items-start justify-between pb-3 cursor-pointer"
+        onClick={() => onToggle && onToggle()}
+        role="button"
+        tabIndex={0}
+      >
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-full ${estadoConfig.gradient}`}>
             <IconoEstado className="w-4 h-4 text-white" />
@@ -111,9 +118,11 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
+                // evitar que el click del botón propague y dispare el toggle del header
+                onClick={(e) => e.stopPropagation()}
                 className="opacity-0 group-hover:opacity-100 transition-smooth hover:bg-gray-100 hover:scale-105"
               >
                 <MoreHorizontal className="w-4 h-4" />
@@ -152,7 +161,8 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      {isExpanded ? (
+        <CardContent className="space-y-3">
         {/* Información básica */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
@@ -247,7 +257,8 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
             </Badge>
           </div>
         </div>
-      </CardContent>
+        </CardContent>
+      ) : null}
     </motion.div>
   );
 };

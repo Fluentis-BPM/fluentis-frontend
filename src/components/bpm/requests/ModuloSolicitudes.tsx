@@ -43,6 +43,7 @@ export const ModuloSolicitudes: React.FC<{
   } = solicitudesData;
 
   const { toast } = useToast();
+  const [expandedSolicitudId, setExpandedSolicitudId] = useState<number | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<EstadoSolicitud | 'todos'>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -264,98 +265,108 @@ export const ModuloSolicitudes: React.FC<{
                       toast({ title: 'Decisión registrada', description: 'Has rechazado la solicitud.' });
                     };
 
+                    const isExpanded = expandedSolicitudId === solicitud.id_solicitud;
+
                     return (
-                    <div key={solicitud.id_solicitud} className="space-y-3">
-                       <TarjetaSolicitud
-                         solicitud={solicitud}
-                         onActualizarEstado={handleActualizarEstado}
-                         onEliminar={handleEliminar}
-                       />
+                      <div key={solicitud.id_solicitud} className="space-y-3">
+                        <TarjetaSolicitud
+                          solicitud={solicitud}
+                          onActualizarEstado={handleActualizarEstado}
+                          onEliminar={handleEliminar}
+                          isExpanded={isExpanded}
+                          onToggle={() => setExpandedSolicitudId(isExpanded ? null : solicitud.id_solicitud)}
+                        />
 
-                       {/* Acciones rápidas para miembros del grupo */}
-                       {assignedGroupId && solicitud.estado === 'pendiente' && esMiembro && (
-                         <div className="flex gap-2 px-1">
-                           <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={quickApprove}>
-                             Aprobar
-                           </Button>
-                           <Button size="sm" variant="destructive" onClick={quickReject}>
-                             Rechazar
-                           </Button>
-                         </div>
-                       )}
-                       
-                       {/* Notificación de flujo creado */}
-                       {solicitud.estado === 'aprobado' && obtenerFlujoPorSolicitud(solicitud.id_solicitud) && (
-                         <Card className="shadow-soft border-success/50 bg-success/5">
-                           <CardContent className="p-3">
-                             <div className="flex items-center justify-between">
-                               <div className="flex items-center gap-3">
-                                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-success/20">
-                                   <Workflow className="w-4 h-4 text-success" />
-                                 </div>
-                                 <div>
-                                   <h4 className="text-sm font-medium text-success">Flujo Activo</h4>
-                                   <p className="text-xs text-muted-foreground">
-                                     Flujo #{obtenerFlujoPorSolicitud(solicitud.id_solicitud)?.id_flujo_activo} creado automáticamente
-                                   </p>
-                                 </div>
-                               </div>
-                               <Button 
-                                 variant="outline" 
-                                 size="sm"
-                                 onClick={onNavigateToFlujos}
-                                 className="border-success text-success hover:bg-success/10 h-8 text-xs"
-                               >
-                                 <ArrowRight className="w-3 h-3 mr-1" />
-                                 Ver Flujo
-                               </Button>
-                             </div>
-                           </CardContent>
-                         </Card>
-                       )}
-                       {/* Proceso de Aprobación */}
-                       {(() => {
-                         // Mostrar el proceso si hay relación; si no, mostrar mensaje
-             if (!assignedGroupId) {
-                           return (
-                             <div className="p-3 bg-muted/50 rounded-lg border border-dashed">
-                               <p className="text-xs text-muted-foreground text-center">
-                                 No hay grupo de aprobación asignado a esta solicitud
-                               </p>
-                             </div>
-                           );
-                         }
+                        {/* Mostrar detalles (acciones rápidas, flujo, proceso) sólo si la tarjeta está expandida */}
+                        {isExpanded && (
+                          <>
+                            {/* Acciones rápidas para miembros del grupo */}
+                            {assignedGroupId && solicitud.estado === 'pendiente' && esMiembro && (
+                              <div className="flex gap-2 px-1">
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={quickApprove}>
+                                  Aprobar
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={quickReject}>
+                                  Rechazar
+                                </Button>
+                              </div>
+                            )}
 
-                         return (
-                           <ProcesoAprobacion
-                             solicitud_id={solicitud.id_solicitud}
-                             miembrosGrupo={miembrosReales}
-               relacionGrupoAprobacionId={relacion?.id_relacion}
-                             onEstadoCambiado={(nuevoEstado) => 
-                               handleActualizarEstado(solicitud.id_solicitud, nuevoEstado)
-                             }
-                             obtenerGrupoPorSolicitud={obtenerGrupoPorSolicitud}
-                             registrarDecision={(idUsuario, _relacionId, dec, onChange) =>
-                               registrarDecisionSolicitud(solicitud.id_solicitud, idUsuario, dec, onChange)
-                             }
-                             verificarAprobacionCompleta={verificarAprobacionCompleta}
-                             verificarRechazo={verificarRechazo}
-                             obtenerEstadisticasAprobacion={(sid, miembros) => {
-                               const stats = obtenerEstadisticasAprobacion(sid, miembros);
-                               return { 
-                                 total: stats.total_miembros,
-                                 total_miembros: stats.total_miembros,
-                                 aprobaciones: stats.aprobaciones,
-                                 rechazos: stats.rechazos,
-                                 pendientes: stats.pendientes
-                               };
-                             }}
-                             usuarioActualId={currentUserId}
-                           />
-                         );
-                       })()}
-                    </div>
-                  );})}
+                            {/* Notificación de flujo creado */}
+                            {solicitud.estado === 'aprobado' && obtenerFlujoPorSolicitud(solicitud.id_solicitud) && (
+                              <Card className="shadow-soft border-success/50 bg-success/5">
+                                <CardContent className="p-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-success/20">
+                                        <Workflow className="w-4 h-4 text-success" />
+                                      </div>
+                                      <div>
+                                        <h4 className="text-sm font-medium text-success">Flujo Activo</h4>
+                                        <p className="text-xs text-muted-foreground">
+                                          Flujo #{obtenerFlujoPorSolicitud(solicitud.id_solicitud)?.id_flujo_activo} creado automáticamente
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={onNavigateToFlujos}
+                                      className="border-success text-success hover:bg-success/10 h-8 text-xs"
+                                    >
+                                      <ArrowRight className="w-3 h-3 mr-1" />
+                                      Ver Flujo
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )}
+
+                            {/* Proceso de Aprobación */}
+                            {(() => {
+                              if (!assignedGroupId) {
+                                return (
+                                  <div className="p-3 bg-muted/50 rounded-lg border border-dashed">
+                                    <p className="text-xs text-muted-foreground text-center">
+                                      No hay grupo de aprobación asignado a esta solicitud
+                                    </p>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <ProcesoAprobacion
+                                  solicitud_id={solicitud.id_solicitud}
+                                  miembrosGrupo={miembrosReales}
+                                  relacionGrupoAprobacionId={relacion?.id_relacion}
+                                  onEstadoCambiado={(nuevoEstado) => 
+                                    handleActualizarEstado(solicitud.id_solicitud, nuevoEstado)
+                                  }
+                                  obtenerGrupoPorSolicitud={obtenerGrupoPorSolicitud}
+                                  registrarDecision={(idUsuario, _relacionId, dec, onChange) =>
+                                    registrarDecisionSolicitud(solicitud.id_solicitud, idUsuario, dec, onChange)
+                                  }
+                                  verificarAprobacionCompleta={verificarAprobacionCompleta}
+                                  verificarRechazo={verificarRechazo}
+                                  obtenerEstadisticasAprobacion={(sid, miembros) => {
+                                    const stats = obtenerEstadisticasAprobacion(sid, miembros);
+                                    return { 
+                                      total: stats.total_miembros,
+                                      total_miembros: stats.total_miembros,
+                                      aprobaciones: stats.aprobaciones,
+                                      rechazos: stats.rechazos,
+                                      pendientes: stats.pendientes
+                                    };
+                                  }}
+                                  usuarioActualId={currentUserId}
+                                />
+                              );
+                            })()}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

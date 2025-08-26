@@ -52,6 +52,8 @@ export const ProcesoAprobacion: React.FC<Props> = ({
     return stored ? JSON.parse(stored) : {};
   });
 
+
+
   const grupo = obtenerGrupoPorSolicitud(solicitud_id);
   const estadisticas = obtenerEstadisticasAprobacion(solicitud_id, miembrosGrupo);
   const estaAprobada = verificarAprobacionCompleta(solicitud_id, miembrosGrupo);
