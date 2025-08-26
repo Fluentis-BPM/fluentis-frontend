@@ -20,27 +20,35 @@ const getEstadoConfig = (estado: EstadoSolicitud) => {
   switch (estado) {
     case 'aprobado':
       return {
-        color: 'bg-request-success text-white',
+  color: 'bg-request-success text-white',
         icon: CheckCircle,
         gradient: 'bg-gradient-success'
+  , badgeBg: 'bg-green-600',
+  textColor: 'text-white'
       };
     case 'rechazado':
       return {
-        color: 'bg-request-danger text-white',
+  color: 'bg-request-danger text-white',
         icon: XCircle,
         gradient: 'bg-request-danger'
+  , badgeBg: 'bg-red-600',
+  textColor: 'text-white'
       };
     case 'pendiente':
       return {
-        color: 'bg-request-warning text-white',
+  color: 'bg-request-warning text-white',
         icon: Clock,
         gradient: 'bg-request-warning'
+  , badgeBg: 'bg-yellow-400',
+  textColor: 'text-black'
       };
     default:
       return {
-        color: 'bg-muted text-muted-foreground',
-        icon: Clock,
-        gradient: 'bg-muted'
+  color: 'bg-muted text-muted-foreground',
+  icon: Clock,
+  gradient: 'bg-muted',
+  badgeBg: 'bg-gray-400',
+  textColor: 'text-white'
       };
   }
 };
@@ -112,7 +120,9 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
         </div>
         
         <div className="flex items-center gap-2">
-          <Badge className={estadoConfig.color}>
+          {/* Colored dot + badge for distinct estado color */}
+          <span className={`inline-block w-2 h-2 rounded-full ${estadoConfig.badgeBg} mr-1`} />
+          <Badge className={`${estadoConfig.badgeBg} ${estadoConfig.textColor} px-2 py-0.5` }>
             {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
           </Badge>
           

@@ -13,7 +13,7 @@ import { CrearSolicitudInput } from '@/types/bpm/request';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EstadoSolicitud } from '@/types/bpm/request';
-import { Search, Filter, SortDesc, FileX, Layers, Users, Plus, ArrowRight, Workflow } from 'lucide-react';
+import { Search, Filter, SortDesc, FileX, Layers, Users, Plus, ArrowRight, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
 import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
 import { useSelector } from 'react-redux';
@@ -46,6 +46,8 @@ export const ModuloSolicitudes: React.FC<{
   const [expandedSolicitudId, setExpandedSolicitudId] = useState<number | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<EstadoSolicitud | 'todos'>('todos');
   const [busqueda, setBusqueda] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const { grupos: gruposBackend } = useAprobations();
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario || 0);
@@ -129,6 +131,23 @@ export const ModuloSolicitudes: React.FC<{
 
     return coincideBusqueda && coincideEstado;
   });
+
+
+  const totalItems = solicitudesFiltradas.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const solicitudesPagina = solicitudesFiltradas.slice(startIndex, endIndex);
+
+  // Reset page when filters/search change or when pageSize changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [busqueda, filtroEstado, pageSize]);
+
+  // Ensure current page is within bounds when totalPages changes
+  React.useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -247,7 +266,7 @@ export const ModuloSolicitudes: React.FC<{
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  {solicitudesFiltradas.map((solicitud) => {
+                  {solicitudesPagina.map((solicitud) => {
                     const relacion = relacionesGrupo.find(r => r.solicitud_id === solicitud.id_solicitud);
                     const assignedGroupId = relacion?.grupo_aprobacion_id ?? (solicitud as { grupo_aprobacion_id?: number }).grupo_aprobacion_id;
                     const g = gruposBackend.find(gr => gr.id_grupo === assignedGroupId);
@@ -369,6 +388,38 @@ export const ModuloSolicitudes: React.FC<{
                   })}
                 </div>
               )}
+            </div>
+            {/* Pagination controls */}
+            <div className="max-w-5xl mx-auto flex items-center justify-between py-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Page</span>
+                <strong className="px-2">{page}</strong>
+                <span>of</span>
+                <strong className="px-2">{totalPages}</strong>
+                <span className="text-xs text-muted-foreground">• {totalItems} items</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                  <SelectTrigger className="w-28 h-8 bg-card text-card-foreground border rounded">
+                    <SelectValue className="text-sm text-card-foreground" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5" className="text-card-foreground">5 / page</SelectItem>
+                    <SelectItem value="10" className="text-card-foreground">10 / page</SelectItem>
+                    <SelectItem value="20" className="text-card-foreground">20 / page</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center gap-2">
+                  <Button aria-label="previous page" size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="h-8">
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button aria-label="next page" size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="h-8">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
