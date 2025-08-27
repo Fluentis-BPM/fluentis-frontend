@@ -12,33 +12,43 @@ interface Props {
   solicitud: Solicitud;
   onActualizarEstado: (id: number, estado: EstadoSolicitud) => void;
   onEliminar: (id: number) => void;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 const getEstadoConfig = (estado: EstadoSolicitud) => {
   switch (estado) {
     case 'aprobado':
       return {
-        color: 'bg-request-success text-white',
+  color: 'bg-request-success text-white',
         icon: CheckCircle,
         gradient: 'bg-gradient-success'
+  , badgeBg: 'bg-green-600',
+  textColor: 'text-white'
       };
     case 'rechazado':
       return {
-        color: 'bg-request-danger text-white',
+  color: 'bg-request-danger text-white',
         icon: XCircle,
         gradient: 'bg-request-danger'
+  , badgeBg: 'bg-red-600',
+  textColor: 'text-white'
       };
     case 'pendiente':
       return {
-        color: 'bg-request-warning text-white',
+  color: 'bg-request-warning text-white',
         icon: Clock,
         gradient: 'bg-request-warning'
+  , badgeBg: 'bg-yellow-400',
+  textColor: 'text-black'
       };
     default:
       return {
-        color: 'bg-muted text-muted-foreground',
-        icon: Clock,
-        gradient: 'bg-muted'
+  color: 'bg-muted text-muted-foreground',
+  icon: Clock,
+  gradient: 'bg-muted',
+  badgeBg: 'bg-gray-400',
+  textColor: 'text-white'
       };
   }
 };
@@ -62,7 +72,7 @@ const calcularDiasTranscurridos = (fecha: string | Date) => {
   return Math.floor(diferencia / (1000 * 60 * 60 * 24));
 };
 
-export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstado, onEliminar }) => {
+export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstado, onEliminar, isExpanded = false, onToggle }) => {
   const estadoConfig = getEstadoConfig(solicitud.estado);
   const IconoEstado = estadoConfig.icon;
   const diasTranscurridos = calcularDiasTranscurridos(solicitud.fecha_creacion);
@@ -80,7 +90,7 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
   const prioridad = String(solicitud.datos_adicionales?.prioridad ?? 'media');
 
   return (
-    <motion.div
+  <motion.div
       className={`rounded-lg border bg-card text-card-foreground shadow-soft border-l-4 ${getPrioridadColor(prioridad)} group`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -91,7 +101,12 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
       }}
       whileTap={{ scale: 0.98 }}
     >
-      <CardHeader className="flex flex-row items-start justify-between pb-3">
+      <CardHeader
+        className="flex flex-row items-start justify-between pb-3 cursor-pointer"
+        onClick={() => onToggle && onToggle()}
+        role="button"
+        tabIndex={0}
+      >
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-full ${estadoConfig.gradient}`}>
             <IconoEstado className="w-4 h-4 text-white" />
@@ -105,15 +120,19 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
         </div>
         
         <div className="flex items-center gap-2">
-          <Badge className={estadoConfig.color}>
+          {/* Colored dot + badge for distinct estado color */}
+          <span className={`inline-block w-2 h-2 rounded-full ${estadoConfig.badgeBg} mr-1`} />
+          <Badge className={`${estadoConfig.badgeBg} ${estadoConfig.textColor} px-2 py-0.5` }>
             {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
           </Badge>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
+                // evitar que el click del botón propague y dispare el toggle del header
+                onClick={(e) => e.stopPropagation()}
                 className="opacity-0 group-hover:opacity-100 transition-smooth hover:bg-gray-100 hover:scale-105"
               >
                 <MoreHorizontal className="w-4 h-4" />
@@ -152,7 +171,8 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      {isExpanded ? (
+        <CardContent className="space-y-3">
         {/* Información básica */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
@@ -247,7 +267,8 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
             </Badge>
           </div>
         </div>
-      </CardContent>
+        </CardContent>
+      ) : null}
     </motion.div>
   );
 };
