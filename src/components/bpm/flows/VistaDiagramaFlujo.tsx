@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { FlujoActivo, PasoSolicitud, CaminoParalelo } from '@/types/bpm/flow';
+import { FlujoActivo, PasoSolicitud } from '@/types/bpm/flow';
 import { 
   Workflow, 
   Eye, 
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
 import { useBpm } from '@/hooks/bpm/useBpm'; // Nuevo import para usar el estado global
+import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
 
 interface VistaDiagramaFlujoProps {
   flujo: FlujoActivo;
@@ -36,8 +37,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     pasosPorFlujo, 
     caminosPorFlujo, 
     loading, 
-    error, 
-    selectFlujo, 
+  error, 
     loadPasosYConexiones,
     createPasoSolicitud,
     updatePasoSolicitud,
@@ -45,9 +45,9 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     createConexionPaso,
     putConexionesPaso,
     deleteConexionPaso,
-    deleting,
     lastActionError
   } = useBpm();
+  const { grupos: gruposAprobacion } = useAprobations();
   const { toast } = useToast();
   const [modoEdicion, setModoEdicion] = useState(true); // Empezar en modo edición por defecto
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
@@ -388,13 +388,8 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                         validacion: { min: 0, max: 1000000 }
                       }
                     ]}
-                    gruposAprobacion={[
-                      { id_grupo: 1, nombre: 'Gerencia General' },
-                      { id_grupo: 2, nombre: 'Finanzas y Contabilidad' },
-                      { id_grupo: 3, nombre: 'Recursos Humanos' },
-                      { id_grupo: 4, nombre: 'Tecnología' },
-                      { id_grupo: 5, nombre: 'Operaciones' }
-                    ]}
+                    gruposAprobacion={gruposAprobacion}
+
                     usuarioActualId={1}
                     onValidarCamposDinamicos={(campos) => {
                       console.log('Validando campos dinámicos:', campos);
@@ -564,7 +559,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
       </Tabs>
 
       <Dialog open={mostrarPantallaCompleta} onOpenChange={setMostrarPantallaCompleta}>
-        <DialogContent className="max-w-full w-screen h-screen max-h-screen p-0 gap-0 border-0">
+  <DialogContent className="max-w-full w-screen h-screen max-h-screen p-0 gap-0 border-0 flex flex-col">
           <FlowViewerPage
             flujo={flujo}
             pasos={pasos}

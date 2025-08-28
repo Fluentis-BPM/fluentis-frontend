@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Users, CheckCircle, XCircle, Clock, UserCheck } from 'lucide-react';
+import { useBpm } from '@/hooks/bpm/useBpm';
+import { useToast } from '@/hooks/bpm/use-toast';
 
 interface EditorPasoAprobacionProps {
   paso: PasoSolicitud;
@@ -22,7 +24,6 @@ interface EditorPasoAprobacionProps {
 
 export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
   paso,
-  onUpdatePaso,
   onRegistrarDecision,
   gruposDisponibles = [],
   relacionGrupo,
@@ -31,6 +32,9 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
 }) => {
   const [grupoSeleccionado, setGrupoSeleccionado] = useState<number | undefined>(relacionGrupo?.grupo_aprobacion_id);
   const [miDecision, setMiDecision] = useState<TipoDecision | undefined>();
+  const [saving, setSaving] = useState(false);
+  const { createRelacionGrupoAprobacionPaso } = useBpm();
+  const { toast } = useToast();
 
   // Cargar mi decisión si ya existe
   useEffect(() => {
@@ -44,10 +48,17 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
     }
   }, [usuarioActualId, relacionGrupo, decisiones]);
 
-  const asignarGrupo = () => {
-    if (grupoSeleccionado) {
-      // Aquí se debería crear la RelacionGrupoAprobacion
-      console.log('Asignando grupo:', grupoSeleccionado, 'al paso:', paso.id_paso_solicitud);
+  const asignarGrupo = async () => {
+    if (!grupoSeleccionado) return;
+    try {
+      setSaving(true);
+      await createRelacionGrupoAprobacionPaso(paso.id_paso_solicitud, grupoSeleccionado);
+      toast({ title: 'Grupo asignado', description: 'Se vinculó el grupo al paso de aprobación.' });
+    } catch (e) {
+      // los thunks ya setean errores globales; brindamos feedback local opcional
+      toast({ title: 'Error asignando grupo', description: e instanceof Error ? e.message : 'Intenta nuevamente.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -56,7 +67,9 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
     onRegistrarDecision(decision);
   };
 
-  const grupoAsignado = gruposDisponibles.find(g => g.id_grupo === relacionGrupo?.grupo_aprobacion_id);
+  // Usar relacion proporcionada o derivarla del paso (si viene cargada en pasosPorFlujo)
+  const relacionActual: RelacionGrupoAprobacion | undefined = relacionGrupo || (paso.relacionesGrupoAprobacion && paso.relacionesGrupoAprobacion[0] as unknown as RelacionGrupoAprobacion);
+  const grupoAsignado = gruposDisponibles.find(g => g.id_grupo === relacionActual?.grupo_aprobacion_id);
   
   // Simular miembros del grupo (en una implementación real vendría de la base de datos)
   const miembrosGrupo = [
@@ -94,7 +107,7 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
       </div>
 
       {/* Asignación de grupo */}
-      {!grupoAsignado ? (
+  {!grupoAsignado ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -121,7 +134,7 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={asignarGrupo} disabled={!grupoSeleccionado} className="w-full">
+    <Button onClick={asignarGrupo} disabled={!grupoSeleccionado || saving} className="w-full">
               Asignar Grupo
             </Button>
           </CardContent>

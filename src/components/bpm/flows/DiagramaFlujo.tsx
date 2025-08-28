@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -22,6 +22,7 @@ import { RelacionInput, CamposDinamicos } from '@/types/bpm/inputs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FloatingAddButton } from './FloatingAddButton';
 import { 
   Play, 
   CheckCircle, 
@@ -29,8 +30,7 @@ import {
   User,
   Settings,
   Users,
-  FileText,
-  Plus
+  FileText
 } from 'lucide-react';
 
 // Tipo para los datos del nodo
@@ -56,8 +56,6 @@ interface DiagramaFlujoProps {
   onUpdatePaso?: (id: number, data: unknown) => void;
   onDeletePaso?: (id: number) => void;
   onCreateConexion?: (id: number, destinoId: number, esExcepcion?: boolean) => void;
-  onReplaceConexiones?: (id: number, destinos: number[]) => void;
-  onDeleteConexion?: (id: number, destinoId: number) => void;
 }
 
 // Componente personalizado para nodos de paso
@@ -267,13 +265,8 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   onCreatePaso,
   onUpdatePaso,
   onDeletePaso,
-  onCreateConexion,
-  onReplaceConexiones,
-  onDeleteConexion
+  onCreateConexion
 }) => {
-  const [cardPosition, setCardPosition] = useState({ x: 16, y: window.innerHeight - 200 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Convertir pasos a nodos de React Flow
   const initialNodes: Node[] = useMemo(() => {
@@ -489,47 +482,34 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
     [readOnly, pasos, onCreatePaso]
   );
 
-  const handleCardMouseDown = useCallback((e: React.MouseEvent) => {
-    if (readOnly) return;
-    setIsDragging(true);
-    const rect = e.currentTarget.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-    e.preventDefault();
-  }, [readOnly]);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
-      const maxX = window.innerWidth - 300;
-      const maxY = window.innerHeight - 150;
-      setCardPosition({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY))
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, dragOffset]);
+  // Handler for the floating add button
+  const handleAddPaso = useCallback(
+    (tipo: 'aprobacion' | 'ejecucion') => {
+      if (!onCreatePaso) return;
+      
+      // Calculate position for new step (place it in a grid-like pattern)
+      const stepCount = pasos.length;
+      const x = 100 + (stepCount % 4) * 300; // 4 steps per row
+      const y = 100 + Math.floor(stepCount / 4) * 200; // New row every 4 steps
+      
+      const pasoData = {
+        flujoActivoId: flujoActivoId,
+        reglaAprobacion: tipo === 'aprobacion' ? "Unanimidad" : "Unanimidad",
+        tipoPaso: tipo === 'aprobacion' ? "Aprobacion" : "Ejecucion", // Match the case from working example
+        nombre: `Nuevo Paso ${tipo === 'aprobacion' ? 'Aprobación' : 'Ejecución'} ${pasos.length + 1}`,
+        posicion_x: x,
+        posicion_y: y,
+        inputs: []
+      };
+      
+      console.log(`🆕 Creando nuevo paso de ${tipo}:`, pasoData);
+      onCreatePaso(pasoData);
+    },
+    [pasos.length, flujoActivoId, onCreatePaso]
+  );
 
   return (
-    <div className="w-full h-[600px] border rounded-lg bg-background">
+    <div className="w-full h-full border rounded-lg bg-background relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -564,69 +544,13 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         />
         <Background gap={20} size={1} className="opacity-30" />
       </ReactFlow>
-      
+
+      {/* Floating Add Button - only show if not read-only */}
       {!readOnly && (
-        <div 
-          className="absolute bg-background/95 backdrop-blur border rounded-lg p-3 shadow-lg cursor-move select-none"
-          style={{ 
-            left: `${cardPosition.x}px`, 
-            top: `${cardPosition.y}px`,
-            transform: isDragging ? 'scale(1.02)' : 'scale(1)',
-            transition: isDragging ? 'none' : 'transform 0.2s ease'
-          }}
-          onMouseDown={handleCardMouseDown}
-        >
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              💡 Doble click para agregar paso • Arrastra desde <span className="text-secondary font-medium">●</span> para conectar pasos
-            </p>
-            <p className="text-xs text-info">
-              🎯 El paso inicial <span className="text-secondary font-medium">siempre</span> es el punto de partida del flujo
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs border-blue-500 text-blue-600 hover:bg-blue-500 hover:text-white hover:scale-105 transition-all duration-300"
-                onClick={() => {
-                  if (onCreatePaso) {
-                    const pasoData = {
-                      flujoActivoId: flujoActivoId,
-                      reglaAprobacion: "Unanimidad",
-                      tipoPaso: "Ejecucion",
-                      nombre: `Nuevo Paso Ejecución ${pasos.length + 1}`,
-                      inputs: []
-                    };
-                    onCreatePaso(pasoData);
-                  }
-                }}
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                Ejecución
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs border-purple-500 text-purple-600 hover:bg-purple-500 hover:text-white hover:scale-105 transition-all duration-300"
-                onClick={() => {
-                  if (onCreatePaso) {
-                    const pasoData = {
-                      flujoActivoId: flujoActivoId,
-                      reglaAprobacion: "Unanimidad",
-                      tipoPaso: "Aprobacion",
-                      nombre: `Nuevo Paso Aprobación ${pasos.length + 1}`,
-                      inputs: []
-                    };
-                    onCreatePaso(pasoData);
-                  }
-                }}
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                Aprobación
-              </Button>
-            </div>
-          </div>
-        </div>
+        <FloatingAddButton
+          onAddPaso={handleAddPaso}
+          disabled={!onCreatePaso}
+        />
       )}
     </div>
   );

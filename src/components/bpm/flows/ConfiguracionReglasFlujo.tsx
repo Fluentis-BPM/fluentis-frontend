@@ -18,11 +18,13 @@ import {
 interface ConfiguracionReglasProps {
   paso: PasoSolicitud;
   onUpdatePaso: (paso: PasoSolicitud) => void;
+  showTipoFlujo?: boolean; // permite ocultar UI de tipo de flujo
 }
 
 export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
   paso,
-  onUpdatePaso
+  onUpdatePaso,
+  showTipoFlujo = true
 }) => {
   const handleCambioTipoFlujo = (nuevoTipo: PasoSolicitud['tipo_flujo']) => {
     onUpdatePaso({ ...paso, tipo_flujo: nuevoTipo });
@@ -57,76 +59,78 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
         <h3 className="text-lg font-semibold">Configuración de Reglas de Flujo</h3>
       </div>
 
-      {/* Tipo de Flujo */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            {obtenerIconoTipoFlujo(paso.tipo_flujo)}
-            Tipo de Flujo
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Comportamiento del Paso</Label>
-            <Select 
-              value={paso.tipo_flujo} 
-              onValueChange={handleCambioTipoFlujo}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">
-                  <div className="flex items-center gap-2">
-                    <ArrowRight className="w-4 h-4" />
-                    <div>
-                      <div className="font-medium">Normal</div>
-                      <div className="text-xs text-muted-foreground">Flujo secuencial estándar</div>
-                    </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="bifurcacion">
-                  <div className="flex items-center gap-2">
-                    <GitBranch className="w-4 h-4" />
-                    <div>
-                      <div className="font-medium">Bifurcación</div>
-                      <div className="text-xs text-muted-foreground">Divide el flujo en múltiples caminos</div>
-                    </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="union">
-                  <div className="flex items-center gap-2">
-                    <GitMerge className="w-4 h-4" />
-                    <div>
-                      <div className="font-medium">Unión</div>
-                      <div className="text-xs text-muted-foreground">Espera múltiples caminos antes de continuar</div>
-                    </div>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Información del tipo de flujo */}
-          <div className="p-3 bg-muted/30 rounded-lg">
-            <div className="flex items-start gap-2">
+      {/* Tipo de Flujo (oculto si showTipoFlujo es false) */}
+      {showTipoFlujo && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
               {obtenerIconoTipoFlujo(paso.tipo_flujo)}
-              <div>
-                <p className="font-medium text-sm">
-                  {paso.tipo_flujo === 'normal' && 'Flujo Secuencial'}
-                  {paso.tipo_flujo === 'bifurcacion' && 'Flujo con Bifurcación'}
-                  {paso.tipo_flujo === 'union' && 'Flujo con Unión'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {paso.tipo_flujo === 'normal' && 'Este paso se ejecuta después de que se complete el paso anterior.'}
-                  {paso.tipo_flujo === 'bifurcacion' && 'Este paso puede generar múltiples caminos paralelos según el resultado.'}
-                  {paso.tipo_flujo === 'union' && 'Este paso espera a que se completen todos los pasos anteriores antes de continuar.'}
-                </p>
+              Tipo de Flujo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Comportamiento del Paso</Label>
+              <Select 
+                value={paso.tipo_flujo} 
+                onValueChange={handleCambioTipoFlujo}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">
+                    <div className="flex items-center gap-2">
+                      <ArrowRight className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">Normal</div>
+                        <div className="text-xs text-muted-foreground">Flujo secuencial estándar</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bifurcacion">
+                    <div className="flex items-center gap-2">
+                      <GitBranch className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">Bifurcación</div>
+                        <div className="text-xs text-muted-foreground">Divide el flujo en múltiples caminos</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="union">
+                    <div className="flex items-center gap-2">
+                      <GitMerge className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">Unión</div>
+                        <div className="text-xs text-muted-foreground">Espera múltiples caminos antes de continuar</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Información del tipo de flujo */}
+            <div className="p-3 bg-muted/30 rounded-lg">
+              <div className="flex items-start gap-2">
+                {obtenerIconoTipoFlujo(paso.tipo_flujo)}
+                <div>
+                  <p className="font-medium text-sm">
+                    {paso.tipo_flujo === 'normal' && 'Flujo Secuencial'}
+                    {paso.tipo_flujo === 'bifurcacion' && 'Flujo con Bifurcación'}
+                    {paso.tipo_flujo === 'union' && 'Flujo con Unión'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {paso.tipo_flujo === 'normal' && 'Este paso se ejecuta después de que se complete el paso anterior.'}
+                    {paso.tipo_flujo === 'bifurcacion' && 'Este paso puede generar múltiples caminos paralelos según el resultado.'}
+                    {paso.tipo_flujo === 'union' && 'Este paso espera a que se completen todos los pasos anteriores antes de continuar.'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Reglas de Aprobación (solo para pasos de aprobación) */}
       {paso.tipo_paso === 'aprobacion' && (
@@ -141,8 +145,8 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
             <div className="space-y-2">
               <Label>Criterio de Aprobación</Label>
               <Select 
-                value={paso.regla_aprobacion} 
-                onValueChange={handleCambioReglaAprobacion}
+                value={paso.regla_aprobacion}
+                onValueChange={(v) => handleCambioReglaAprobacion(v as PasoSolicitud['regla_aprobacion'])}
               >
                 <SelectTrigger>
                   <SelectValue />
