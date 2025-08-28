@@ -2,7 +2,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback } from 'react';
 import { AppDispatch, RootState } from '@/store';
-import { fetchPasosYConexiones, fetchFlujosActivos, setFlujoSeleccionado, deletePasoSolicitud, createPasoSolicitud, updatePasoSolicitud, putConexionesPaso, deleteConexionPaso, createConexionPaso } from '@/store/bpm/bpmSlice';
+import { fetchPasosYConexiones, fetchFlujosActivos, setFlujoSeleccionado, deletePasoSolicitud, createPasoSolicitud, updatePasoSolicitud, putConexionesPaso, deleteConexionPaso, createConexionPaso, createRelacionGrupoAprobacionPaso } from '@/store/bpm/bpmSlice';
 
 export const useBpm = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -51,5 +51,6 @@ export const useBpm = () => {
   createConexionPaso: (id: number, destinoId: number, esExcepcion?: boolean) => dispatch(createConexionPaso({ id, destinoId, esExcepcion })),
   putConexionesPaso: (id: number, destinos: number[]) => dispatch(putConexionesPaso({ id, destinos })),
   deleteConexionPaso: (id: number, destinoId: number) => dispatch(deleteConexionPaso({ id, destinoId })),
+  createRelacionGrupoAprobacionPaso: (id: number, grupoAprobacionId: number) => dispatch(createRelacionGrupoAprobacionPaso({ id, grupoAprobacionId })),
   };
 };

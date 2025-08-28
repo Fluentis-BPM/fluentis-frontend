@@ -127,6 +127,21 @@ export const createConexionPaso = createAsyncThunk<PasoSolicitud | void, { id: n
   }
 });
 
+// Crear relación de grupo de aprobación para un paso de tipo aprobación
+export const createRelacionGrupoAprobacionPaso = createAsyncThunk<void, { id: number; grupoAprobacionId: number }, { state: RootState; rejectValue: string }>(
+  'bpm/createRelacionGrupoAprobacionPaso',
+  async ({ id, grupoAprobacionId }, { dispatch, getState, rejectWithValue }) => {
+    try {
+      await api.post(`/api/PasoSolicitud/${id}/grupoaprobacion`, { GrupoAprobacionId: grupoAprobacionId });
+      const flujoId = getState().bpm.flujoSeleccionado;
+      if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Error asociando grupo de aprobación al paso';
+      return rejectWithValue(msg);
+    }
+  }
+);
+
 
 const bpmSlice = createSlice({
   name: 'bpm',
@@ -181,7 +196,10 @@ const bpmSlice = createSlice({
       .addCase(deleteConexionPaso.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error eliminando conexion'; })
       .addCase(createConexionPaso.pending, (state) => { state.loading = true; state.lastActionError = null; })
       .addCase(createConexionPaso.fulfilled, (state) => { state.loading = false; })
-      .addCase(createConexionPaso.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error creando conexion'; });
+  .addCase(createConexionPaso.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error creando conexion'; })
+  .addCase(createRelacionGrupoAprobacionPaso.pending, (state) => { state.loading = true; state.lastActionError = null; })
+  .addCase(createRelacionGrupoAprobacionPaso.fulfilled, (state) => { state.loading = false; })
+  .addCase(createRelacionGrupoAprobacionPaso.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error asociando grupo'; });
   },
 });
 

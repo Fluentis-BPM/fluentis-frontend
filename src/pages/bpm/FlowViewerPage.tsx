@@ -13,8 +13,8 @@ import {
   RefreshCw,
   Settings
 } from 'lucide-react';
-import { toast, useToast } from '@/hooks/bpm/use-toast';
-import { useBpm } from '@/hooks/bpm/useBpm'; // Nuevo import para usar el estado global
+import { toast } from '@/hooks/bpm/use-toast';
+import { fmtDate } from '@/lib/utils';
 
 interface FlowViewerPageProps {
   flujo: FlujoActivo;
@@ -70,22 +70,6 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
     });
   };
 
-  const handleAgregarPaso = (x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => {
-    // onAgregarPaso(flujo.id_flujo_activo, x, y, tipo_paso);
-    // Placeholder para thunk
-    // createPasoSolicitud({ flujo_activo_id: flujo.id_flujo_activo, posicion_x: x, posicion_y: y, tipo_paso }); // TODO: Implementar thunk
-  };
-
-  const handleActualizarPaso = (pasoId: number, estado: PasoSolicitud['estado']) => {
-    // onActualizarPaso(pasoId, estado);
-    // Placeholder para thunk
-    // updatePasoSolicitud({ id: pasoId, estado }); // TODO: Implementar thunk
-    toast({
-      title: "Paso actualizado",
-      description: `Estado cambiado a ${estado}`,
-    });
-  };
-
   useEffect(() => {
     // Solo resetear el diagrama en casos específicos, no por cambios normales en pasos/caminos
     // El key se incrementa solo cuando hay cambios estructurales importantes
@@ -132,7 +116,7 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-full flex flex-col bg-background overflow-hidden">
       {/* Top Header Bar */}
       <div className="border-b bg-white shadow-sm">
         <div className="flex items-center justify-between p-4">
@@ -159,7 +143,7 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
                   {getEstadoBadge(flujo.estado)}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Solicitud #{flujo.solicitud_id} • {flujo.fecha_inicio.toLocaleDateString()}
+                  Solicitud #{flujo.solicitud_id} • {fmtDate(flujo.fecha_inicio)}
                 </p>
               </div>
             </div>
@@ -205,24 +189,21 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
       </div>
 
       {/* Main Flow Area - Takes full remaining height */}
-      <div className="flex-1 relative overflow-hidden">
+    <div className="flex-1 relative overflow-hidden">
         {/* React Flow Container with dynamic margin */}
         <div 
-          className={`h-full transition-all duration-300`}
+      className={`h-full transition-all duration-300`}
           style={{ marginRight: pasoEditando ? `${editorWidth}px` : '0' }}
         >
           <DiagramaFlujo
             key={diagramaKey}
             pasos={pasos}
             caminos={caminos}
-            // onActualizarPaso={handleActualizarPaso} // TODO: Implementar thunk
-            // onAgregarPaso={handleAgregarPaso} // TODO: Implementar thunk
-            // onCrearCamino={onCrearCamino} // TODO: Implementar thunk
-            // onEditarPaso={handleEditarPaso} // TODO: Implementar thunk
+            flujoActivoId={flujo.id_flujo_activo}
             readOnly={!modoEdicion}
             selectedNodeId={selectedNodeId || undefined}
             onNodeSelect={handleNodeSelect}
-            camposDinamicosIniciales={flujo.campos_dinamicos}
+            datosSolicitudIniciales={flujo.datos_solicitud}
           />
         </div>
 
@@ -336,7 +317,7 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
           </motion.div>
         )}
       </div>
-    </div>
+  </div>
   );
 };
 
