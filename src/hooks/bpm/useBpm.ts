@@ -2,7 +2,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback } from 'react';
 import { AppDispatch, RootState } from '@/store';
-import { fetchPasosYConexiones, fetchFlujosActivos, setFlujoSeleccionado, deletePasoSolicitud, createPasoSolicitud, updatePasoSolicitud, putConexionesPaso, deleteConexionPaso, createConexionPaso, createRelacionGrupoAprobacionPaso } from '@/store/bpm/bpmSlice';
+import { fetchPasosYConexiones, fetchFlujosActivos, setFlujoSeleccionado, deletePasoSolicitud, createPasoSolicitud, updatePasoSolicitud, putConexionesPaso, deleteConexionPaso, createConexionPaso, createRelacionGrupoAprobacionPaso, addPasoInput, updatePasoInput, deletePasoInput } from '@/store/bpm/bpmSlice';
 
 export const useBpm = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -52,5 +52,8 @@ export const useBpm = () => {
   putConexionesPaso: (id: number, destinos: number[]) => dispatch(putConexionesPaso({ id, destinos })),
   deleteConexionPaso: (id: number, destinoId: number) => dispatch(deleteConexionPaso({ id, destinoId })),
   createRelacionGrupoAprobacionPaso: (id: number, grupoAprobacionId: number) => dispatch(createRelacionGrupoAprobacionPaso({ id, grupoAprobacionId })),
+  addPasoInput: (id: number, input: Parameters<typeof addPasoInput>[0]['input']) => dispatch(addPasoInput({ id, input })),
+  updatePasoInput: (id: number, inputId: number, input: Parameters<typeof updatePasoInput>[0]['input']) => dispatch(updatePasoInput({ id, inputId, input })),
+  deletePasoInput: (id: number, inputId: number) => dispatch(deletePasoInput({ id, inputId })),
   };
 };
