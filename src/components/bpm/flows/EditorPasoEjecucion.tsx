@@ -1,180 +1,95 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PasoSolicitud } from '@/types/bpm/flow';
-import { RelacionInput, Input } from '@/types/bpm/inputs';
+import { Input, RelacionInput } from '@/types/bpm/inputs';
+import { useBpm } from '@/hooks/bpm/useBpm';
 import { Button } from '@/components/ui/button';
-import { Input as InputUI } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input as InputUI } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { CheckCircle, FileText, Calendar, Hash } from 'lucide-react';
+import { FileText, Calendar, Hash, Upload, Trash2, Plus, X, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface EditorPasoEjecucionProps {
   paso: PasoSolicitud;
-  onUpdatePaso: (paso: PasoSolicitud) => void;
-  onMarcarCompletado: () => void;
   relacionesInput?: RelacionInput[];
   inputsDisponibles?: Input[];
 }
 
 export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
   paso,
-  onUpdatePaso,
-  onMarcarCompletado,
   relacionesInput = [],
-  inputsDisponibles = []
+  inputsDisponibles = [],
 }) => {
-  const [datosDinamicos, setDatosDinamicos] = useState<Record<number, string>>({});
-  const [inputsAdicionales, setInputsAdicionales] = useState<RelacionInput[]>([]);
+  const [inputsPaso, setInputsPaso] = useState<RelacionInput[]>([]);
+  const [addSelectValue, setAddSelectValue] = useState<string>('');
+  const [editOpciones, setEditOpciones] = useState<Record<number, boolean>>({});
+  const [opcionesDraft, setOpcionesDraft] = useState<Record<number, string[]>>({});
+  const { addPasoInput, updatePasoInput, deletePasoInput, pasosPorFlujo, flujoSeleccionado } = useBpm();
 
-  // Cargar datos existentes
+  // Cargar datos existentes desde Store (preferido) o props/paso
   useEffect(() => {
-    const datosActuales: Record<number, string> = {};
-    relacionesInput.forEach(relacion => {
-      if (relacion.paso_solicitud_id === paso.id_paso_solicitud) {
-        datosActuales[relacion.input_id] = relacion.valor;
-      }
-    });
-    setDatosDinamicos(datosActuales);
-  }, [relacionesInput, paso.id_paso_solicitud]);
+    const relacionesDesdeStore = flujoSeleccionado
+      ? (pasosPorFlujo[flujoSeleccionado]?.find(p => p.id_paso_solicitud === paso.id_paso_solicitud)?.relacionesInput ?? [])
+      : undefined;
 
-  const agregarInput = (inputId: number) => {
+    const fuente = relacionesDesdeStore && relacionesDesdeStore.length > 0
+      ? relacionesDesdeStore
+      : (paso.relacionesInput && paso.relacionesInput.length > 0
+          ? paso.relacionesInput
+          : (relacionesInput || []));
+
+  const delPaso = fuente.filter((r) => r.paso_solicitud_id === paso.id_paso_solicitud);
+  setInputsPaso(delPaso);
+  }, [flujoSeleccionado, pasosPorFlujo, relacionesInput, paso.id_paso_solicitud, paso.relacionesInput]);
+
+  const agregarInput = async (inputId: number) => {
     const input = inputsDisponibles.find(i => i.id_input === inputId);
-    if (input) {
-      const nuevaRelacion: RelacionInput = {
-        id_relacion: Date.now(),
-        input_id: inputId,
-        paso_solicitud_id: paso.id_paso_solicitud,
-        valor: '',
-        requerido: false,
-        input
-      };
-      setInputsAdicionales([...inputsAdicionales, nuevaRelacion]);
-    }
+    if (!input) return;
+    const countSame = inputsPaso.filter(r => r.input_id === inputId).length;
+    await addPasoInput(paso.id_paso_solicitud, {
+      InputId: inputId,
+      Nombre: (input.etiqueta || `Campo ${inputId}`) + (countSame > 0 ? ` ${countSame + 1}` : ''),
+      PlaceHolder: input.placeholder,
+      Requerido: Boolean(input.validacion?.required),
+      Valor: { RawValue: '' }
+    });
+    // reset selector so user can add more
+    setAddSelectValue('');
   };
 
-  const actualizarValor = (inputId: number, valor: string) => {
-    setDatosDinamicos(prev => ({
-      ...prev,
-      [inputId]: valor
-    }));
+  // Editores de metadatos (Título y Placeholder) por relación
+  const actualizarNombre = async (relacionId: number, nombre: string) => {
+    setInputsPaso((prev) => prev.map((r) => (r.id_relacion === relacionId ? { ...r, nombre } : r)));
+    await updatePasoInput(paso.id_paso_solicitud, relacionId, { Nombre: nombre });
   };
 
-  const guardarDatos = () => {
-    // Actualizar el paso con los nuevos datos
-    const pasoActualizado: PasoSolicitud = {
-      ...paso,
-      campos_dinamicos: datosDinamicos
-    };
-    onUpdatePaso(pasoActualizado);
+  const actualizarPlaceholder = async (relacionId: number, placeholder: string) => {
+    setInputsPaso((prev) => prev.map((r) => (r.id_relacion === relacionId ? { ...r, placeholder } : r)));
+    await updatePasoInput(paso.id_paso_solicitud, relacionId, { PlaceHolder: placeholder });
   };
 
-  const marcarComoCompletado = () => {
-    guardarDatos();
-    onMarcarCompletado();
+  const actualizarRequerido = async (relacionId: number, requerido: boolean) => {
+    setInputsPaso((prev) => prev.map((r) => (r.id_relacion === relacionId ? { ...r, requerido } : r)));
+    await updatePasoInput(paso.id_paso_solicitud, relacionId, { Requerido: requerido });
   };
 
-  const renderInput = (relacion: RelacionInput) => {
-    const input = relacion.input || inputsDisponibles.find(i => i.id_input === relacion.input_id);
-    if (!input) return null;
-
-    const valor = datosDinamicos[relacion.input_id] || relacion.valor || '';
-
-    switch (input.tipo_input) {
-      case 'textocorto':
-        return (
-          <InputUI
-            value={valor}
-            onChange={(e) => actualizarValor(relacion.input_id, e.target.value)}
-            placeholder={input.placeholder}
-            className="w-full"
-          />
-        );
-
-      case 'textolargo':
-        return (
-          <Textarea
-            value={valor}
-            onChange={(e) => actualizarValor(relacion.input_id, e.target.value)}
-            placeholder={input.placeholder}
-            rows={3}
-            className="w-full"
-          />
-        );
-
-      case 'combobox':
-        return (
-          <Select value={valor} onValueChange={(value) => actualizarValor(relacion.input_id, value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar opción..." />
-            </SelectTrigger>
-            <SelectContent>
-              {input.opciones?.map((opcion, index) => (
-                <SelectItem key={index} value={opcion}>
-                  {opcion}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'number':
-        return (
-          <InputUI
-            type="number"
-            value={valor}
-            onChange={(e) => actualizarValor(relacion.input_id, e.target.value)}
-            placeholder={input.placeholder}
-            min={input.validacion?.min}
-            max={input.validacion?.max}
-          />
-        );
-
-      case 'date':
-        return (
-          <InputUI
-            type="date"
-            value={valor}
-            onChange={(e) => actualizarValor(relacion.input_id, e.target.value)}
-          />
-        );
-
-      case 'multiplecheckbox':
-        const valoresSeleccionados = valor ? valor.split(',') : [];
-        return (
-          <div className="space-y-2">
-            {input.opciones?.map((opcion, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`${relacion.input_id}-${index}`}
-                  checked={valoresSeleccionados.includes(opcion)}
-                  onCheckedChange={(checked) => {
-                    let nuevosValores = [...valoresSeleccionados];
-                    if (checked) {
-                      nuevosValores.push(opcion);
-                    } else {
-                      nuevosValores = nuevosValores.filter(v => v !== opcion);
-                    }
-                    actualizarValor(relacion.input_id, nuevosValores.join(','));
-                  }}
-                />
-                <Label htmlFor={`${relacion.input_id}-${index}`}>{opcion}</Label>
-              </div>
-            ))}
-          </div>
-        );
-
-      default:
-        return (
-          <InputUI
-            value={valor}
-            onChange={(e) => actualizarValor(relacion.input_id, e.target.value)}
-            placeholder="Valor del campo"
-          />
-        );
-    }
+  // Reordenar visualmente (no hay persistencia conocida en backend)
+  const moverArriba = (idx: number) => {
+    if (idx <= 0) return;
+    setInputsPaso((prev) => {
+      const next = [...prev];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      return next;
+    });
+  };
+  const moverAbajo = (idx: number) => {
+    setInputsPaso((prev) => {
+      if (idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+      return next;
+    });
   };
 
   const getInputIcon = (tipo: string) => {
@@ -186,12 +101,30 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
         return <Hash className="w-4 h-4" />;
       case 'date':
         return <Calendar className="w-4 h-4" />;
+      case 'multiplecheckbox':
+        return <Hash className="w-4 h-4" />;
+      case 'archivo':
+        return <Upload className="w-4 h-4" />;
       default:
         return <FileText className="w-4 h-4" />;
     }
   };
 
-  const todasLasRelaciones = [...relacionesInput.filter(r => r.paso_solicitud_id === paso.id_paso_solicitud), ...inputsAdicionales];
+  // Render uses inputsPaso directly
+
+  const getOpcionesPara = (relacion: RelacionInput, input: Input | undefined): string[] => {
+    if (!input) return [];
+    // If backend stores options per relation in placeholder as JSON array, prefer that
+    if (relacion.placeholder) {
+      try {
+        const parsed = JSON.parse(relacion.placeholder);
+        if (Array.isArray(parsed)) return parsed.filter((s) => typeof s === 'string');
+      } catch {
+        // ignore malformed placeholder
+      }
+    }
+    return input.opciones || [];
+  };
 
   return (
     <div className="space-y-6">
@@ -202,107 +135,214 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
             Paso de Ejecución
           </h3>
           <p className="text-sm text-muted-foreground">
-            Ingresa los datos requeridos para completar este paso
+            Configura los campos del formulario. Los ejecutores completarán los valores.
           </p>
         </div>
-        <Badge variant="outline" className="bg-blue-50 text-blue-700">
-          Ejecución
-        </Badge>
+        <Badge variant="outline" className="bg-blue-50 text-blue-700">Ejecución</Badge>
       </div>
 
-      {/* Campos dinámicos existentes */}
-      {todasLasRelaciones.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Datos del Paso</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {todasLasRelaciones.map((relacion) => {
-              const input = relacion.input || inputsDisponibles.find(i => i.id_input === relacion.input_id);
-              return (
-                <div key={relacion.id_relacion} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="flex items-center gap-2">
-                      {getInputIcon(input?.tipo_input || 'textocorto')}
-                      {input?.etiqueta || `Campo ${relacion.input_id}`}
-                      {relacion.requerido && <span className="text-red-500">*</span>}
-                    </Label>
-                    <Badge variant="outline" className="text-xs">
-                      {input?.tipo_input || 'texto'}
-                    </Badge>
-                  </div>
-                  {input?.descripcion && (
-                    <p className="text-xs text-muted-foreground">{input.descripcion}</p>
-                  )}
-                  {renderInput(relacion)}
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Agregar nuevos campos */}
-      {inputsDisponibles.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Agregar Datos Adicionales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select onValueChange={(value) => agregarInput(parseInt(value))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar campo para agregar..." />
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Campos del Paso</CardTitle>
+          <div className="flex items-center gap-2">
+            <Select
+              value={addSelectValue}
+              onValueChange={(value) => {
+                setAddSelectValue(value);
+                const id = parseInt(value, 10);
+                if (!Number.isNaN(id)) agregarInput(id);
+              }}
+            >
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Agregar campo…" />
               </SelectTrigger>
               <SelectContent>
-                {inputsDisponibles
-                  .filter(input => !todasLasRelaciones.some(r => r.input_id === input.id_input))
-                  .map((input) => (
-                    <SelectItem key={input.id_input} value={input.id_input.toString()}>
-                      <div className="flex items-center gap-2">
-                        {getInputIcon(input.tipo_input)}
-                        <span>{input.etiqueta || `Campo ${input.id_input}`}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {input.tipo_input}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
+                {inputsDisponibles.map((input) => (
+                  <SelectItem key={input.id_input} value={input.id_input.toString()}>
+                    <div className="flex items-center gap-2">
+                      {getInputIcon(input.tipo_input)}
+                      <span>{input.etiqueta || `Campo ${input.id_input}`}</span>
+                      <Badge variant="outline" className="text-xs">{input.tipo_input}</Badge>
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Información del paso */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Estado: {paso.estado}</p>
-              <p className="text-sm text-muted-foreground">
-                Responsable ID: {paso.responsable_id || 'No asignado'}
-              </p>
-            </div>
-            <Badge variant={
-              paso.estado === 'completado' ? 'default' :
-              paso.estado === 'pendiente' ? 'secondary' : 'outline'
-            }>
-              {paso.estado}
-            </Badge>
           </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {inputsPaso.length === 0 && (
+            <p className="text-sm text-muted-foreground">No hay campos agregados. Usa &quot;Agregar campo…&quot; para empezar.</p>
+          )}
+
+          {inputsPaso.map((relacion, idx) => {
+            const input = inputsDisponibles.find((i) => i.id_input === relacion.input_id);
+            return (
+              <div key={relacion.id_relacion} className="space-y-3 p-3 border rounded-md">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    {getInputIcon(input?.tipo_input || 'textocorto')}
+                    {relacion.nombre || input?.etiqueta || `Campo ${relacion.input_id}`}
+                    {relacion.requerido && <span className="text-red-500">*</span>}
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">{input?.tipo_input || 'texto'}</Badge>
+                    {/* Reordenar */}
+                    <Button size="icon" variant="outline" className="h-8 w-8" disabled={idx === 0} onClick={() => moverArriba(idx)} title="Mover arriba">
+                      <ArrowUp className="w-4 h-4" />
+                    </Button>
+                    <Button size="icon" variant="outline" className="h-8 w-8" disabled={idx === inputsPaso.length - 1} onClick={() => moverAbajo(idx)} title="Mover abajo">
+                      <ArrowDown className="w-4 h-4" />
+                    </Button>
+                    {(input?.tipo_input === 'combobox' || input?.tipo_input === 'multiplecheckbox') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const current = getOpcionesPara(relacion, input);
+                          setOpcionesDraft((prev) => ({ ...prev, [relacion.id_relacion]: [...current] }));
+                          setEditOpciones((prev) => ({ ...prev, [relacion.id_relacion]: true }));
+                        }}
+                      >
+                        Editar opciones
+                      </Button>
+                    )}
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 border-destructive text-destructive hover:bg-destructive hover:text-white"
+                      onClick={async () => {
+                        await deletePasoInput(paso.id_paso_solicitud, relacion.id_relacion);
+                      }}
+                      title="Eliminar campo"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {input?.descripcion && (
+                  <p className="text-xs text-muted-foreground">{input.descripcion}</p>
+                )}
+
+                {/* Editores de metadatos */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Título</Label>
+                    <InputUI
+                      value={relacion.nombre ?? ''}
+                      placeholder={input?.etiqueta || 'Título del campo'}
+                      onChange={(e) =>
+                        setInputsPaso((prev) =>
+                          prev.map((r) => (r.id_relacion === relacion.id_relacion ? { ...r, nombre: e.target.value } : r))
+                        )
+                      }
+                      onBlur={(e) => actualizarNombre(relacion.id_relacion, e.target.value.trim())}
+                    />
+                  </div>
+                  {!(input?.tipo_input === 'combobox' || input?.tipo_input === 'multiplecheckbox') && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Placeholder</Label>
+                      <InputUI
+                        value={relacion.placeholder ?? ''}
+                        placeholder={input?.placeholder || 'Texto de ayuda'}
+                        onChange={(e) =>
+                          setInputsPaso((prev) =>
+                            prev.map((r) => (r.id_relacion === relacion.id_relacion ? { ...r, placeholder: e.target.value } : r))
+                          )
+                        }
+                        onBlur={(e) => actualizarPlaceholder(relacion.id_relacion, e.target.value)}
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col justify-end">
+                    <Label className="text-xs text-muted-foreground">Requerido</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        id={`req-${relacion.id_relacion}`}
+                        type="checkbox"
+                        checked={!!relacion.requerido}
+                        onChange={(e) => actualizarRequerido(relacion.id_relacion, e.target.checked)}
+                      />
+                      <Label htmlFor={`req-${relacion.id_relacion}`} className="text-sm">Obligatorio</Label>
+                    </div>
+                  </div>
+                </div>
+
+                {(input?.tipo_input === 'combobox' || input?.tipo_input === 'multiplecheckbox') && editOpciones[relacion.id_relacion] && (
+                  <div className="p-3 border rounded-md space-y-2 bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Opciones</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setEditOpciones((prev) => ({ ...prev, [relacion.id_relacion]: false }))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    {(opcionesDraft[relacion.id_relacion] || []).map((op, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <InputUI
+                          value={op}
+                          onChange={(e) => {
+                            const next = [...(opcionesDraft[relacion.id_relacion] || [])];
+                            next[idx] = e.target.value;
+                            setOpcionesDraft((prev) => ({ ...prev, [relacion.id_relacion]: next }));
+                          }}
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            const next = [...(opcionesDraft[relacion.id_relacion] || [])];
+                            next.splice(idx, 1);
+                            setOpcionesDraft((prev) => ({ ...prev, [relacion.id_relacion]: next }));
+                          }}
+                          title="Eliminar opción"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const next = [...(opcionesDraft[relacion.id_relacion] || [])];
+                          next.push('');
+                          setOpcionesDraft((prev) => ({ ...prev, [relacion.id_relacion]: next }));
+                        }}
+                      >
+                        <Plus className="w-4 h-4 mr-1" /> Agregar opción
+                      </Button>
+                      <div className="flex-1" />
+                      <Button
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={async () => {
+                          const cleaned = (opcionesDraft[relacion.id_relacion] || [])
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          await updatePasoInput(paso.id_paso_solicitud, relacion.id_relacion, {
+                            PlaceHolder: JSON.stringify(cleaned),
+                          });
+                          setEditOpciones((prev) => ({ ...prev, [relacion.id_relacion]: false }));
+                        }}
+                      >
+                        Guardar opciones
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 
-      {/* Acciones */}
-      <div className="flex gap-2">
-        <Button onClick={guardarDatos} variant="outline" className="flex-1">
-          Guardar Datos
-        </Button>
-        <Button onClick={marcarComoCompletado} className="flex-1">
-          <CheckCircle className="w-4 h-4 mr-2" />
-          Marcar como Completado
-        </Button>
-      </div>
+      {/* No footer actions in Campos: solo metadatos; valores los completará el ejecutor */}
     </div>
   );
 };

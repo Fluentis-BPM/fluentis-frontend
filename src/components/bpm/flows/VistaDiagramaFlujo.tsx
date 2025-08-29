@@ -338,12 +338,13 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                     isOpen={false}
                     onClose={() => handleNodeSelect(null)}
                     onGuardar={(pasoActualizado) => {
-                      updatePasoSolicitud(pasoActualizado.id_paso_solicitud, pasoActualizado);
+                      const p = updatePasoSolicitud(pasoActualizado.id_paso_solicitud, pasoActualizado);
                       toast({
                         title: 'Paso actualizado',
                         description: `Los cambios en "${pasoActualizado.nombre}" se han guardado`,
                       });
                       handleNodeSelect(null); // Cerrar el editor
+                      return p;
                     }}
                     responsablesDisponibles={[
                       { id: 1, nombre: 'Ana García', rol: 'Supervisor', departamento: 'Operaciones' },
@@ -386,6 +387,19 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                         etiqueta: 'Presupuesto estimado',
                         placeholder: '0.00',
                         validacion: { min: 0, max: 1000000 }
+                      },
+                      {
+                        id_input: 6,
+                        tipo_input: 'multiplecheckbox',
+                        etiqueta: 'Opciones múltiples',
+                        opciones: ['Opción A', 'Opción B', 'Opción C'],
+                        validacion: { required: false }
+                      },
+                      {
+                        id_input: 7,
+                        tipo_input: 'archivo',
+                        etiqueta: 'Adjuntar archivo',
+                        validacion: { required: false }
                       }
                     ]}
                     gruposAprobacion={gruposAprobacion}

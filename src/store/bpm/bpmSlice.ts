@@ -142,6 +142,85 @@ export const createRelacionGrupoAprobacionPaso = createAsyncThunk<void, { id: nu
   }
 );
 
+// DTOs for PasoSolicitud Inputs
+export interface PasoRelacionInputValorDto { RawValue: string | number | boolean | null }
+export interface PasoRelacionInputCreateDto {
+  InputId: number;
+  Nombre?: string;
+  PlaceHolder?: string;
+  Valor?: PasoRelacionInputValorDto | null;
+  Requerido?: boolean;
+}
+
+// Add an input to a PasoSolicitud (only for tipo Ejecucion)
+export const addPasoInput = createAsyncThunk<unknown, { id: number; input: PasoRelacionInputCreateDto }, { state: RootState; rejectValue: string }>(
+  'bpm/addPasoInput',
+  async ({ id, input }, { dispatch, getState, rejectWithValue }) => {
+    try {
+  const { data } = await api.post(`/api/PasoSolicitud/${id}/inputs`, input);
+      const flujoId = getState().bpm.flujoSeleccionado;
+      if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
+      return data;
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number; data?: unknown; statusText?: string }; message?: string };
+      const msg = String(err?.message || '');
+      const serverMsg = String(err?.response?.data as string ?? '');
+      // backend sometimes throws Json cycle on response; treat as soft-success and refresh
+      if (err?.response?.status === 500 && (serverMsg.includes('possible object cycle') || serverMsg.includes('SerializerCycleDetected'))) {
+        const flujoId = getState().bpm.flujoSeleccionado;
+        if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
+        return null;
+      }
+  return rejectWithValue('Error agregando input al paso: ' + (err?.response?.statusText || msg));
+    }
+  }
+);
+
+// Update a PasoSolicitud input value/metadata
+export const updatePasoInput = createAsyncThunk<unknown, { id: number; inputId: number; input: Partial<PasoRelacionInputCreateDto> & { Valor?: PasoRelacionInputValorDto | null } }, { state: RootState; rejectValue: string }>(
+  'bpm/updatePasoInput',
+  async ({ id, inputId, input }, { dispatch, getState, rejectWithValue }) => {
+    try {
+  const { data } = await api.put(`/api/PasoSolicitud/${id}/inputs/${inputId}`, input);
+      const flujoId = getState().bpm.flujoSeleccionado;
+      if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
+      return data;
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number; data?: unknown; statusText?: string }; message?: string };
+      const msg = String(err?.message || '');
+      const serverMsg = String(err?.response?.data as string ?? '');
+      if (err?.response?.status === 500 && (serverMsg.includes('possible object cycle') || serverMsg.includes('SerializerCycleDetected'))) {
+        const flujoId = getState().bpm.flujoSeleccionado;
+        if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
+        return null;
+      }
+  return rejectWithValue('Error actualizando input del paso: ' + (err?.response?.statusText || msg));
+    }
+  }
+);
+
+// Remove a PasoSolicitud input
+export const deletePasoInput = createAsyncThunk<void, { id: number; inputId: number }, { state: RootState; rejectValue: string }>(
+  'bpm/deletePasoInput',
+  async ({ id, inputId }, { dispatch, getState, rejectWithValue }) => {
+    try {
+  await api.delete(`/api/PasoSolicitud/${id}/inputs/${inputId}`);
+      const flujoId = getState().bpm.flujoSeleccionado;
+      if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number; data?: unknown; statusText?: string }; message?: string };
+      const msg = String(err?.message || '');
+      const serverMsg = String(err?.response?.data as string ?? '');
+      if (err?.response?.status === 500 && (serverMsg.includes('possible object cycle') || serverMsg.includes('SerializerCycleDetected'))) {
+        const flujoId = getState().bpm.flujoSeleccionado;
+        if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
+        return;
+      }
+  return rejectWithValue('Error eliminando input del paso: ' + (err?.response?.statusText || msg));
+    }
+  }
+);
+
 
 const bpmSlice = createSlice({
   name: 'bpm',
@@ -199,7 +278,16 @@ const bpmSlice = createSlice({
   .addCase(createConexionPaso.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error creando conexion'; })
   .addCase(createRelacionGrupoAprobacionPaso.pending, (state) => { state.loading = true; state.lastActionError = null; })
   .addCase(createRelacionGrupoAprobacionPaso.fulfilled, (state) => { state.loading = false; })
-  .addCase(createRelacionGrupoAprobacionPaso.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error asociando grupo'; });
+  .addCase(createRelacionGrupoAprobacionPaso.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error asociando grupo'; })
+  .addCase(addPasoInput.pending, (state) => { state.loading = true; state.lastActionError = null; })
+  .addCase(addPasoInput.fulfilled, (state) => { state.loading = false; })
+  .addCase(addPasoInput.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error agregando input'; })
+  .addCase(updatePasoInput.pending, (state) => { state.loading = true; state.lastActionError = null; })
+  .addCase(updatePasoInput.fulfilled, (state) => { state.loading = false; })
+  .addCase(updatePasoInput.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error actualizando input'; })
+  .addCase(deletePasoInput.pending, (state) => { state.loading = true; state.lastActionError = null; })
+  .addCase(deletePasoInput.fulfilled, (state) => { state.loading = false; })
+  .addCase(deletePasoInput.rejected, (state, action) => { state.loading = false; state.lastActionError = action.payload as string || 'Error eliminando input'; });
   },
 });
 

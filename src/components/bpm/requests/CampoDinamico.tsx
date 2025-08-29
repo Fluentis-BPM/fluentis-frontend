@@ -204,7 +204,8 @@ export const CampoDinamico: React.FC<Props> = ({
                 <span className="text-sm flex-1">{valor}</span>
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
+                  className="border-destructive text-destructive hover:bg-destructive hover:text-white"
                   onClick={() => handleValueChange('')}
                 >
                   <X className="w-4 h-4" />
@@ -270,9 +271,9 @@ export const CampoDinamico: React.FC<Props> = ({
           {onRemove && (
             <Button
               size="sm"
-              variant="ghost"
+              variant="outline"
               onClick={onRemove}
-              className="text-destructive hover:text-destructive"
+              className="border-destructive text-destructive hover:bg-destructive hover:text-white"
             >
               <X className="w-4 h-4" />
             </Button>

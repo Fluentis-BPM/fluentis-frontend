@@ -35,6 +35,8 @@ export interface RelacionInput {
   placeholder?: string | null;
   requerido: boolean;
   paso_solicitud_id: number;
+  // Opcional: metadata del catálogo de inputs para facilitar el renderizado
+  input?: Input;
 }
 
 export interface CamposDinamicos {

@@ -129,11 +129,11 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 // evitar que el click del botón propague y dispare el toggle del header
                 onClick={(e) => e.stopPropagation()}
-                className="opacity-0 group-hover:opacity-100 transition-smooth hover:bg-gray-100 hover:scale-105"
+                className="transition-smooth hover:bg-gray-100 hover:scale-105"
               >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>

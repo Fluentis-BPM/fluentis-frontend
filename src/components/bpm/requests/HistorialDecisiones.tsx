@@ -29,7 +29,7 @@ export const HistorialDecisiones: React.FC<{ onClose?: () => void }> = ({ onClos
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Historial de Decisiones</h3>
-        <Button variant="ghost" onClick={() => onClose && onClose()}>Cerrar</Button>
+  <Button variant="outline" onClick={() => onClose && onClose()}>Cerrar</Button>
       </div>
       {hist.length === 0 ? (
         <Card>

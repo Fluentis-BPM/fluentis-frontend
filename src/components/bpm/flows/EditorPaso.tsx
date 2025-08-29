@@ -15,12 +15,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, Save, X, Users, FileText, Database } from 'lucide-react';
+import { Edit, Save, X, Users, FileText } from 'lucide-react';
 import { EditorPasoEjecucion } from './EditorPasoEjecucion';
 import { EditorPasoAprobacion } from './EditorPasoAprobacion';
 import { ConfiguracionReglasFlujo } from './ConfiguracionReglasFlujo';
-import { EditorCamposDinamicos } from './EditorCamposDinamicos';
+// import { EditorCamposDinamicos } from './EditorCamposDinamicos';
 import { fmtDate } from '@/lib/utils';
+import { useBpm } from '@/hooks/bpm/useBpm';
 
 interface EditorPasoProps {
   paso: PasoSolicitud | null;
@@ -36,7 +37,6 @@ interface EditorPasoProps {
   relacionGrupoAprobacion?: RelacionGrupoAprobacion;
   decisionesUsuarios?: RelacionDecisionUsuario[];
   usuarioActualId?: number;
-  onMarcarCompletado?: () => void;
   onRegistrarDecision?: (decision: TipoDecision) => void;
   // Nuevos props para campos dinámicos
   camposDinamicosIniciales?: RelacionInput[] | CamposDinamicos;
@@ -56,15 +56,14 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
   relacionGrupoAprobacion,
   decisionesUsuarios = [],
   usuarioActualId,
-  onMarcarCompletado,
   onRegistrarDecision,
   // Nuevas props para campos dinámicos
   camposDinamicosIniciales,
   onValidarCamposDinamicos
 }) => {
+  const { loadPasosYConexiones, flujoSeleccionado } = useBpm();
   const [datosEditados, setDatosEditados] = useState<PasoSolicitud | null>(paso);
   const [camposDinamicosEditados, setCamposDinamicosEditados] = useState<RelacionInput[]>([]);
-  const [erroresValidacion, setErroresValidacion] = useState<string[]>([]);
 
   React.useEffect(() => {
     setDatosEditados(paso);
@@ -133,39 +132,13 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
     return errores;
   };
 
-  const handleCambioCampoDinamico = (inputId: number, valor: string) => {
-    setCamposDinamicosEditados(prev => 
-      prev.map(campo => 
-        campo.input_id === inputId 
-          ? { ...campo, valor }
-          : campo
-      )
-    );
-    
-    // Validar en tiempo real
-    const camposActualizados = camposDinamicosEditados.map(campo => 
-      campo.input_id === inputId ? { ...campo, valor } : campo
-    );
-    const errores = validarCamposDinamicos(camposActualizados);
-    setErroresValidacion(errores);
-  };
+  // Campos dinámicos se gestionan en componentes especializados
 
-  const handleToggleRequerido = (inputId: number, requerido: boolean) => {
-    setCamposDinamicosEditados(prev => 
-      prev.map(campo => 
-        campo.input_id === inputId 
-          ? { ...campo, requerido }
-          : campo
-      )
-    );
-  };
-
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     if (datosEditados) {
       // Validar campos dinámicos si es paso inicial
   if (datosEditados.tipo_paso === 'inicio' && camposDinamicosEditados.length > 0) {
-        const errores = validarCamposDinamicos(camposDinamicosEditados);
-        setErroresValidacion(errores);
+  const errores = validarCamposDinamicos(camposDinamicosEditados);
         
         if (errores.length > 0) {
           return; // No guardar si hay errores
@@ -181,9 +154,13 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
           ...datosEditados,
           campos_dinamicos: camposDinamicosEditados
         };
-        onGuardar(pasoConCampos);
+        await onGuardar(pasoConCampos);
       } else {
-        onGuardar(datosEditados);
+        await onGuardar(datosEditados);
+      }
+      // refresh pasos/caminos to reflect changes
+      if (flujoSeleccionado) {
+        loadPasosYConexiones(flujoSeleccionado);
       }
       onClose();
     }
@@ -195,21 +172,17 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
     }
   };
 
-  const handleMarcarCompletado = () => {
-    if (datosEditados && onMarcarCompletado) {
-  const pasoActualizado = { ...datosEditados, estado: 'entregado' as const };
-      setDatosEditados(pasoActualizado);
-      onGuardar(pasoActualizado);
-      onMarcarCompletado();
-    }
-  };
+  // Marcar como completado se gestiona fuera de Campos; acción removida aquí
 
-  const handleRegistrarDecision = (decision: TipoDecision) => {
+  const handleRegistrarDecision = async (decision: TipoDecision) => {
     if (datosEditados && onRegistrarDecision) {
       const nuevoEstado: PasoSolicitud['estado'] = decision === 'si' ? 'aprobado' : 'rechazado';
       const pasoActualizado = { ...datosEditados, estado: nuevoEstado };
       setDatosEditados(pasoActualizado);
-      onGuardar(pasoActualizado);
+      await onGuardar(pasoActualizado);
+      if (flujoSeleccionado) {
+        loadPasosYConexiones(flujoSeleccionado);
+      }
       onRegistrarDecision(decision);
     }
   };
@@ -222,27 +195,20 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
       <div className="h-full flex flex-col">
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <Tabs defaultValue="configuracion" className="w-full h-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="configuracion" className="flex items-center gap-2">
                 <Edit className="w-4 h-4" />
                 Configuración
               </TabsTrigger>
-              <TabsTrigger 
-                value="campos-dinamicos"
-                disabled={datosEditados.tipo_paso !== 'inicio'}
-                className="flex items-center gap-2"
-              >
-                <Database className="w-4 h-4" />
-                Campos
-              </TabsTrigger>
-              <TabsTrigger 
-                value="ejecucion" 
-                disabled={datosEditados.tipo_paso !== 'ejecucion'}
-                className="flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Datos
-              </TabsTrigger>
+              {datosEditados.tipo_paso === 'ejecucion' && (
+                <TabsTrigger 
+                  value="ejecucion" 
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Campos
+                </TabsTrigger>
+              )}
               <TabsTrigger 
                 value="aprobacion" 
                 disabled={datosEditados.tipo_paso !== 'aprobacion'}
@@ -357,17 +323,15 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="ejecucion">
-              {datosEditados.tipo_paso === 'ejecucion' && (
+            {datosEditados.tipo_paso === 'ejecucion' && (
+              <TabsContent value="ejecucion">
                 <EditorPasoEjecucion
                   paso={datosEditados}
-                  onUpdatePaso={onGuardar}
-                  onMarcarCompletado={handleMarcarCompletado}
                   relacionesInput={relacionesInput}
                   inputsDisponibles={inputsDisponibles}
                 />
-              )}
-            </TabsContent>
+              </TabsContent>
+            )}
 
             <TabsContent value="aprobacion">
               {datosEditados.tipo_paso === 'aprobacion' && (
@@ -381,16 +345,6 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
                   usuarioActualId={usuarioActualId}
                 />
               )}
-            </TabsContent>
-
-            <TabsContent value="campos-dinamicos">
-              <EditorCamposDinamicos
-                camposDinamicos={camposDinamicosEditados}
-                erroresValidacion={erroresValidacion}
-                onCambioCampo={handleCambioCampoDinamico}
-                onToggleRequerido={handleToggleRequerido}
-                esInicial={datosEditados.tipo_paso === 'inicio'}
-              />
             </TabsContent>
           </Tabs>
         </div>
@@ -422,27 +376,20 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
 
         <div className="space-y-6">
           <Tabs defaultValue="configuracion" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="configuracion" className="flex items-center gap-2">
                 <Edit className="w-4 h-4" />
                 Configuración
               </TabsTrigger>
-              <TabsTrigger 
-                value="campos-dinamicos"
-                disabled={datosEditados.tipo_paso !== 'inicio'}
-                className="flex items-center gap-2"
-              >
-                <Database className="w-4 h-4" />
-                Campos
-              </TabsTrigger>
-              <TabsTrigger 
-                value="ejecucion" 
-                disabled={datosEditados.tipo_paso !== 'ejecucion'}
-                className="flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Datos
-              </TabsTrigger>
+              {datosEditados.tipo_paso === 'ejecucion' && (
+                <TabsTrigger 
+                  value="ejecucion" 
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Campos
+                </TabsTrigger>
+              )}
               <TabsTrigger 
                 value="aprobacion" 
                 disabled={datosEditados.tipo_paso !== 'aprobacion'}
@@ -557,17 +504,15 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="ejecucion">
-              {datosEditados.tipo_paso === 'ejecucion' && (
+            {datosEditados.tipo_paso === 'ejecucion' && (
+              <TabsContent value="ejecucion">
                 <EditorPasoEjecucion
                   paso={datosEditados}
-                  onUpdatePaso={onGuardar}
-                  onMarcarCompletado={handleMarcarCompletado}
                   relacionesInput={relacionesInput}
                   inputsDisponibles={inputsDisponibles}
                 />
-              )}
-            </TabsContent>
+              </TabsContent>
+            )}
 
             <TabsContent value="aprobacion">
               {datosEditados.tipo_paso === 'aprobacion' && (
@@ -583,15 +528,6 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
               )}
             </TabsContent>
 
-            <TabsContent value="campos-dinamicos">
-              <EditorCamposDinamicos
-                camposDinamicos={camposDinamicosEditados}
-                erroresValidacion={erroresValidacion}
-                onCambioCampo={handleCambioCampoDinamico}
-                onToggleRequerido={handleToggleRequerido}
-                esInicial={datosEditados.tipo_paso === 'inicio'}
-              />
-            </TabsContent>
           </Tabs>
         </div>
 

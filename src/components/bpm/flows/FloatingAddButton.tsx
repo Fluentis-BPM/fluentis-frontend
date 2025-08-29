@@ -37,9 +37,9 @@ export const FloatingAddButton: React.FC<FloatingAddButtonProps> = ({
                   <span className="text-sm font-medium text-muted-foreground">Agregar Paso:</span>
                   <Button
                     size="sm"
-                    variant="ghost"
+                    variant="outline"
                     onClick={() => setIsExpanded(false)}
-                    className="h-6 w-6 p-0 hover:bg-muted"
+                    className="h-6 w-6 p-0"
                   >
                     <X className="w-3 h-3" />
                   </Button>
