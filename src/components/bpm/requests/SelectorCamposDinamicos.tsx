@@ -127,7 +127,7 @@ export const SelectorCamposDinamicos: React.FC<Props> = ({ camposDinamicos, onCh
         {camposActivos.length > 0 && (
           <div className="mt-4 p-3 bg-muted/50 rounded-lg">
             <p className="text-xs text-muted-foreground">
-              💡 Los campos marcados como "Requerido" serán obligatorios para completar la solicitud.
+              💡 Los campos marcados como &quot;Requerido&quot; serán obligatorios para completar la solicitud.
               Puedes reordenar o eliminar campos usando los controles de cada campo.
             </p>
           </div>

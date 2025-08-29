@@ -26,14 +26,14 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 }
 
 const pickFirst = <T, K extends keyof T>(obj: T, keys: K[]): T[K] | undefined => { for (const k of keys) if (obj[k] !== undefined) return obj[k]; return undefined; };
-// Reemplaza any por unknown
+// Use unknown-based loose object for safety
 interface LooseObject { [key: string]: unknown; }
 const normalizeApiGrupo = (raw: unknown): ApiGrupoAprobacion => {
   const obj = raw as LooseObject;
   return {
     idGrupo: pickFirst(obj, ['idGrupo','idgrupo','id_grupo']) as number | undefined,
-    nombre: obj['nombre'] as string,
-    fecha: obj['fecha'] as string | undefined,
+    nombre: (obj['nombre'] as string) ?? '',
+    fecha: (obj['fecha'] as string) ?? undefined,
     esGlobal: pickFirst(obj, ['esGlobal','esglobal','es_global']) as boolean | undefined,
     relacionesUsuarioGrupo: pickFirst(obj, ['relacionesUsuarioGrupo','relacionesusuarioGrupo','relaciones_usuario_grupo']) as ApiRelacionUsuarioGrupo[] | undefined
   };

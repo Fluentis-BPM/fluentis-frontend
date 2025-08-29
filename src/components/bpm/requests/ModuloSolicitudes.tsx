@@ -9,15 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CrearSolicitudInput } from '@/types/bpm/request';
+import type { CrearSolicitudInput, Solicitud } from '@/types/bpm/request';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EstadoSolicitud } from '@/types/bpm/request';
 import { Search, Filter, SortDesc, FileX, Layers, Users, Plus, ArrowRight, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
 import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
+import type { GrupoAprobacion } from '@/types/equipos/aprobations';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
+import { Toggle } from '@/components/ui/toggle';
+import { useUsers } from '@/hooks/users/useUsers';
+import { setImpersonateUserId, clearImpersonation } from '@/services/api';
 
 export const ModuloSolicitudes: React.FC<{
   solicitudesData: ReturnType<typeof useSolicitudes>;
@@ -51,17 +55,137 @@ export const ModuloSolicitudes: React.FC<{
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const { grupos: gruposBackend } = useAprobations();
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario || 0);
+  const { users: usuariosBackend, loading: usersLoading } = useUsers();
+
+  // Impersonation (dev-only) state
+  const _persistedImpersonated = typeof window !== 'undefined' ? window.localStorage.getItem('impersonatedUserId') : null;
+  const [impersonationEnabled, setImpersonationEnabled] = useState<boolean>(() => Boolean(_persistedImpersonated));
+  const [impersonatedUserId, setImpersonatedUserId] = useState<number | null>(() => _persistedImpersonated ? Number(_persistedImpersonated) : null);
+
+  // --- Ejemplo de usuario ficticio "Juan Pérez" ---
+  // Usamos un id alto/ficticio que no choque con IDs reales
+  const JUAN_PEREZ_ID = 99999;
+  const JUAN_PEREZ_USER = {
+    idUsuario: JUAN_PEREZ_ID,
+    nombre: 'Juan Pérez',
+    email: 'juan.perez@ejemplo.com',
+    oid: null,
+    departamentoId: null,
+    departamentoNombre: 'IT',
+    rolId: null,
+    rolNombre: 'Aprobador',
+    cargoId: null,
+    cargoNombre: 'Analista',
+  };
+  const GRUPO_PRUEBAS_ID = -999;
+  // Mock members to show more realistic demo in example group
+  const MOCK_MEMBER_1 = { idUsuario: 11111, nombre: 'Usuario Mock A', email: 'mocka@ejemplo.com', departamentoNombre: 'Ventas', rolNombre: 'Aprobador', cargoNombre: 'Supervisor' };
+  const MOCK_MEMBER_2 = { idUsuario: 11112, nombre: 'Usuario Mock B', email: 'mockb@ejemplo.com', departamentoNombre: 'Compras', rolNombre: 'Aprobador', cargoNombre: 'Analista' };
+  // Shared group object used when the fake group id is encountered
+  type MockUser = { idUsuario: number; nombre: string; email?: string; departamentoNombre?: string; rolNombre?: string; cargoNombre?: string };
+  const GRUPO_PRUEBAS_OBJ = {
+    id_grupo: GRUPO_PRUEBAS_ID,
+    nombre: 'Grupo pruebas',
+    es_global: false,
+    usuarios: [JUAN_PEREZ_USER as MockUser, MOCK_MEMBER_1 as MockUser, MOCK_MEMBER_2 as MockUser],
+    fecha: new Date().toISOString(),
+    // decisiones: one mock already approved to show status, the other pending
+    decisiones: [
+      { id_usuario: MOCK_MEMBER_1.idUsuario, decision: 'si' },
+      // no decision entry for MOCK_MEMBER_2 => pending
+    ],
+  } as unknown as GrupoAprobacion;
+
+  // Handlers para impersonation
+  const handleToggleImpersonation = (enabled: boolean) => {
+    setImpersonationEnabled(enabled);
+    if (!enabled) {
+      setImpersonatedUserId(null);
+      clearImpersonation();
+      try { window.localStorage.removeItem('impersonatedUserId'); } catch (err) { /* noop */ }
+    }
+    // notify same-window listeners
+    try { window.dispatchEvent(new CustomEvent('impersonation-changed', { detail: { id: enabled ? impersonatedUserId : null } })); } catch (err) { /* noop */ }
+  };
+
+  const handleSelectImpersonatedUser = (value: string) => {
+    const id = value ? Number(value) : null;
+    setImpersonatedUserId(id);
+    if (id) {
+  // If a user was selected, enable impersonation mode automatically
+  setImpersonationEnabled(true);
+      setImpersonateUserId(id);
+      try { window.localStorage.setItem('impersonatedUserId', String(id)); } catch (err) { /* noop */ }
+    } else {
+      clearImpersonation();
+    }
+  // notify same-window listeners
+  try { window.dispatchEvent(new CustomEvent('impersonation-changed', { detail: { id } })); } catch (err) { /* noop */ }
+  };
+
+  // Keep impersonation state in sync with other tabs/components (storage events + same-window CustomEvent)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'impersonatedUserId') {
+        const v = e.newValue;
+        setImpersonatedUserId(v ? Number(v) : null);
+        setImpersonationEnabled(v !== null);
+      }
+    };
+    const onCustom = (e: Event) => {
+      try {
+        const id = (e as CustomEvent).detail?.id;
+        setImpersonatedUserId(id ?? null);
+        setImpersonationEnabled(Boolean(id));
+      } catch (err) { /* noop */ }
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('impersonation-changed', onCustom as EventListener);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('impersonation-changed', onCustom as EventListener);
+    };
+  }, []);
 
   // Seed local relacionesGrupo from solicitudes that include backend grupo id
   useEffect(() => {
     if (!solicitudes || solicitudes.length === 0) return;
     solicitudes.forEach((s) => {
-      const gid = (s && typeof s === 'object' ? (s as { grupo_aprobacion_id?: number }).grupo_aprobacion_id : undefined);
+    const gid = (s && typeof s === 'object' ? ((s as unknown) as { grupo_aprobacion_id?: number }).grupo_aprobacion_id : undefined);
       if (gid && !relacionesGrupo.some(r => r.solicitud_id === s.id_solicitud)) {
         try { asociarGrupoASolicitud(gid, s.id_solicitud); } catch (e) { /* noop */ }
       }
     });
   }, [solicitudes, relacionesGrupo, asociarGrupoASolicitud]);
+
+  // Si estamos impersonando a Juan Pérez, inyectar dos solicitudes de ejemplo
+  const solicitudesConEjemplos = React.useMemo(() => {
+  if (!(impersonationEnabled && impersonatedUserId === JUAN_PEREZ_ID)) return solicitudes;
+  const ejemplo1 = {
+      id_solicitud: 999900,
+      nombre: 'Solicitud ejemplo A',
+      estado: 'pendiente',
+      fecha_creacion: new Date().toISOString(),
+      datos_adicionales: { descripcion: 'Ejemplo: compra pequeña' },
+      solicitante_id: 1,
+      solicitante: { idUsuario: 1, nombre: 'Ana Gómez', email: 'ana@empresa.com' },
+      grupo_aprobacion_id: GRUPO_PRUEBAS_ID,
+  } as unknown as Solicitud;
+  const ejemplo2 = {
+      id_solicitud: 999901,
+      nombre: 'Solicitud ejemplo B',
+      estado: 'pendiente',
+      fecha_creacion: new Date().toISOString(),
+      datos_adicionales: { descripcion: 'Ejemplo: permiso acceso' },
+      solicitante_id: 2,
+      solicitante: { idUsuario: 2, nombre: 'Carlos Ruiz', email: 'carlos@empresa.com' },
+      grupo_aprobacion_id: GRUPO_PRUEBAS_ID,
+  } as unknown as Solicitud;
+    // evitar duplicados si ya existen
+    const existingIds = new Set(solicitudes.map(s => s.id_solicitud));
+    const itemsToAdd = [ejemplo1, ejemplo2].filter(e => !existingIds.has(e.id_solicitud));
+    return [...itemsToAdd, ...solicitudes];
+  }, [impersonationEnabled, impersonatedUserId, solicitudes]);
 
   const handleCrearSolicitud = async (input: CrearSolicitudInput, grupoAprobacionId?: number) => {
     try {
@@ -119,18 +243,38 @@ export const ModuloSolicitudes: React.FC<{
   };
 
   // Filtrar solicitudes
-  const solicitudesFiltradas = solicitudes.filter(solicitud => {
+  const baseFiltrado = solicitudesConEjemplos.filter(solicitud => {
     const descRaw = solicitud.datos_adicionales?.descripcion;
     const descStr = typeof descRaw === 'string' ? descRaw : '';
     const coincideBusqueda = busqueda === '' || 
       solicitud.id_solicitud.toString().includes(busqueda) ||
-      solicitud.solicitante_id.toString().includes(busqueda) ||
+      (solicitud.solicitante_id !== undefined && solicitud.solicitante_id.toString().includes(busqueda)) ||
       descStr.toLowerCase().includes(busqueda.toLowerCase());
 
     const coincideEstado = filtroEstado === 'todos' || solicitud.estado === filtroEstado;
 
     return coincideBusqueda && coincideEstado;
   });
+
+  // Determinar usuario que está visualizando (developer o impersonado)
+  const viewerUserId = (impersonationEnabled && impersonatedUserId) ? impersonatedUserId : currentUserId;
+
+  // Si impersonation está activo, filtrar client-side para mostrar sólo
+  // las solicitudes en las que el usuario impersonado/visualizador es miembro del grupo de aprobación
+  const solicitudesFiltradas = (viewerUserId)
+    ? baseFiltrado.filter(solicitud => {
+        const relacion = relacionesGrupo.find(r => r.solicitud_id === solicitud.id_solicitud);
+        const assignedGroupId = relacion?.grupo_aprobacion_id ?? (solicitud as { grupo_aprobacion_id?: number }).grupo_aprobacion_id;
+        if (!assignedGroupId) return false;
+        let g = gruposBackend.find(gr => gr.id_grupo === assignedGroupId);
+        // si es nuestro grupo ficticio, construirlo on-the-fly
+        if (!g && assignedGroupId === GRUPO_PRUEBAS_ID) {
+          g = GRUPO_PRUEBAS_OBJ;
+        }
+        const miembros = (g?.usuarios || []).map(u => u.idUsuario).filter(Boolean) as number[];
+        return miembros.includes(viewerUserId as number);
+      })
+    : baseFiltrado;
 
 
   const totalItems = solicitudesFiltradas.length;
@@ -175,6 +319,37 @@ export const ModuloSolicitudes: React.FC<{
         </div>
 
         <EstadisticasSolicitudes estadisticas={estadisticas} />
+
+        {/* Impersonation (dev-only): toggle + selector */}
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-end gap-3 mb-2">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-xs text-muted-foreground">Modo Develop (Ver como)</span>
+              <Toggle
+                pressed={impersonationEnabled}
+                onPressedChange={(v: boolean) => handleToggleImpersonation(v)}
+                size="sm"
+              >
+                {impersonationEnabled ? 'ON' : 'OFF'}
+              </Toggle>
+            </div>
+
+            <div className="w-60">
+              <Select value={impersonatedUserId ? String(impersonatedUserId) : ''} onValueChange={handleSelectImpersonatedUser}>
+                <SelectTrigger className="w-full h-9">
+                  <SelectValue placeholder={usersLoading ? 'Cargando usuarios...' : 'Seleccionar usuario...'} />
+                </SelectTrigger>
+                <SelectContent>
+                    {/* Juan Pérez ejemplo siempre disponible en el selector (dev-example) */}
+                    <SelectItem key="juan_perez" value={String(JUAN_PEREZ_ID)}>{JUAN_PEREZ_USER.nombre}</SelectItem>
+                    {usuariosBackend.map(u => (
+                      <SelectItem key={u.idUsuario} value={String(u.idUsuario)}>{u.nombre}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
 
         {/* Pestañas principales */}
         <Tabs defaultValue="solicitudes" className="space-y-4">
@@ -269,18 +444,21 @@ export const ModuloSolicitudes: React.FC<{
                   {solicitudesPagina.map((solicitud) => {
                     const relacion = relacionesGrupo.find(r => r.solicitud_id === solicitud.id_solicitud);
                     const assignedGroupId = relacion?.grupo_aprobacion_id ?? (solicitud as { grupo_aprobacion_id?: number }).grupo_aprobacion_id;
-                    const g = gruposBackend.find(gr => gr.id_grupo === assignedGroupId);
-                    const miembrosReales = ((g?.usuarios || []).map(u => u.idUsuario).filter(Boolean) as number[]) || [];
-                    const esMiembro = currentUserId && miembrosReales.includes(currentUserId);
+                                    let g = gruposBackend.find(gr => gr.id_grupo === assignedGroupId);
+                                    if (!g && assignedGroupId === GRUPO_PRUEBAS_ID) {
+                                      g = GRUPO_PRUEBAS_OBJ;
+                                    }
+                                    const miembrosReales = ((g?.usuarios || []).map(u => u.idUsuario).filter(Boolean) as number[]) || [];
+                                    const esMiembro = viewerUserId && miembrosReales.includes(viewerUserId);
 
                     const quickApprove = async () => {
-                      if (!currentUserId) return;
-                      registrarDecisionSolicitud(solicitud.id_solicitud, currentUserId, 'si', (nuevoEstado) => actualizarEstado(solicitud.id_solicitud, nuevoEstado));
+                      if (!viewerUserId) return;
+                      registrarDecisionSolicitud(solicitud.id_solicitud, Number(viewerUserId), 'si', (nuevoEstado) => actualizarEstado(solicitud.id_solicitud, nuevoEstado));
                       toast({ title: 'Decisión registrada', description: 'Has aprobado la solicitud.' });
                     };
                     const quickReject = async () => {
-                      if (!currentUserId) return;
-                      registrarDecisionSolicitud(solicitud.id_solicitud, currentUserId, 'no', (nuevoEstado) => actualizarEstado(solicitud.id_solicitud, nuevoEstado));
+                      if (!viewerUserId) return;
+                      registrarDecisionSolicitud(solicitud.id_solicitud, Number(viewerUserId), 'no', (nuevoEstado) => actualizarEstado(solicitud.id_solicitud, nuevoEstado));
                       toast({ title: 'Decisión registrada', description: 'Has rechazado la solicitud.' });
                     };
 
@@ -377,7 +555,7 @@ export const ModuloSolicitudes: React.FC<{
                                       pendientes: stats.pendientes
                                     };
                                   }}
-                                  usuarioActualId={currentUserId}
+                                  usuarioActualId={viewerUserId as number}
                                 />
                               );
                             })()}
@@ -425,7 +603,11 @@ export const ModuloSolicitudes: React.FC<{
 
           <TabsContent value="grupos">
             <div className="max-w-4xl mx-auto">
-              <GestionGruposAprobacion />
+                  {impersonationEnabled && impersonatedUserId === JUAN_PEREZ_ID ? (
+                    <GestionGruposAprobacion visibleGroups={[GRUPO_PRUEBAS_OBJ]} />
+                  ) : (
+                    <GestionGruposAprobacion />
+                  )}
             </div>
           </TabsContent>
         </Tabs>

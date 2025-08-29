@@ -17,7 +17,8 @@ export interface SolicitudBase {
 
 // Interfaz extensible para datos adicionales
 export interface DatosAdicionales {
-  [key: string]: any;
+  // Use an index signature with unknown to avoid explicit `any` while keeping flexibility
+  [key: string]: unknown;
 }
 
 // Interfaz completa que combina los campos base con datos adicionales

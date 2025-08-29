@@ -13,8 +13,8 @@ export interface FlujoActivo {
   estado: EstadoFlujo;
   fecha_inicio: Date;
   fecha_finalizacion?: Date;
-  datos_solicitud?: any; // Datos de la solicitud original
-  campos_dinamicos?: any; // Campos dinámicos de la solicitud
+  datos_solicitud?: Record<string, unknown>; // Datos de la solicitud original
+  campos_dinamicos?: Record<string, unknown>; // Campos dinámicos de la solicitud
 }
 
 // Plantilla de flujo (opcional)
@@ -33,7 +33,7 @@ export interface PasoFlujo {
   nombre: string;
   descripcion?: string;
   tipo: 'manual' | 'automatico' | 'aprobacion';
-  configuracion?: any;
+  configuracion?: Record<string, unknown> | undefined;
 }
 
 // Ejecución de paso en un flujo activo
@@ -45,7 +45,7 @@ export interface EjecucionPaso {
   estado: 'pendiente' | 'enprogreso' | 'completado' | 'fallido';
   fecha_inicio?: Date;
   fecha_finalizacion?: Date;
-  resultado?: any;
+  resultado?: Record<string, unknown> | undefined;
   responsable_id?: number;
 }
 
@@ -67,7 +67,7 @@ export interface PasoSolicitud {
   tipo_paso: 'ejecucion' | 'aprobacion'; // Nuevo campo para diferenciar tipos
   tipo_flujo: 'normal' | 'bifurcacion' | 'union'; // Tipo de flujo del paso
   regla_aprobacion: 'unanime' | 'individual' | 'ancla'; // Regla de aprobación para pasos de aprobación
-  campos_dinamicos?: any; // Campos dinámicos del paso
+  campos_dinamicos?: Record<string, unknown> | undefined; // Campos dinámicos del paso
 }
 
 // Camino paralelo para conexiones entre pasos
