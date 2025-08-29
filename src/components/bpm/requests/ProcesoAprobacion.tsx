@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { TipoDecision, GrupoAprobacionCompleto, DecisionConUsuario } from '@/types/bpm/approval';
 import { CheckCircle, XCircle, Clock, Users, UserCheck, UserX } from 'lucide-react';
+import { useDecision } from '@/hooks/bpm/useDecision';
 
 interface EstadisticasAprobacion {
   aprobaciones: number;
@@ -52,6 +53,40 @@ export const ProcesoAprobacion: React.FC<Props> = ({
     return stored ? JSON.parse(stored) : {};
   });
 
+  // Ejemplo: si estamos viendo como Juan Pérez, añadir miembros mock para la demo
+  const JUAN_PEREZ_ID = 99999;
+  const MOCK_MEMBER_IDS = [11111, 11112];
+  const MOCK_MEMBER_NAMES: Record<number, string> = {
+    11111: 'Usuario Mock A',
+    11112: 'Usuario Mock B'
+  };
+
+  const displayMiembros = (usuarioActualId === JUAN_PEREZ_ID) ? [JUAN_PEREZ_ID, ...MOCK_MEMBER_IDS] : miembrosGrupo;
+
+  // Forzar usuarioActual a Juan Pérez cuando se está impersonando
+  React.useEffect(() => {
+    if (usuarioActualId === JUAN_PEREZ_ID) {
+      setUsuarioActual(JUAN_PEREZ_ID);
+    } else {
+      setUsuarioActual(miembrosGrupo[0] || usuarioActualId);
+    }
+  }, [usuarioActualId, miembrosGrupo]);
+
+  // Demo: prefijar una decisión para uno de los mock members para ejemplificar UI
+  React.useEffect(() => {
+    if (usuarioActualId === JUAN_PEREZ_ID) {
+      const key = `aprobacion_${solicitud_id}`;
+      const stored = localStorage.getItem(key);
+      const parsed = stored ? JSON.parse(stored) : {};
+      // Si no existe decisión para MOCK_MEMBER_IDS[0], marcar como aprobado (demo)
+      if (!parsed[MOCK_MEMBER_IDS[0]]) {
+        const nuevas = { ...parsed, [MOCK_MEMBER_IDS[0]]: 'si' };
+        localStorage.setItem(key, JSON.stringify(nuevas));
+        setDecisionesLocal(nuevas);
+      }
+    }
+  }, [usuarioActualId, solicitud_id]);
+
 
 
   const grupo = obtenerGrupoPorSolicitud(solicitud_id);
@@ -59,36 +94,47 @@ export const ProcesoAprobacion: React.FC<Props> = ({
   const estaAprobada = verificarAprobacionCompleta(solicitud_id, miembrosGrupo);
   const estaRechazada = verificarRechazo(solicitud_id);
 
-  const handleRegistrarDecision = () => {
+  const { executeSolicitud } = useDecision();
+
+  const handleRegistrarDecision = async () => {
     if (!usuarioActual) {
       console.log('Error: No hay usuario actual');
       return;
     }
-    
-    // Usar el relacionGrupoAprobacionId proporcionado o crear uno temporal
-    let relacionId = relacionGrupoAprobacionId;
-    
-    if (!relacionId) {
-      // Crear un ID temporal basado en la solicitud
-      relacionId = solicitud_id * 1000 + (grupo?.id_grupo || 1);
-    
-    }
-    // Guardar en localStorage
-    const key = `aprobacion_${solicitud_id}`;
-    const nuevasDecisiones = { ...decisionesLocal, [usuarioActual]: decisionSeleccionada };
-    localStorage.setItem(key, JSON.stringify(nuevasDecisiones));
-    setDecisionesLocal(nuevasDecisiones);
-    // Llamar lógica original si se requiere
-    if (registrarDecision) {
-      registrarDecision(usuarioActual, relacionId, decisionSeleccionada, onEstadoCambiado);
+
+    // Convertir decision seleccionada ('si'/'no') a boolean para el backend
+    const decisionBool = decisionSeleccionada === 'si';
+    try {
+      // Llamar al endpoint de solicitud para registrar la decisión
+      await executeSolicitud(solicitud_id, { IdUsuario: Number(usuarioActual), Decision: decisionBool });
+
+      // Guardar en localStorage para la UX local (demo)
+      const key = `aprobacion_${solicitud_id}`;
+      const nuevasDecisiones = { ...decisionesLocal, [usuarioActual]: decisionSeleccionada };
+      localStorage.setItem(key, JSON.stringify(nuevasDecisiones));
+      setDecisionesLocal(nuevasDecisiones);
+
+      // Mantener la lógica original si existe (notificar estado)
+      if (registrarDecision) {
+        let relacionId = relacionGrupoAprobacionId;
+        if (!relacionId) {
+          relacionId = solicitud_id * 1000 + (grupo?.id_grupo || 1);
+        }
+        registrarDecision(usuarioActual, relacionId, decisionSeleccionada, onEstadoCambiado);
+      }
+    } catch (e) {
+      console.error('Error registrando decisión en backend', e);
+      // No romper la UX: mantener estado local sin cambios adicionales
     }
   };
 
   const obtenerDecisionUsuario = (idUsuario: number): TipoDecision | null => {
     // Primero buscar en localStorage
     if (decisionesLocal[idUsuario]) return decisionesLocal[idUsuario];
-    const decision = grupo?.decisiones?.find((d: DecisionConUsuario) => d.id_usuario === idUsuario);
-    return decision?.decision || null;
+  // Algunas APIs usan 'decisiones' o 'decisions' en mock; soportar ambas
+  const decisionsList = (grupo?.decisiones || ((grupo as unknown) as { decisions?: DecisionConUsuario[] })?.decisions || []) as DecisionConUsuario[];
+  const decision = decisionsList.find((d) => d.id_usuario === idUsuario);
+  return decision?.decision ?? null;
   };
 
   const getEstadoIcon = () => {
@@ -201,26 +247,36 @@ export const ProcesoAprobacion: React.FC<Props> = ({
               <div className="space-y-4">
                 <h4 className="font-medium text-foreground">Registrar Tu Decisión</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="usuario">Selecciona Tu Usuario</Label>
-                    <select
-                      id="usuario"
-                      value={usuarioActual}
-                      onChange={(e) => setUsuarioActual(parseInt(e.target.value))}
-                      className="w-full p-2 border rounded-md bg-background"
-                    >
-                      {miembrosGrupo.map(id => (
-                        <option key={id} value={id}>
-                          Usuario {id} {obtenerDecisionUsuario(id) && '(Ya votó)'}
-                        </option>
-                      ))}
-                    </select>
-                    {!miembrosGrupo.includes(usuarioActual) && (
-                      <p className="text-xs text-destructive">
-                        Solo los miembros del grupo pueden votar
-                      </p>
-                    )}
-                  </div>
+                          <div className="space-y-2">
+                            {/* Si se está impersonando a Juan Pérez, no mostrar selector: votar sólo como Juan */}
+                            {usuarioActualId === JUAN_PEREZ_ID ? (
+                              <div>
+                                <Label>Votando como</Label>
+                                <div className="px-3 py-2 border rounded bg-muted/20">Juan Pérez</div>
+                              </div>
+                            ) : (
+                              <>
+                                <Label htmlFor="usuario">Selecciona Tu Usuario</Label>
+                                <select
+                                  id="usuario"
+                                  value={usuarioActual}
+                                  onChange={(e) => setUsuarioActual(parseInt(e.target.value))}
+                                  className="w-full p-2 border rounded-md bg-background"
+                                >
+                                  {displayMiembros.map(id => (
+                                    <option key={id} value={id}>
+                                      {grupo?.usuarios?.find(u => u.idUsuario === id)?.nombre || MOCK_MEMBER_NAMES[id] || `Usuario ${id}`} {obtenerDecisionUsuario(id) && '(Ya votó)'}
+                                    </option>
+                                  ))}
+                                </select>
+                                {!displayMiembros.includes(usuarioActual) && (
+                                  <p className="text-xs text-destructive">
+                                    Solo los miembros del grupo pueden votar
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </div>
                   <div className="space-y-2">
                     <Label>Decisión</Label>
                     <div className="flex gap-2">

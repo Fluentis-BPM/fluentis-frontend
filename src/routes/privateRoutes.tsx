@@ -9,6 +9,7 @@ import UserPage from "@/pages/user/UserPage";
 import ConfigPage from "@/pages/user/ConfigPage";
 import { BPMDashboard } from "@/pages/bpm/BPMDashboard";
 import ActiveFlows from "@/pages/bpm/ActiveFlows";
+import MisPasosPage from '@/pages/bpm/MisPasosPage';
 
 
 // Placeholders para las páginas privadas (solo divs con nombres)
@@ -20,7 +21,7 @@ const DelegacionesPage = () => <div>Delegaciones Page</div>;
 const FlujosPlantillasPage = () => <div>Flujos (Plantillas) Page</div>;
 const SolicitudesPage = () => <div>Solicitudes Page</div>;
 // const FlujosActivosPage = () => <div>Flujos Activos Page</div>;
-const MisPasosPage = () => <div>Mis Pasos Page</div>;
+// const MisPasosPage = () => <div>Mis Pasos Page</div>;
 const PropuestasVotacionesPage = () => <div>Propuestas y Votaciones Page</div>;
 
 const BackupsPage = () => <div>Backups Page</div>;

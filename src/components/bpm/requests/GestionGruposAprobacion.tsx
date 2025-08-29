@@ -6,16 +6,24 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Users, Plus, Edit } from 'lucide-react';
+import { HistorialDecisiones } from './HistorialDecisiones';
+import { useDecision } from '@/hooks/bpm/useDecision';
 // NUEVOS IMPORTS PARA MULTI-SELECT
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUsers } from '@/hooks/users/useUsers';
 import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
 import type { User } from '@/types/auth';
 
-type GestionGruposAprobacionProps = Record<string, never>;
+import type { GrupoAprobacion } from '@/types/equipos/aprobations';
 
-export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = () => {
+type GestionGruposAprobacionProps = {
+  visibleGroups?: GrupoAprobacion[];
+};
+
+export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = ({ visibleGroups }) => {
   // Obtener grupos backend
   const { grupos, createGrupo, creating, refetch, deleteGrupo, deleting } = useAprobations();
   const [mostrarCrear, setMostrarCrear] = useState(false);
@@ -31,9 +39,32 @@ export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = (
   const [roleFilter, setRoleFilter] = useState<string>('todos');
   const [showOnlySelected, setShowOnlySelected] = useState(false);
   const [esGlobal, setEsGlobal] = useState(false); // nuevo estado para marcar grupo global
+  const [mostrarHistorial, setMostrarHistorial] = useState(false);
 
   // Hooks para usuarios y backend
   const { users, loading: usersLoading } = useUsers();
+  // Determine groups to show: if visibleGroups provided, use it.
+  // Dev users see all groups; others see only global groups or groups where they are member.
+  const currentUser = useSelector((s: RootState) => s.auth.user);
+  const roleName = String(currentUser?.rolNombre ?? '');
+  // Consider common role names that imply developer/admin privileges
+  const roleMatches = /dev|admin|desarrollad|developer/i.test(roleName);
+  // If running in Vite dev mode, treat as developer for visibility (dev-only behavior)
+  const isDevEnv = typeof import.meta !== 'undefined' && Boolean(((import.meta as unknown) as { env?: Record<string, string> })?.env?.DEV);
+  const isDeveloper = roleMatches || isDevEnv;
+
+  const effectiveGroups = React.useMemo(() => {
+    if (visibleGroups) return visibleGroups;
+    if (isDeveloper) return grupos;
+    return grupos.filter(g => {
+      if (g.es_global) return true;
+      const miembros = ((g.usuarios || []) as User[]).map((u) => u.idUsuario).filter(Boolean) as number[];
+      return miembros.includes(Number(currentUser?.idUsuario ?? 0));
+    });
+  }, [grupos, visibleGroups, isDeveloper, currentUser]);
+
+  // Hook para ejecutar decisiones contra backend
+  const { loading: decisionLoading, executePaso } = useDecision();
 
   // ---- Pasos BPM simulados (reinsert) ----
   const pasosIniciales = [
@@ -46,11 +77,19 @@ export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = (
     const estados = JSON.parse(localStorage.getItem('aprobacionesBPM') || '{}');
     return estados[id];
   };
-  const setEstadoPaso = (id: number, estado: 'aprobado' | 'rechazado') => {
-    const estados = JSON.parse(localStorage.getItem('aprobacionesBPM') || '{}');
-    estados[id] = estado;
-    localStorage.setItem('aprobacionesBPM', JSON.stringify(estados));
-    setPasosAprobacion(prev => prev.map(p => p.id === id ? { ...p } : p));
+  // Ejecuta la decisión en el backend y actualiza el estado local (demo)
+  const handleDecision = async (id: number, decision: boolean) => {
+    try {
+      const idUsuario = Number(currentUser?.idUsuario ?? 0);
+      await executePaso(id, { IdUsuario: idUsuario, Decision: decision });
+      const estados = JSON.parse(localStorage.getItem('aprobacionesBPM') || '{}');
+      estados[id] = decision ? 'aprobado' : 'rechazado';
+      localStorage.setItem('aprobacionesBPM', JSON.stringify(estados));
+      setPasosAprobacion(prev => prev.map(p => p.id === id ? { ...p } : p));
+    } catch (e) {
+      console.error('Error ejecutando decisión en paso', id, e);
+      // No romper la UX: informar por consola y dejar el estado sin cambios
+    }
   };
 
   // Devuelve siempre la representación string del ID original
@@ -144,7 +183,9 @@ export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = (
           <Users className="w-5 h-5 text-primary" />
           <h2 className="text-xl font-semibold text-gray-800">Gestión de Grupos de Aprobación</h2>
         </div>
-        <Dialog open={mostrarCrear} onOpenChange={(o) => { if(!o) resetForm(); setMostrarCrear(o); }}>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setMostrarHistorial(true)}>Historial</Button>
+          <Dialog open={mostrarCrear} onOpenChange={(o) => { if(!o) resetForm(); setMostrarCrear(o); }}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()} className="bg-gradient-primary hover:opacity-90 shadow-soft">
               <Plus className="w-4 h-4 mr-2" />
@@ -269,11 +310,21 @@ export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = (
             </div>
           </DialogContent>
         </Dialog>
+        </div>
+
+      <Dialog open={mostrarHistorial} onOpenChange={setMostrarHistorial}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Historial de Decisiones</DialogTitle>
+          </DialogHeader>
+          <HistorialDecisiones onClose={() => setMostrarHistorial(false)} />
+        </DialogContent>
+      </Dialog>
       </div>
 
       {/* Lista de grupos */}
       <div className="grid gap-4">
-        {grupos.length === 0 ? (
+    {effectiveGroups.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-8 text-center">
               <Users className="w-12 h-12 text-muted-foreground mb-4" />
@@ -287,9 +338,9 @@ export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = (
               </Button>
             </CardContent>
           </Card>
-        ) : (
-          grupos.map(grupo => (
-            <Card key={grupo.id_grupo}>
+          ) : (
+            effectiveGroups.map((grupo) => (
+            <Card key={(grupo as GrupoAprobacion).id_grupo}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg flex items-center gap-2">{grupo.nombre}{grupo.es_global && <Badge variant="outline" className="text-[10px]">Global</Badge>}</CardTitle>
@@ -327,8 +378,8 @@ export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = (
                       <span className="text-muted-foreground">No hay miembros</span>
                     ) : (
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {grupo.usuarios.map(u => (
-                          <Badge key={u.idUsuario ?? u.oid} variant="secondary" className="text-xs">
+                        {(((grupo as GrupoAprobacion).usuarios || []) as User[]).map(u => (
+                          <Badge key={u.idUsuario ?? (u as unknown as { oid?: number }).oid} variant="secondary" className="text-xs">
                             {u.nombre}
                           </Badge>
                         ))}
@@ -359,8 +410,8 @@ export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = (
                     <div className="flex gap-2 items-center mt-2">
                       {!estado ? (
                         <>
-                          <Button size="sm" className="bg-green-600 text-white" onClick={() => setEstadoPaso(paso.id, 'aprobado')}>Aprobar</Button>
-                          <Button size="sm" className="bg-red-600 text-white" onClick={() => setEstadoPaso(paso.id, 'rechazado')}>Rechazar</Button>
+                          <Button size="sm" className="bg-green-600 text-white" onClick={() => handleDecision(paso.id, true)} disabled={decisionLoading}>Aprobar</Button>
+                          <Button size="sm" className="bg-red-600 text-white" onClick={() => handleDecision(paso.id, false)} disabled={decisionLoading}>Rechazar</Button>
                         </>
                       ) : (
                         <Badge variant={estado === 'aprobado' ? 'success' : 'destructive'}>

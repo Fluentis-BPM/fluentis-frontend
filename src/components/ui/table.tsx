@@ -1,6 +1,8 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+// prop-types are not used in this TypeScript project; disable rule for this file
+/* eslint react/prop-types: 0 */
 
 const Table = React.forwardRef<
   HTMLTableElement,
