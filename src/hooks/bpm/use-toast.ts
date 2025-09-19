@@ -5,8 +5,12 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+// Max toasts visible at once
+const TOAST_LIMIT = 3
+// Default auto-dismiss time (ms)
+const DEFAULT_AUTO_DISMISS = 4000
+// Grace period after dismiss before removing from DOM (ms)
+const TOAST_REMOVE_DELAY = 300
 
 type ToasterToast = ToastProps & {
   id: string
@@ -160,6 +164,14 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  // Auto-dismiss behavior: use per-toast duration if provided, otherwise default
+  const autoDismissMs = typeof props.duration === 'number' ? props.duration : DEFAULT_AUTO_DISMISS
+  if (autoDismissMs > 0) {
+    setTimeout(() => {
+      dismiss()
+    }, autoDismissMs)
+  }
 
   return {
     id: id,

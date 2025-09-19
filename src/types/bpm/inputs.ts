@@ -46,6 +46,45 @@ export interface CamposDinamicos {
   };
 }
 
+// Normalizador de tipo_input para fuentes externas
+export const normalizeTipoInput = (t: string): TipoInput => {
+  const s = (t || '').toString().trim().toLowerCase().replace(/[\s_-]/g, '');
+  switch (s) {
+    case 'textocorto':
+    case 'shorttext':
+    case 'texto':
+    case 'inputtext':
+      return 'textocorto';
+    case 'textolargo':
+    case 'textarea':
+    case 'longtext':
+      return 'textolargo';
+    case 'combobox':
+    case 'select':
+    case 'dropdown':
+      return 'combobox';
+    case 'multiplecheckbox':
+    case 'checkboxes':
+    case 'multicheckbox':
+    case 'multiopcion':
+      return 'multiplecheckbox';
+    case 'date':
+    case 'fecha':
+    case 'datetime':
+      return 'date';
+    case 'number':
+    case 'numeric':
+    case 'numero':
+      return 'number';
+    case 'archivo':
+    case 'file':
+    case 'upload':
+      return 'archivo';
+    default:
+      return 'textocorto';
+  }
+};
+
 // Configuración de inputs predefinidos comunes
 export const INPUT_TEMPLATES: Input[] = [
   {

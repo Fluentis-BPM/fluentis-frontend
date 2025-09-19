@@ -3,6 +3,7 @@ import authReducer from './auth/authSlice';
 import bpmReducer from './bpm/bpmSlice';
 import approvalGroupsReducer from './approvalGroups/approvalGroupsSlice';
 import solicitudesReducer from './solicitudes/solicitudesSlice';
+import templatesReducer from './templates/templatesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     auth: authReducer,
     approvalGroups: approvalGroupsReducer,
   solicitudes: solicitudesReducer,
+  templates: templatesReducer,
   },
 });
 

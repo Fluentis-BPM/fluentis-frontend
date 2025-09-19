@@ -14,7 +14,6 @@ import {
   addDecision as addDecisionThunk,
   type EstadoSolicitudApi,
   type SolicitudCreateDto,
-  fetchSolicitudGrupo,
 } from '@/store/solicitudes/solicitudesSlice';
 import { useEffect } from 'react';
 import { solicitudesLocalRemove } from '@/store/solicitudes/solicitudesSlice';
@@ -66,19 +65,10 @@ export const useSolicitudes = () => {
       const gid = (s as Solicitud).grupo_aprobacion_id as number | undefined;
       if (sid && gid && !aprobacion.relacionesGrupo.some(r => r.solicitud_id === sid)) {
         aprobacion.asociarGrupoASolicitud(gid, sid);
-      } else if (sid && !gid) {
-        // try fetching group's assignment if not included in the base list
-        dispatch(fetchSolicitudGrupo({ id: sid }))
-          .unwrap()
-          .then(({ grupoAprobacionId }) => {
-            if (!aprobacion.relacionesGrupo.some(r => r.solicitud_id === sid)) {
-              aprobacion.asociarGrupoASolicitud(grupoAprobacionId, sid);
-            }
-          })
-          .catch(() => {});
       }
+      // If gid is missing, avoid noisy probing; it can be fetched explicitly from UI when needed.
     });
-  }, [items, aprobacion.relacionesGrupo, dispatch]);
+  }, [items, aprobacion.relacionesGrupo]);
 
   // Crear nueva solicitud (backend)
   const crearSolicitud = useCallback(async (input: CrearSolicitudInput): Promise<Solicitud> => {

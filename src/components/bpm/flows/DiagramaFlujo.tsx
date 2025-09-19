@@ -56,6 +56,9 @@ interface DiagramaFlujoProps {
   onUpdatePaso?: (id: number, data: unknown) => void;
   onDeletePaso?: (id: number) => void;
   onCreateConexion?: (id: number, destinoId: number, esExcepcion?: boolean) => void;
+  // Opcionales para compatibilidad con vistas que administran conexiones en bloque
+  onReplaceConexiones?: (id: number, destinos: number[]) => void;
+  onDeleteConexion?: (id: number, destinoId: number) => void;
 }
 
 // Componente personalizado para nodos de paso

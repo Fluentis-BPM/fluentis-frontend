@@ -15,8 +15,6 @@ import { useToast } from '@/hooks/bpm/use-toast';
 export const ModuloFlujos: React.FC = () => {
   const {
     flujosActivos,
-    pasosPorFlujo,
-    caminosPorFlujo,
     loading,
     error,
     flujoSeleccionado,
@@ -188,9 +186,9 @@ export const ModuloFlujos: React.FC = () => {
               >
                 <TarjetaFlujo
                   flujo={flujo}
-                  onVerDiagrama={handleVerDiagrama} onActualizarEstado={function (flujo_id: number, estado: EstadoFlujo): void {
-                    throw new Error('Function not implemented.');
-                  } }                />
+                  onVerDiagrama={handleVerDiagrama}
+                  onActualizarEstado={() => {}}
+                />
               </div>
             ))}
           </div>

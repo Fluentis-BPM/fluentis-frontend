@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { EditorPaso } from '@/components/bpm/flows/EditorPaso';
 import { DiagramaFlujo } from '@/components/bpm/flows/DiagramaFlujo';
@@ -8,16 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { FlujoActivo, PasoSolicitud, CaminoParalelo } from '@/types/bpm/flow';
-import { RelacionInput } from '@/types/bpm/inputs';
 import { 
   ArrowLeft, 
-  Save, 
   Eye,
   Edit,
   Workflow,
-  Users,
-  Clock,
-  CheckCircle2,
   Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
@@ -26,10 +21,6 @@ interface EditorFlujoPageProps {
   flujo?: FlujoActivo;
   pasos?: PasoSolicitud[];
   caminos?: CaminoParalelo[];
-  onActualizarPaso?: (pasoId: number, estado: PasoSolicitud['estado']) => void;
-  onAgregarPaso?: (flujoId: number, x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => void;
-  onCrearCamino?: (origen: number, destino: number) => void;
-  onEditarPaso?: (paso: PasoSolicitud) => void;
   onVolverALista?: () => void;
 }
 
@@ -37,10 +28,6 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
   flujo,
   pasos = [],
   caminos = [],
-  onActualizarPaso,
-  onAgregarPaso,
-  onCrearCamino,
-  onEditarPaso,
   onVolverALista
 }) => {
   const navigate = useNavigate();
@@ -57,15 +44,9 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
     }
   };
 
-  const handleEditarPaso = (paso: PasoSolicitud) => {
-    setPasoEditando(paso);
-    setModoVista('editor'); // Cambiar a vista de editor al seleccionar un paso
-  };
+  // Editor actions are handled locally
 
   const handleGuardarPaso = (pasoActualizado: PasoSolicitud) => {
-    if (onEditarPaso) {
-      onEditarPaso(pasoActualizado);
-    }
     toast({
       title: "Paso guardado",
       description: `Los cambios en "${pasoActualizado.nombre}" se han guardado correctamente.`
@@ -196,12 +177,8 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
                 <DiagramaFlujo
                   pasos={pasos}
                   caminos={caminos}
-                  onActualizarPaso={onActualizarPaso}
-                  onAgregarPaso={onAgregarPaso}
-                  onCrearCamino={onCrearCamino}
-                  onEditarPaso={handleEditarPaso}
                   readOnly={!modoEdicion}
-                  camposDinamicosIniciales={flujo.campos_dinamicos}
+                  flujoActivoId={flujo.id_flujo_activo}
                 />
               </CardContent>
             </Card>
@@ -288,13 +265,9 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
                   <DiagramaFlujo
                     pasos={pasos}
                     caminos={caminos}
-                    onActualizarPaso={onActualizarPaso}
-                    onAgregarPaso={onAgregarPaso}
-                    onCrearCamino={onCrearCamino}
-                    onEditarPaso={handleEditarPaso}
                     readOnly={!modoEdicion}
                     selectedNodeId={pasoEditando?.id_paso_solicitud.toString()}
-                    camposDinamicosIniciales={flujo.campos_dinamicos}
+                    flujoActivoId={flujo.id_flujo_activo}
                   />
                 </CardContent>
               </Card>
