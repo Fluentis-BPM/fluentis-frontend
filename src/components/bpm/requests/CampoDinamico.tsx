@@ -31,11 +31,52 @@ export const CampoDinamico: React.FC<Props> = ({
   onRemove,
   showRequiredToggle = true 
 }) => {
+  // Normaliza valores de tipo_input provenientes de distintas fuentes (API, estáticos, etc.)
+  const normalizeTipoInput = (t: string): TipoInput => {
+    const s = (t || '').toString().trim().toLowerCase().replace(/[\s_-]/g, '');
+    switch (s) {
+      case 'textocorto':
+      case 'shorttext':
+      case 'texto':
+      case 'inputtext':
+        return 'textocorto';
+      case 'textolargo':
+      case 'textarea':
+      case 'longtext':
+        return 'textolargo';
+      case 'combobox':
+      case 'select':
+      case 'dropdown':
+        return 'combobox';
+      case 'multiplecheckbox':
+      case 'checkboxes':
+      case 'multicheckbox':
+      case 'multiopcion':
+        return 'multiplecheckbox';
+      case 'date':
+      case 'fecha':
+      case 'datetime':
+        return 'date';
+      case 'number':
+      case 'numeric':
+      case 'numero':
+        return 'number';
+      case 'archivo':
+      case 'file':
+      case 'upload':
+        return 'archivo';
+      default:
+        return 'textocorto';
+    }
+  };
+
+  const tipo = normalizeTipoInput(input.tipo_input as unknown as string);
+
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    valor && input.tipo_input === 'date' ? new Date(valor) : undefined
+    valor && tipo === 'date' ? new Date(valor) : undefined
   );
   const [selectedOptions, setSelectedOptions] = useState<string[]>(
-    valor && input.tipo_input === 'multiplecheckbox' ? JSON.parse(valor || '[]') : []
+    valor && tipo === 'multiplecheckbox' ? JSON.parse(valor || '[]') : []
   );
 
   const handleValueChange = (newValue: string) => {
@@ -65,7 +106,7 @@ export const CampoDinamico: React.FC<Props> = ({
   };
 
   const renderInput = () => {
-    switch (input.tipo_input) {
+    switch (tipo) {
       case 'textocorto':
         return (
           <Input
@@ -78,7 +119,7 @@ export const CampoDinamico: React.FC<Props> = ({
           />
         );
 
-      case 'textolargo':
+  case 'textolargo':
         return (
           <Textarea
             value={valor}
@@ -91,7 +132,7 @@ export const CampoDinamico: React.FC<Props> = ({
           />
         );
 
-      case 'combobox':
+  case 'combobox':
         return (
           <Select value={valor} onValueChange={handleValueChange}>
             <SelectTrigger className="transition-smooth focus:ring-request-primary/50">
@@ -107,7 +148,7 @@ export const CampoDinamico: React.FC<Props> = ({
           </Select>
         );
 
-      case 'number':
+  case 'number':
         return (
           <Input
             type="number"
@@ -121,7 +162,7 @@ export const CampoDinamico: React.FC<Props> = ({
           />
         );
 
-      case 'date':
+  case 'date':
         return (
           <Popover>
             <PopoverTrigger asChild>
@@ -148,7 +189,7 @@ export const CampoDinamico: React.FC<Props> = ({
           </Popover>
         );
 
-      case 'multiplecheckbox':
+  case 'multiplecheckbox':
         return (
           <div className="space-y-3">
             {input.opciones?.map((opcion) => (
@@ -180,7 +221,7 @@ export const CampoDinamico: React.FC<Props> = ({
           </div>
         );
 
-      case 'archivo':
+  case 'archivo':
         return (
           <div className="space-y-2">
             <div className="border-2 border-dashed border-muted rounded-lg p-4 text-center">
@@ -244,9 +285,9 @@ export const CampoDinamico: React.FC<Props> = ({
     <div className="space-y-3 p-4 border rounded-lg bg-gradient-card shadow-soft">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {getInputIcon(input.tipo_input)}
+          {getInputIcon(tipo)}
           <Label className="font-medium text-foreground">
-            {input.etiqueta || `Campo ${input.tipo_input}`}
+            {input.etiqueta || `Campo ${tipo}`}
             {requerido && <span className="text-request-danger ml-1">*</span>}
           </Label>
         </div>

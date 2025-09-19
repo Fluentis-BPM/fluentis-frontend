@@ -10,6 +10,8 @@ import ConfigPage from "@/pages/user/ConfigPage";
 import { BPMDashboard } from "@/pages/bpm/BPMDashboard";
 import ActiveFlows from "@/pages/bpm/ActiveFlows";
 import MisPasosPage from '@/pages/bpm/MisPasosPage';
+import PlantillasPage from '@/pages/plantillas/PlantillasPage';
+import UsarPlantillaPage from '@/pages/plantillas/UsarPlantillaPage';
 
 
 // Placeholders para las páginas privadas (solo divs con nombres)
@@ -18,7 +20,7 @@ import MisPasosPage from '@/pages/bpm/MisPasosPage';
 
 const DelegacionesPage = () => <div>Delegaciones Page</div>;
 
-const FlujosPlantillasPage = () => <div>Flujos (Plantillas) Page</div>;
+// const FlujosPlantillasPage = () => <div>Flujos (Plantillas) Page</div>;
 const SolicitudesPage = () => <div>Solicitudes Page</div>;
 // const FlujosActivosPage = () => <div>Flujos Activos Page</div>;
 // const MisPasosPage = () => <div>Mis Pasos Page</div>;
@@ -49,7 +51,8 @@ export const privateRoutes = [
       { path: '/bpm', element: <PrivateRoute><BPMDashboard /></PrivateRoute> },
 
       // Módulo: Gestión de Flujos y Solicitudes
-      { path: '/flujos/plantillas', element: <PrivateRoute><FlujosPlantillasPage /></PrivateRoute> },
+  { path: '/flujos/plantillas', element: <PrivateRoute><PlantillasPage /></PrivateRoute> },
+  { path: '/flujos/plantillas/:id/usar', element: <PrivateRoute><UsarPlantillaPage /></PrivateRoute> },
       { path: '/flujos/solicitudes', element: <PrivateRoute><SolicitudesPage /></PrivateRoute> },
       { path: '/flujos/activos', element: <PrivateRoute><ActiveFlows /></PrivateRoute> },
       { path: '/flujos/mis-pasos', element: <PrivateRoute><MisPasosPage /></PrivateRoute> },

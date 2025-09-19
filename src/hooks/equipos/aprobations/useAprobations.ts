@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
 import { fetchGrupos, createGrupoThunk, updateGrupoThunk, addUsuariosThunk, removeUsuarioThunk, deleteGrupoThunk } from '@/store/approvalGroups/approvalGroupsSlice';
-import { GrupoAprobacion, UseAprobationsReturn, CreateGrupoAprobacionInput, UpdateGrupoAprobacionInput } from '@/types/equipos/aprobations';
+import { UseAprobationsReturn, CreateGrupoAprobacionInput, UpdateGrupoAprobacionInput } from '@/types/equipos/aprobations';
 
 export const useAprobations = (): UseAprobationsReturn => {
   const dispatch = useDispatch<AppDispatch>();

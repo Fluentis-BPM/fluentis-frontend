@@ -1,5 +1,37 @@
 @import "tailwindcss";
 
+/* CSS variables expected by shadcn/ui components (HSL values) */
+:root {
+  /* Base */
+  --background: 204 70% 91%; /* #d0e7f8 */
+  --foreground: 0 0% 7%;    /* #111111 */
+
+  /* Surfaces */
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 7%;
+
+  /* Brand */
+  --primary: 210 87% 30%;             /* #0a4890 aprox */
+  --primary-foreground: 0 0% 100%;     /* #ffffff */
+  --secondary: 206 90% 43%;           /* #0b78d1 aprox */
+  --secondary-foreground: 0 0% 100%;   /* #ffffff */
+  --accent: 208 86% 95%;              /* #e6f2fd */
+  --accent-foreground: 0 0% 7%;        /* #111111 */
+
+  /* States */
+  --destructive: 0 85% 60%;           /* #ef4444 */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --muted: 208 86% 95%;               /* #e6f2fd */
+  --muted-foreground: 220 9% 46%;      /* #6B7280 aprox */
+
+  /* Misc */
+  --border: 208 86% 88%;              /* #cce6fb */
+  --input: 208 86% 88%;               /* same as border */
+  --ring: 210 87% 30%;                /* primary */
+}
+
 @layer utilities {
   /* === GRADIENTS === */
   .bg-gradient-primary {

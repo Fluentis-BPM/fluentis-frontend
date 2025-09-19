@@ -106,11 +106,11 @@ export interface FlujoActivo {
   nombre: string;
   descripcion?: string;
   version_actual?: number;
-  flujo_ejecucion_id: number;
+  flujo_ejecucion_id: number | undefined;
   fecha_inicio: Date;
   fecha_finalizacion?: Date;
   estado: EstadoFlujo;
-  datos_solicitud?: Record<string, string>;
+  datos_solicitud?: Record<string, string> | undefined;
 }
 
 // Entidad PasoSolicitud
@@ -125,10 +125,15 @@ export interface PasoSolicitud {
   tipo_paso: TipoPaso;
   estado: EstadoPaso;
   nombre?: string;
+  descripcion?: string;
   tipo_flujo: TipoFlujoPaso;
   regla_aprobacion?: ReglaAprobacion;
   posicion_x?: number;
   posicion_y?: number;
+  // Atributo opcional para diferenciar visualmente inicio/proceso/fin en algunas UIs
+  tipo?: 'inicio' | 'proceso' | 'fin';
+  // Campos dinámicos asociados (formas alternativas usadas en distintos módulos)
+  campos_dinamicos?: CamposDinamicos | RelacionInput[];
   relacionesInput: RelacionInput[];
   relacionesGrupoAprobacion: RelacionGrupoAprobacion[];
   comentarios: Comentario[];

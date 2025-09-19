@@ -11,6 +11,8 @@ import { setAccessToken, silentVerifyToken } from './store/auth/authSlice';
 import { fetchSolicitudes } from './store/solicitudes/solicitudesSlice';
 
 import { router } from './routes/index';
+import { Toaster } from '@/components/ui/toast';
+import { useToast } from '@/components/ui/use-toast';
 const msalInstance = new PublicClientApplication(msalConfig);
 
 // Component to handle authentication initialization
@@ -60,12 +62,23 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AppInner() {
+  // Subscribe to the toast store and render the toaster
+  const { toasts } = useToast();
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster toasts={toasts} />
+    </>
+  );
+}
+
 function App() {
   return (
     <Provider store={store}>
       <MsalProvider instance={msalInstance}>
         <AuthInitializer>
-          <RouterProvider router={router} />
+          <AppInner />
         </AuthInitializer>
       </MsalProvider>
     </Provider>
