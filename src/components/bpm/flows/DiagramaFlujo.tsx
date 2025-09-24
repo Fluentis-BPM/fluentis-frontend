@@ -88,10 +88,10 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       case 'aprobado': return 'border-success bg-success/10';
       case 'rechazado': return 'border-destructive bg-destructive/10';
       case 'excepcion': return 'border-warning bg-warning/10';
-      case 'pendiente': return 'border-muted bg-background';
+      case 'pendiente': return 'border-gray-500 bg-white';
       case 'entregado': return 'border-info bg-info/10';
       case 'cancelado': return 'border-destructive bg-destructive/10';
-      default: return 'border-muted bg-background';
+      default: return 'border-gray-500 bg-white';
     }
   };
 
@@ -116,9 +116,10 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
 
   return (
     <Card 
-      className={`p-4 min-w-[220px] transition-all duration-300 cursor-pointer ${getColorByEstado()} ${
-        isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'
+      className={`p-4 min-w-[220px] transition-all b-2 border-2 border-blue-500 duration-300 cursor-pointer ${getColorByEstado()} ${
+      isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'
       }`}
+
       onClick={() => {
         // Don't open editor for initial step
         if (paso.tipo_paso === 'inicio') return;
@@ -237,7 +238,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
         <Handle
           type="target"
           position={Position.Left}
-          className="w-4 h-4 border-2 border-white rounded-full"
+          className="!w-4 !h-4 border-2 border-white rounded-full"
           style={{ backgroundColor: '#3b82f6' }}
           id="target"
         />
@@ -245,7 +246,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-4 h-4 border-2 border-white rounded-full"
+        className="!w-4 !h-4 border-2 border-white rounded-full"
         style={{ backgroundColor: '#10b981' }}
         id="source"
       />

@@ -3,8 +3,7 @@
  * Representa los pasos activos asignados a usuarios en el flujo BPM
  */
 
-export type TipoPaso = 'aprobacion' | 'ejecucion' | 'revision' | 'validacion';
-export type EstadoPaso = 'pendiente' | 'en_proceso' | 'completado' | 'rechazado';
+import { EstadoPaso, TipoPaso } from "./flow";
 
 export interface PasoSolicitud {
   id: number;
@@ -44,7 +43,6 @@ export interface FiltrosPasoSolicitud {
   estado?: EstadoPaso;
   fechaDesde?: string;
   fechaHasta?: string;
-  prioridad?: 'baja' | 'media' | 'alta';
   solicitudId?: number;
   flujoId?: number;
 }

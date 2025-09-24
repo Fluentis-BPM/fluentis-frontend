@@ -32,6 +32,100 @@
   --ring: 210 87% 30%;                /* primary */
 }
 
+@theme {
+  --color-primary: #0a4890;
+  --color-primary-light: #bcd9fa;
+  --color-primary-dark: #0f6ad2;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #0b78d1;
+  --color-secondary-light: #c8e5fc;
+  --color-secondary-dark: #2295f3;
+  --color-secondary-foreground: #ffffff;
+
+  --color-tertiary: #45a6f5;
+  --color-tertiary-light: #daedfd;
+  --color-tertiary-dark: #6cb8f7;
+
+  --color-background: #d0e7f8;
+  --color-foreground: #111111;
+  --color-muted: #e6f2fd;
+  --color-muted-foreground: #6B7280;
+  --color-border: #cce6fb;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+
+  /* shadcn tokens */
+  --color-card: #ffffff;
+  --color-card-foreground: #111111;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #111111;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #ffffff;
+  --color-accent: #e6f2fd;
+  --color-accent-foreground: #111111;
+  --color-ring: #0a4890;
+
+  /* Paletas completas */
+  --color-polynesian_blue: #0a4890;
+  --color-polynesian_blue-100: #020e1d;
+  --color-polynesian_blue-200: #041d39;
+  --color-polynesian_blue-300: #062b56;
+  --color-polynesian_blue-400: #083a72;
+  --color-polynesian_blue-500: #0a4890;
+  --color-polynesian_blue-600: #0f6ad2;
+  --color-polynesian_blue-700: #378ef1;
+  --color-polynesian_blue-800: #79b3f6;
+  --color-polynesian_blue-900: #bcd9fa;
+
+  --color-french_blue: #0b78d1;
+  --color-french_blue-100: #02182a;
+  --color-french_blue-200: #043053;
+  --color-french_blue-300: #07487d;
+  --color-french_blue-400: #0960a7;
+  --color-french_blue-500: #0b78d1;
+  --color-french_blue-600: #2295f3;
+  --color-french_blue-700: #59b0f6;
+  --color-french_blue-800: #91caf9;
+  --color-french_blue-900: #c8e5fc;
+
+  --color-argentinian_blue: #45a6f5;
+  --color-argentinian_blue-100: #03223c;
+  --color-argentinian_blue-200: #064578;
+  --color-argentinian_blue-300: #0967b4;
+  --color-argentinian_blue-400: #0d8af0;
+  --color-argentinian_blue-500: #45a6f5;
+  --color-argentinian_blue-600: #6cb8f7;
+  --color-argentinian_blue-700: #91caf9;
+  --color-argentinian_blue-800: #b5dcfb;
+  --color-argentinian_blue-900: #daedfd;
+
+  --color-maya_blue: #80bff4;
+  --color-maya_blue-100: #062845;
+  --color-maya_blue-200: #0c5189;
+  --color-maya_blue-300: #1279ce;
+  --color-maya_blue-400: #3c9eee;
+  --color-maya_blue-500: #80bff4;
+  --color-maya_blue-600: #9acdf6;
+  --color-maya_blue-700: #b3d9f8;
+  --color-maya_blue-800: #cce6fb;
+  --color-maya_blue-900: #e6f2fd;
+
+  --color-columbia_blue: #d0e7f8;
+  --color-columbia_blue-100: #0c324f;
+  --color-columbia_blue-200: #18649e;
+  --color-columbia_blue-300: #3094e0;
+  --color-columbia_blue-400: #7fbdec;
+  --color-columbia_blue-500: #d0e7f8;
+  --color-columbia_blue-600: #d8ebf9;
+  --color-columbia_blue-700: #e2f0fb;
+  --color-columbia_blue-800: #ebf5fc;
+  --color-columbia_blue-900: #f5fafe;
+}
+
+
 @layer utilities {
   /* === GRADIENTS === */
   .bg-gradient-primary {

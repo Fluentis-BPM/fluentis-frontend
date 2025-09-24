@@ -26,7 +26,8 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { usePasosSolicitud } from '@/hooks/bpm/usePasosSolicitud';
 import { useUsers } from '@/hooks/users/useUsers';
-import type { PasoSolicitud, FiltrosPasoSolicitud, TipoPaso, EstadoPaso } from '@/types/bpm/paso';
+import type { PasoSolicitud, FiltrosPasoSolicitud } from '@/types/bpm/paso';
+import type { EstadoPaso, TipoPaso } from '@/types/bpm/flow';
 import { 
   CheckCircle, 
   XCircle, 
@@ -175,9 +176,11 @@ const MisPasosPage: React.FC = () => {
   const getEstadoBadgeColor = (estado: EstadoPaso) => {
     switch (estado) {
       case 'pendiente': return 'default';
-      case 'en_proceso': return 'secondary';
-      case 'completado': return 'destructive';
+      case 'aprobado': return 'default';
+      case 'entregado': return 'outline';
       case 'rechazado': return 'destructive';
+      case 'cancelado': return 'destructive';
+      case 'excepcion': return 'secondary';
       default: return 'default';
     }
   };
@@ -185,10 +188,10 @@ const MisPasosPage: React.FC = () => {
   // Obtener color del badge según el tipo
   const getTipoBadgeColor = (tipo: TipoPaso) => {
     switch (tipo) {
-      case 'aprobacion': return 'default';
+      case 'inicio': return 'outline';
       case 'ejecucion': return 'secondary';
-      case 'revision': return 'outline';
-      case 'validacion': return 'outline';
+      case 'aprobacion': return 'default';
+      case 'fin': return 'destructive';
       default: return 'default';
     }
   };
@@ -196,10 +199,10 @@ const MisPasosPage: React.FC = () => {
   // Obtener icono según el tipo de paso
   const getTipoIcon = (tipo: TipoPaso) => {
     switch (tipo) {
+      case 'inicio': return <Play className="h-4 w-4" />;
+      case 'ejecucion': return <Clock className="h-4 w-4" />;
       case 'aprobacion': return <CheckCircle className="h-4 w-4" />;
-      case 'ejecucion': return <Play className="h-4 w-4" />;
-      case 'revision': return <Search className="h-4 w-4" />;
-      case 'validacion': return <AlertTriangle className="h-4 w-4" />;
+      case 'fin': return <XCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -208,10 +211,10 @@ const MisPasosPage: React.FC = () => {
   const renderAccionButtons = (paso: PasoSolicitud) => {
     const isLoading = actionLoading === paso.pasoId;
     
-    if (paso.estado === 'completado' || paso.estado === 'rechazado') {
+    if (paso.estado === 'entregado' || paso.estado === 'cancelado') {
       return (
         <Badge variant="outline" className="text-xs">
-          {paso.estado === 'completado' ? 'Completado' : 'Rechazado'}
+          {paso.estado === 'entregado' ? 'Entregado' : 'Cancelado'}
         </Badge>
       );
     }
@@ -312,9 +315,6 @@ const MisPasosPage: React.FC = () => {
               <Badge variant={getEstadoBadgeColor(paso.estado)} className="text-xs">
                 {paso.estado}
               </Badge>
-              <Badge variant="outline" className="text-xs">
-                {paso.prioridad}
-              </Badge>
             </div>
             
             <div className="pt-2">
@@ -336,7 +336,6 @@ const MisPasosPage: React.FC = () => {
           <TableHead>Estado</TableHead>
           <TableHead>Solicitud</TableHead>
           <TableHead>Fecha</TableHead>
-          <TableHead>Prioridad</TableHead>
           <TableHead>Acciones</TableHead>
         </TableRow>
       </TableHeader>
@@ -369,11 +368,6 @@ const MisPasosPage: React.FC = () => {
             </TableCell>
             <TableCell className="text-sm">
               {format(new Date(paso.fechaCreacion), 'dd/MM/yyyy HH:mm', { locale: es })}
-            </TableCell>
-            <TableCell>
-              <Badge variant="outline" className="text-xs">
-                {paso.prioridad}
-              </Badge>
             </TableCell>
             <TableCell>
               {renderAccionButtons(paso)}
@@ -449,7 +443,7 @@ const MisPasosPage: React.FC = () => {
             <CardTitle>Filtros</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <div>
                 <Label htmlFor="search">Buscar</Label>
                 <Input
@@ -471,10 +465,10 @@ const MisPasosPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos los tipos</SelectItem>
-                    <SelectItem value="aprobacion">Aprobación</SelectItem>
+                    <SelectItem value="inicio">Inicio</SelectItem>
                     <SelectItem value="ejecucion">Ejecución</SelectItem>
-                    <SelectItem value="revision">Revisión</SelectItem>
-                    <SelectItem value="validacion">Validación</SelectItem>
+                    <SelectItem value="aprobacion">Aprobación</SelectItem>
+                    <SelectItem value="fin">Fin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -491,27 +485,11 @@ const MisPasosPage: React.FC = () => {
                   <SelectContent>
                     <SelectItem value="todos">Todos los estados</SelectItem>
                     <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="en_proceso">En Proceso</SelectItem>
-                    <SelectItem value="completado">Completado</SelectItem>
+                    <SelectItem value="aprobado">Aprobado</SelectItem>
+                    <SelectItem value="entregado">Entregado</SelectItem>
                     <SelectItem value="rechazado">Rechazado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="prioridad">Prioridad</Label>
-                <Select
-                  value={filtros.prioridad || 'todas'}
-                  onValueChange={(value) => handleFilterChange('prioridad', value === 'todas' ? undefined : value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas las prioridades" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todas">Todas las prioridades</SelectItem>
-                    <SelectItem value="alta">Alta</SelectItem>
-                    <SelectItem value="media">Media</SelectItem>
-                    <SelectItem value="baja">Baja</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                    <SelectItem value="excepcion">Excepción</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
