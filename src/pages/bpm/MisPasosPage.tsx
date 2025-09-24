@@ -2,222 +2,580 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { DateRangePicker } from '@/components/ui/date-picker';
+import { ConfirmActionDialog } from '@/components/bpm/ConfirmActionDialog';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
-import { useSolicitudes } from '@/hooks/bpm/useSolicitudes';
-import type { Solicitud } from '@/types/bpm/request';
-import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
-import { useDecision } from '@/hooks/bpm/useDecision';
-import { setImpersonateUserId, clearImpersonation } from '@/services/api';
+import { usePasosSolicitud } from '@/hooks/bpm/usePasosSolicitud';
+import { useUsers } from '@/hooks/users/useUsers';
+import type { PasoSolicitud, FiltrosPasoSolicitud } from '@/types/bpm/paso';
+import type { EstadoPaso, TipoPaso } from '@/types/bpm/flow';
+import { 
+  CheckCircle, 
+  XCircle, 
+  Play, 
+  Clock, 
+  User, 
+  Calendar,
+  AlertTriangle,
+  RefreshCw,
+  Filter,
+  Grid,
+  List,
+  Search
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const MisPasosPage: React.FC = () => {
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario ?? 0);
   const currentUser = useSelector((s: RootState) => s.auth.user);
   const roleName = String(currentUser?.rolNombre ?? '');
-  const roleMatches = /dev|admin|desarrollad|developer/i.test(roleName);
-  const isDevEnv = typeof import.meta !== 'undefined' && Boolean(((import.meta as unknown) as { env?: Record<string, string> })?.env?.DEV);
-  const isDeveloper = roleMatches || isDevEnv;
-  const solicitudesHook = useSolicitudes();
-  const { grupos } = useAprobations();
-  const [actionMsg, setActionMsg] = useState<string | null>(null);
-  const { loading: decisionLoading, executePaso } = useDecision();
-  useEffect(() => { solicitudesHook.cargarSolicitudes(); }, []);
-
-  type AssignedRow = { pasoId: number; solicitudId: number; solicitudNombre?: string; grupoId: number; grupoName?: string; decisiones?: unknown[]; flujoId?: number; flujoDescripcion?: string };
-  type GrupoRelacion = { paso_solicitud_id?: number; PasoSolicitudId?: number; grupo_aprobacion_id?: number; GrupoAprobacionId?: number; grupoId?: number; decisiones?: unknown[] };
-
-  const assigned = useMemo(() => {
-    const list: AssignedRow[] = [];
-    for (const s of solicitudesHook.solicitudes || []) {
-  const gruposRel = (((s as unknown) as { grupos_aprobacion?: unknown[]; gruposAprobacion?: unknown[] }).grupos_aprobacion) || (((s as unknown) as { grupos_aprobacion?: unknown[]; gruposAprobacion?: unknown[] }).gruposAprobacion) || [];
-      for (const gr of gruposRel) {
-  const grTyped = gr as GrupoRelacion;
-  const pasoId = grTyped.paso_solicitud_id ?? grTyped.PasoSolicitudId ?? null;
-  if (!pasoId) continue;
-  const grupoId = grTyped.grupo_aprobacion_id ?? grTyped.GrupoAprobacionId ?? grTyped.grupoId ?? 0;
-  type GrupoBackend = { id_grupo?: number; id?: number; usuarios?: unknown[]; nombre?: string };
-  const grupoObj = (grupos || []).find((g) => Number(((g as unknown) as GrupoBackend).id_grupo ?? ((g as unknown) as GrupoBackend).id) === Number(grupoId)) as GrupoBackend | undefined;
-        const miembros = ((grupoObj?.usuarios || []) as unknown[]).map(u => Number(((u as unknown) as { idUsuario?: number; oid?: number; id?: number }).idUsuario ?? ((u as unknown) as { idUsuario?: number; oid?: number; id?: number }).oid ?? ((u as unknown) as { idUsuario?: number; oid?: number; id?: number }).id)).filter(Boolean) as number[];
-        if (miembros.includes(Number(currentUserId))) {
-          const sol = s as unknown as Solicitud;
-          list.push({ pasoId: Number(pasoId), solicitudId: sol.id_solicitud, solicitudNombre: sol.nombre, grupoId: Number(grupoId), grupoName: grupoObj?.nombre, decisiones: grTyped.decisiones });
-        }
-      }
+  const isAdmin = /admin|administrador|desarrollad|developer/i.test(roleName);
+  
+  console.log('Current user:', { currentUserId, currentUser, roleName, isAdmin });
+  
+  // Estados del componente
+  const [selectedUserId, setSelectedUserId] = useState<number>(currentUserId || 1);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Actualizar selectedUserId cuando cambie currentUserId
+  useEffect(() => {
+    if (currentUserId > 0 && selectedUserId !== currentUserId) {
+      console.log('Updating selectedUserId from', selectedUserId, 'to', currentUserId);
+      setSelectedUserId(currentUserId);
     }
-    return list;
-  }, [solicitudesHook.solicitudes, grupos, currentUserId]);
-
-  // Toggle para ver como usuario final (Juan Pérez) — visible para developers
-  const JUAN_PEREZ_ID = 99999;
-  const persisted = typeof window !== 'undefined' ? window.localStorage.getItem('impersonatedUserId') : null;
-  const [showAsJuan, setShowAsJuan] = useState<boolean>(() => persisted === String(JUAN_PEREZ_ID));
-
-  // Mock realistic data for Juan Pérez (independent of current user)
-  const mockStepsForJuan = useMemo(() => {
-    const now = new Date();
-    return [
-      {
-        pasoId: 1001,
-        solicitudId: 501,
-        solicitudNombre: 'Solicitud de Compra - Laptops',
-          flujoId: 201,
-          flujoDescripcion: 'Flujo de compras para equipos de oficina (prioridad media)',
-        grupoId: 2,
-        grupoName: 'Aprobadores IT',
-        decisiones: [
-          { decisionId: 9001, id_usuario: 11111, usuarioNombre: 'Usuario Mock A', decision: true, fecha: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 5).toISOString() },
-          { decisionId: 9002, id_usuario: 11112, usuarioNombre: 'Usuario Mock B', decision: true, fecha: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 4).toISOString() }
-        ]
-      },
-      {
-        pasoId: 1002,
-        solicitudId: 502,
-        solicitudNombre: 'Solicitud de Servicio - Contrato',
-          flujoId: 202,
-          flujoDescripcion: 'Revisión contractual para servicios externos',
-        grupoId: 3,
-        grupoName: 'Aprobadores Jurídicos',
-        decisiones: [
-          { decisionId: 9010, id_usuario: 11120, usuarioNombre: 'Revisor Legal', decision: false, fecha: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 3).toISOString() }
-        ]
-      }
-    ];
-  }, []);
-
-  // Si el usuario es developer, ver todos los pasos; de lo contrario, solo los asignados.
-  const assignedEffective = useMemo(() => {
-    if (isDeveloper) {
-      // Devs ven todos los pasos descubiertos en las solicitudes
-      return assigned;
+  }, [currentUserId, selectedUserId]);
+  
+  // Estados de filtros
+  const [filtros, setFiltros] = useState<FiltrosPasoSolicitud>({});
+  const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
+  const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
+  
+  // Estados de acciones
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  
+  // Estados del modal de confirmación
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    paso: PasoSolicitud | null;
+    accion: 'aprobar' | 'rechazar' | 'ejecutar';
+  }>({ open: false, paso: null, accion: 'aprobar' });
+  
+  // Hooks
+  const { pasos, loading, error, fetchPasos, ejecutarAccion, clearError } = usePasosSolicitud();
+  const { users } = useUsers();
+  
+  // Actualizar filtros cuando cambien las fechas
+  useEffect(() => {
+    setFiltros(prev => ({
+      ...prev,
+      fechaDesde: fechaDesde ? format(fechaDesde, 'yyyy-MM-dd') : undefined,
+      fechaHasta: fechaHasta ? format(fechaHasta, 'yyyy-MM-dd') : undefined,
+    }));
+  }, [fechaDesde, fechaHasta]);
+  
+  // Cargar pasos inicialmente
+  useEffect(() => {
+    if (selectedUserId > 0) {
+      console.log('Loading pasos for user:', selectedUserId, 'with filters:', filtros);
+      fetchPasos(selectedUserId, filtros);
     }
-    return assigned;
-  }, [assigned, isDeveloper]);
-
-  // Si se activa el modo 'Ver como Juan Pérez', mostramos los mocks en lugar de la lista normal
-  const assignedToRender = showAsJuan ? mockStepsForJuan : assignedEffective;
-
-  const handleDecision = async (pasoId: number, decision: boolean) => {
+  }, [selectedUserId, filtros, fetchPasos]);
+  
+  // Filtrar pasos por término de búsqueda
+  const pasosFiltrados = useMemo(() => {
+    console.log('Filtering pasos:', pasos.length, 'with search term:', searchTerm);
+    if (!searchTerm.trim()) return pasos;
+    
+    const term = searchTerm.toLowerCase();
+    const filtered = pasos.filter(paso => 
+      paso.nombre.toLowerCase().includes(term) ||
+      paso.solicitudNombre?.toLowerCase().includes(term) ||
+      paso.descripcion?.toLowerCase().includes(term) ||
+      paso.solicitanteNombre?.toLowerCase().includes(term)
+    );
+    console.log('Filtered pasos:', filtered.length);
+    return filtered;
+  }, [pasos, searchTerm]);
+  
+  // Manejar cambio de filtros
+  const handleFilterChange = (key: keyof FiltrosPasoSolicitud, value: string | undefined) => {
+    setFiltros(prev => ({
+      ...prev,
+      [key]: value || undefined
+    }));
+  };
+  
+  // Limpiar filtros
+  const clearFilters = () => {
+    setFiltros({});
+    setFechaDesde(undefined);
+    setFechaHasta(undefined);
+    setSearchTerm('');
+  };
+  
+  // Abrir modal de confirmación
+  const openConfirmDialog = (paso: PasoSolicitud, accion: 'aprobar' | 'rechazar' | 'ejecutar') => {
+    setConfirmDialog({ open: true, paso, accion });
+  };
+  
+  // Ejecutar acción confirmada
+  const handleConfirmedAction = async (comentarios?: string) => {
+    if (!confirmDialog.paso) return;
+    
     try {
-      const idUsuario = showAsJuan ? JUAN_PEREZ_ID : Number(currentUserId ?? 0);
-      setActionMsg(null);
-      await executePaso(pasoId, { IdUsuario: Number(idUsuario), Decision: decision });
-      setActionMsg(decision ? 'Paso aprobado' : 'Paso rechazado');
-      // update local UX state: mark in localStorage similar to other components
-      try {
-        const estados = JSON.parse(localStorage.getItem('aprobacionesBPM') || '{}');
-        estados[pasoId] = decision ? 'aprobado' : 'rechazado';
-        localStorage.setItem('aprobacionesBPM', JSON.stringify(estados));
-      } catch (err) {
-         
-        console.warn('Failed to update local aprobacionesBPM', err);
+      setActionLoading(confirmDialog.paso.pasoId);
+      setActionMessage(null);
+      clearError();
+      
+      const response = await ejecutarAccion(confirmDialog.paso.pasoId, {
+        usuarioId: selectedUserId,
+        accion: confirmDialog.accion,
+        comentarios: comentarios || `${confirmDialog.accion} ejecutado desde Mis Pasos`
+      });
+      
+      if (response.exito) {
+        setActionMessage(`Paso ${confirmDialog.accion === 'aprobar' ? 'aprobado' : confirmDialog.accion === 'rechazar' ? 'rechazado' : 'ejecutado'} correctamente`);
+        // Refrescar lista después de 1 segundo
+        setTimeout(() => {
+          fetchPasos(selectedUserId, filtros);
+        }, 1000);
+      } else {
+        setActionMessage(`Error: ${response.mensaje}`);
       }
     } catch (err) {
-       
-      console.error('Error registrando decisión', err);
-      setActionMsg('Error al registrar la decisión');
+      setActionMessage(`Error al ${confirmDialog.accion} el paso: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+    } finally {
+      setActionLoading(null);
     }
   };
-
-  // Persist impersonation and set API header for dev-only impersonation
-  useEffect(() => {
-    try {
-      if (showAsJuan) {
-        window.localStorage.setItem('impersonatedUserId', String(JUAN_PEREZ_ID));
-        setImpersonateUserId(JUAN_PEREZ_ID);
-      } else {
-        window.localStorage.removeItem('impersonatedUserId');
-        clearImpersonation();
-      }
-    } catch (err) {
-       
-      console.warn('Failed to persist impersonation', err);
+  
+  // Obtener color del badge según el estado
+  const getEstadoBadgeColor = (estado: EstadoPaso) => {
+    switch (estado) {
+      case 'pendiente': return 'default';
+      case 'aprobado': return 'default';
+      case 'entregado': return 'outline';
+      case 'rechazado': return 'destructive';
+      case 'cancelado': return 'destructive';
+      case 'excepcion': return 'secondary';
+      default: return 'default';
     }
-  }, [showAsJuan]);
-
-  // React to impersonation changes made elsewhere in the app (storage events)
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'impersonatedUserId') {
-        const v = e.newValue;
-        setShowAsJuan(v === String(JUAN_PEREZ_ID));
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    const onCustom = (e: Event) => {
-      try {
-        const id = (e as CustomEvent).detail?.id;
-        setShowAsJuan(id === JUAN_PEREZ_ID);
-      } catch (err) { /* noop */ }
-    };
-    window.addEventListener('impersonation-changed', onCustom as EventListener);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('impersonation-changed', onCustom as EventListener);
-    };
-  }, []);
-  useEffect(() => {
-    const onCustom = (e: Event) => {
-      try { const id = (e as CustomEvent).detail?.id; setShowAsJuan(id === JUAN_PEREZ_ID); } catch (err) { /* noop */ }
-    };
-    window.addEventListener('impersonation-changed', onCustom as EventListener);
-    return () => window.removeEventListener('impersonation-changed', onCustom as EventListener);
-  }, []);
+  };
+  
+  // Obtener color del badge según el tipo
+  const getTipoBadgeColor = (tipo: TipoPaso) => {
+    switch (tipo) {
+      case 'inicio': return 'outline';
+      case 'ejecucion': return 'secondary';
+      case 'aprobacion': return 'default';
+      case 'fin': return 'destructive';
+      default: return 'default';
+    }
+  };
+  
+  // Obtener icono según el tipo de paso
+  const getTipoIcon = (tipo: TipoPaso) => {
+    switch (tipo) {
+      case 'inicio': return <Play className="h-4 w-4" />;
+      case 'ejecucion': return <Clock className="h-4 w-4" />;
+      case 'aprobacion': return <CheckCircle className="h-4 w-4" />;
+      case 'fin': return <XCircle className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
+    }
+  };
+  
+  // Renderizar botones de acción según el tipo
+  const renderAccionButtons = (paso: PasoSolicitud) => {
+    const isLoading = actionLoading === paso.pasoId;
+    
+    if (paso.estado === 'entregado' || paso.estado === 'cancelado') {
+      return (
+        <Badge variant="outline" className="text-xs">
+          {paso.estado === 'entregado' ? 'Entregado' : 'Cancelado'}
+        </Badge>
+      );
+    }
+    
+    if (paso.tipoPaso === 'aprobacion') {
+      return (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="default"
+            className="bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => openConfirmDialog(paso, 'aprobar')}
+            disabled={isLoading}
+          >
+            {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+            Aprobar
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => openConfirmDialog(paso, 'rechazar')}
+            disabled={isLoading}
+          >
+            {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+            Rechazar
+          </Button>
+        </div>
+      );
+    }
+    
+    if (paso.tipoPaso === 'ejecucion') {
+      return (
+        <Button
+          size="sm"
+          variant="default"
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+          onClick={() => openConfirmDialog(paso, 'ejecutar')}
+          disabled={isLoading}
+        >
+          {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+          Ejecutar
+        </Button>
+      );
+    }
+    
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => openConfirmDialog(paso, 'ejecutar')}
+        disabled={isLoading}
+      >
+        {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+        Procesar
+      </Button>
+    );
+  };
+  
+  // Renderizar vista de cards
+  const renderCardsView = () => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {pasosFiltrados.map((paso) => (
+        <Card key={`${paso.solicitudId}-${paso.pasoId}`} className="hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                {getTipoIcon(paso.tipoPaso)}
+                {paso.nombre}
+              </CardTitle>
+              <Badge variant={getTipoBadgeColor(paso.tipoPaso)} className="text-xs">
+                {paso.tipoPaso}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <User className="h-3 w-3" />
+                {paso.solicitudNombre || `Solicitud ${paso.solicitudId}`}
+              </div>
+              {paso.solicitanteNombre && (
+                <div className="text-sm text-muted-foreground">
+                  Solicitante: {paso.solicitanteNombre}
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                {format(new Date(paso.fechaCreacion), 'dd/MM/yyyy HH:mm', { locale: es })}
+              </div>
+              {paso.descripcion && (
+                <div className="text-sm text-muted-foreground line-clamp-2">
+                  {paso.descripcion}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Badge variant={getEstadoBadgeColor(paso.estado)} className="text-xs">
+                {paso.estado}
+              </Badge>
+            </div>
+            
+            <div className="pt-2">
+              {renderAccionButtons(paso)}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+  
+  // Renderizar vista de tabla
+  const renderTableView = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Nombre</TableHead>
+          <TableHead>Tipo</TableHead>
+          <TableHead>Estado</TableHead>
+          <TableHead>Solicitud</TableHead>
+          <TableHead>Fecha</TableHead>
+          <TableHead>Acciones</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {pasosFiltrados.map((paso) => (
+          <TableRow key={`${paso.solicitudId}-${paso.pasoId}`}>
+            <TableCell className="font-medium">
+              <div className="flex items-center gap-2">
+                {getTipoIcon(paso.tipoPaso)}
+                {paso.nombre}
+              </div>
+            </TableCell>
+            <TableCell>
+              <Badge variant={getTipoBadgeColor(paso.tipoPaso)} className="text-xs">
+                {paso.tipoPaso}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              <Badge variant={getEstadoBadgeColor(paso.estado)} className="text-xs">
+                {paso.estado}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              <div>
+                <div className="font-medium">{paso.solicitudNombre || `Solicitud ${paso.solicitudId}`}</div>
+                {paso.solicitanteNombre && (
+                  <div className="text-sm text-muted-foreground">{paso.solicitanteNombre}</div>
+                )}
+              </div>
+            </TableCell>
+            <TableCell className="text-sm">
+              {format(new Date(paso.fechaCreacion), 'dd/MM/yyyy HH:mm', { locale: es })}
+            </TableCell>
+            <TableCell>
+              {renderAccionButtons(paso)}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Mis Pasos</h2>
-      <div className="flex items-center gap-2">
-        <Button size="sm" variant={showAsJuan ? 'default' : 'outline'} onClick={() => {
-          const next = !showAsJuan;
-          setShowAsJuan(next);
-          try {
-            if (next) {
-              window.localStorage.setItem('impersonatedUserId', String(JUAN_PEREZ_ID));
-              setImpersonateUserId(JUAN_PEREZ_ID);
-            } else {
-              window.localStorage.removeItem('impersonatedUserId');
-              clearImpersonation();
-            }
-            window.dispatchEvent(new CustomEvent('impersonation-changed', { detail: { id: next ? JUAN_PEREZ_ID : null } }));
-          } catch (err) { /* noop */ }
-           
-          console.log('MisPasos: toggled showAsJuan ->', next);
-        }}>
-          {showAsJuan ? 'Volver a vista desarrollador' : 'Ver como Juan Pérez (usuario final)'}
-        </Button>
-        {showAsJuan ? (
-          <div className="text-sm text-muted-foreground">Mostrando pasos mock de Juan Pérez</div>
-        ) : (
-          <div className="text-sm text-muted-foreground">Modo demo (dev)</div>
-        )}
-      </div>
-      {(assignedToRender || []).length === 0 ? (
-        <div className="text-muted-foreground">No tienes pasos asignados actualmente.</div>
-      ) : (
-        <div className="grid gap-3">
-          {(assignedToRender as AssignedRow[]).map((a) => (
-            <Card key={`${a.solicitudId}-${a.pasoId}`}>
-              <CardHeader className="pb-0">
-                <CardTitle className="text-lg">{a.solicitudNombre || `Solicitud ${a.solicitudId}`}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground">Paso ID: {a.pasoId}</div>
-                  <div className="text-sm text-muted-foreground">Grupo: {a.grupoName || a.grupoId}</div>
-                  {a.flujoDescripcion && (
-                    <div className="text-sm text-muted-foreground">Flujo: {a.flujoDescripcion} {a.flujoId ? `(ID ${a.flujoId})` : ''}</div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" className="bg-green-600 text-white" onClick={() => handleDecision(a.pasoId, true)} disabled={decisionLoading}>Aprobar</Button>
-                  <Button size="sm" className="bg-red-600 text-white" onClick={() => handleDecision(a.pasoId, false)} disabled={decisionLoading}>Rechazar</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Mis Pasos</h2>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filtros
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
+          >
+            {viewMode === 'cards' ? <List className="h-4 w-4" /> : <Grid className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchPasos(selectedUserId, filtros)}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
+      </div>
+
+      {/* Selector de usuario para admins */}
+      {isAdmin && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Label htmlFor="user-select" className="whitespace-nowrap">Usuario:</Label>
+              <Select
+                value={selectedUserId.toString()}
+                onValueChange={(value) => setSelectedUserId(Number(value))}
+              >
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Seleccionar usuario" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((user) => (
+                    <SelectItem key={user.idUsuario || user.oid} value={(user.idUsuario || user.oid || 0).toString()}>
+                      {user.nombre} - {user.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
       )}
-      {actionMsg && <Badge variant="secondary">{actionMsg}</Badge>}
+
+      {/* Panel de filtros */}
+      {showFilters && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtros</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <Label htmlFor="search">Buscar</Label>
+                <Input
+                  id="search"
+                  placeholder="Nombre, solicitud, descripción..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="tipo">Tipo de Paso</Label>
+                <Select
+                  value={filtros.tipoPaso || 'todos'}
+                  onValueChange={(value) => handleFilterChange('tipoPaso', value === 'todos' ? undefined : value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos los tipos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos los tipos</SelectItem>
+                    <SelectItem value="inicio">Inicio</SelectItem>
+                    <SelectItem value="ejecucion">Ejecución</SelectItem>
+                    <SelectItem value="aprobacion">Aprobación</SelectItem>
+                    <SelectItem value="fin">Fin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="estado">Estado</Label>
+                <Select
+                  value={filtros.estado || 'todos'}
+                  onValueChange={(value) => handleFilterChange('estado', value === 'todos' ? undefined : value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos los estados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos los estados</SelectItem>
+                    <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="aprobado">Aprobado</SelectItem>
+                    <SelectItem value="entregado">Entregado</SelectItem>
+                    <SelectItem value="rechazado">Rechazado</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                    <SelectItem value="excepcion">Excepción</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div>
+              <Label>Rango de fechas</Label>
+              <DateRangePicker
+                dateFrom={fechaDesde}
+                dateTo={fechaHasta}
+                onDateFromChange={setFechaDesde}
+                onDateToChange={setFechaHasta}
+                className="mt-2"
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={clearFilters}>
+                Limpiar filtros
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mensajes de estado */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
+      {actionMessage && (
+        <Alert>
+          <AlertDescription>{actionMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Contenido principal */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              Pasos Asignados ({pasosFiltrados.length})
+            </CardTitle>
+            {loading && (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading && pasos.length === 0 ? (
+            <div className="text-center py-8">
+              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p className="text-muted-foreground">Cargando pasos...</p>
+            </div>
+          ) : pasosFiltrados.length === 0 ? (
+            <div className="text-center py-8">
+              <Clock className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">
+                No se encontraron pasos {searchTerm || Object.keys(filtros).some(key => filtros[key as keyof FiltrosPasoSolicitud]) ? 'que coincidan con los filtros' : 'asignados'}
+              </p>
+              {!searchTerm && !Object.keys(filtros).some(key => filtros[key as keyof FiltrosPasoSolicitud]) && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  <p>Usuario actual: {selectedUserId}</p>
+                  <p>Total de pasos cargados: {pasos.length}</p>
+                  {error && <p className="text-red-500">Error: {error}</p>}
+                </div>
+              )}
+            </div>
+          ) : (
+            viewMode === 'cards' ? renderCardsView() : renderTableView()
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Modal de confirmación */}
+      <ConfirmActionDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+        paso={confirmDialog.paso}
+        accion={confirmDialog.accion}
+        onConfirm={handleConfirmedAction}
+        loading={actionLoading !== null}
+      />
     </div>
   );
 };
