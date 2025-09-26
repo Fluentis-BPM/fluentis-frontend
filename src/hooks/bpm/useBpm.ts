@@ -2,13 +2,15 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback } from 'react';
 import { AppDispatch, RootState } from '@/store';
-import { fetchPasosYConexiones, fetchFlujosActivos, setFlujoSeleccionado, deletePasoSolicitud, createPasoSolicitud, updatePasoSolicitud, putConexionesPaso, deleteConexionPaso, createConexionPaso, createRelacionGrupoAprobacionPaso, addPasoInput, updatePasoInput, deletePasoInput } from '@/store/bpm/bpmSlice';
+import { fetchPasosYConexiones, fetchFlujosActivos, setFlujoSeleccionado, deletePasoSolicitud, createPasoSolicitud, updatePasoSolicitud, putConexionesPaso, deleteConexionPaso, createConexionPaso, createRelacionGrupoAprobacionPaso, addPasoInput, updatePasoInput, deletePasoInput, stagePasoMetadata, stagePosition, stageGroupApproval, stageInputAdd, stageInputCreateUpdate, stageInputUpdate, stageInputDelete, clearPasoDraft, clearAllDrafts, commitAllPasoDrafts, selectDirtyPasoIds, selectIsAnyDirty } from '@/store/bpm/bpmSlice';
 
 export const useBpm = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { flujosActivos, pasosPorFlujo, caminosPorFlujo, loading, error, flujoSeleccionado } = useSelector(
     (state: RootState) => state.bpm
   );
+  const isAnyDirty = useSelector(selectIsAnyDirty);
+  const dirtyPasoIds = useSelector(selectDirtyPasoIds);
 
   const { deleting, lastActionError } = useSelector((state: RootState) => state.bpm);
 
@@ -42,9 +44,22 @@ export const useBpm = () => {
   deleting,
   lastActionError,
     flujoSeleccionado,
+    isAnyDirty,
+    dirtyPasoIds,
     loadFlujosActivos,
     loadPasosYConexiones,
     selectFlujo,
+    // staging API
+    stagePasoMetadata: (pasoId: number, patch: Record<string, unknown>) => dispatch(stagePasoMetadata({ pasoId, patch })),
+    stagePosition: (pasoId: number, x: number, y: number) => dispatch(stagePosition({ pasoId, x, y })),
+    stageGroupApproval: (pasoId: number, groupId: number | null) => dispatch(stageGroupApproval({ pasoId, groupId })),
+  stageInputAdd: (pasoId: number, input: Parameters<typeof stageInputAdd>[0]['input'], tmpId?: string) => dispatch(stageInputAdd({ pasoId, input, tmpId })),
+  stageInputCreateUpdate: (pasoId: number, tmpId: string, patch: Parameters<typeof stageInputCreateUpdate>[0]['patch']) => dispatch(stageInputCreateUpdate({ pasoId, tmpId, patch })),
+    stageInputUpdate: (pasoId: number, relationId: number, patch: Parameters<typeof stageInputUpdate>[0]['patch']) => dispatch(stageInputUpdate({ pasoId, relationId, patch })),
+    stageInputDelete: (pasoId: number, relationId?: number, tmpId?: string) => dispatch(stageInputDelete({ pasoId, relationId, tmpId })),
+    clearPasoDraft: (pasoId: number) => dispatch(clearPasoDraft({ pasoId })),
+    clearAllDrafts: () => dispatch(clearAllDrafts()),
+    commitAllPasoDrafts: () => dispatch(commitAllPasoDrafts()),
   deletePasoSolicitud: (id: number) => dispatch(deletePasoSolicitud({ id })),
   createPasoSolicitud: (data: unknown) => dispatch(createPasoSolicitud({ data })),
   updatePasoSolicitud: (id: number, data: unknown) => dispatch(updatePasoSolicitud({ id, data })),

@@ -22,6 +22,9 @@ import { ConfiguracionReglasFlujo } from './ConfiguracionReglasFlujo';
 // import { EditorCamposDinamicos } from './EditorCamposDinamicos';
 import { fmtDate } from '@/lib/utils';
 import { useBpm } from '@/hooks/bpm/useBpm';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
+import { selectPasoDraft } from '@/store/bpm/bpmSlice';
 
 interface EditorPasoProps {
   paso: PasoSolicitud | null;
@@ -57,118 +60,44 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
   decisionesUsuarios = [],
   usuarioActualId,
   onRegistrarDecision,
-  // Nuevas props para campos dinámicos
-  camposDinamicosIniciales,
-  onValidarCamposDinamicos
+  // Nuevas props para campos dinámicos (no utilizados en editor de diseño)
+  // camposDinamicosIniciales,
+  // onValidarCamposDinamicos
 }) => {
-  const { loadPasosYConexiones, flujoSeleccionado } = useBpm();
+  const { stagePasoMetadata } = useBpm();
   const [datosEditados, setDatosEditados] = useState<PasoSolicitud | null>(paso);
-  const [camposDinamicosEditados, setCamposDinamicosEditados] = useState<RelacionInput[]>([]);
+  const pasoDraft = useSelector((state: RootState) => datosEditados ? selectPasoDraft(state, datosEditados.id_paso_solicitud) : undefined);
 
   React.useEffect(() => {
     setDatosEditados(paso);
-    // Inicializar campos dinámicos si es paso inicial
-  if (paso && paso.tipo_paso === 'inicio' && camposDinamicosIniciales) {
-      if (Array.isArray(camposDinamicosIniciales)) {
-        setCamposDinamicosEditados([...camposDinamicosIniciales]);
-      } else {
-        // Convertir objeto CamposDinamicos a array RelacionInput
-        const camposArray: RelacionInput[] = Object.entries(camposDinamicosIniciales).map(([input_id, campo]) => ({
-          id_relacion: parseInt(input_id),
-          input_id: parseInt(input_id),
-          paso_solicitud_id: paso.id_paso_solicitud,
-          valor: campo.valor,
-          requerido: campo.requerido,
-          input: inputsDisponibles.find(inp => inp.id_input === parseInt(input_id))
-        }));
-        setCamposDinamicosEditados(camposArray);
-      }
-    }
-  }, [paso, camposDinamicosIniciales, inputsDisponibles]);
-
-  // Función para validar campos dinámicos
-  const validarCamposDinamicos = (campos: RelacionInput[]): string[] => {
-    const errores: string[] = [];
-    
-    campos.forEach(campo => {
-      const inputDef = inputsDisponibles.find(inp => inp.id_input === campo.input_id);
-      if (campo.requerido && (!campo.valor || campo.valor.trim() === '')) {
-        const inputNombre = inputDef?.etiqueta || `Campo ${campo.input_id}`;
-        errores.push(`${inputNombre} es requerido`);
-      }
-
-      // Validaciones específicas por tipo
-      if (inputDef?.validacion && campo.valor) {
-        const validacion = inputDef.validacion;
-
-        if (validacion.min && campo.valor.length < validacion.min) {
-          errores.push(`${inputDef.etiqueta || `Campo ${campo.input_id}`} debe tener al menos ${validacion.min} caracteres`);
-        }
-
-        if (validacion.max && campo.valor.length > validacion.max) {
-          errores.push(`${inputDef.etiqueta || `Campo ${campo.input_id}`} no puede exceder ${validacion.max} caracteres`);
-        }
-
-        if (validacion.pattern && !new RegExp(validacion.pattern).test(campo.valor)) {
-          errores.push(`${inputDef.etiqueta || `Campo ${campo.input_id}`} no tiene el formato correcto`);
-        }
-
-        if (inputDef.tipo_input === 'number') {
-          const numValue = parseFloat(campo.valor);
-          if (isNaN(numValue)) {
-            errores.push(`${inputDef.etiqueta || `Campo ${campo.input_id}`} debe ser un número válido`);
-          } else {
-            if (validacion.min && numValue < validacion.min) {
-              errores.push(`${inputDef.etiqueta || `Campo ${campo.input_id}`} debe ser mayor o igual a ${validacion.min}`);
-            }
-            if (validacion.max && numValue > validacion.max) {
-              errores.push(`${inputDef.etiqueta || `Campo ${campo.input_id}`} debe ser menor o igual a ${validacion.max}`);
-            }
-          }
-        }
-      }
-    });
-    
-    return errores;
-  };
+  }, [paso]);
 
   // Campos dinámicos se gestionan en componentes especializados
 
-  const handleGuardar = async () => {
-    if (datosEditados) {
-      // Validar campos dinámicos si es paso inicial
-  if (datosEditados.tipo_paso === 'inicio' && camposDinamicosEditados.length > 0) {
-  const errores = validarCamposDinamicos(camposDinamicosEditados);
-        
-        if (errores.length > 0) {
-          return; // No guardar si hay errores
-        }
-        
-        // Llamar validación personalizada si existe
-        if (onValidarCamposDinamicos && !onValidarCamposDinamicos(camposDinamicosEditados)) {
-          return;
-        }
-        
-        // Actualizar campos dinámicos en el paso
-        const pasoConCampos = {
-          ...datosEditados,
-          campos_dinamicos: camposDinamicosEditados
-        };
-        await onGuardar(pasoConCampos);
-      } else {
-        await onGuardar(datosEditados);
-      }
-      // refresh pasos/caminos to reflect changes
-      if (flujoSeleccionado) {
-        loadPasosYConexiones(flujoSeleccionado);
-      }
-      onClose();
-    }
-  };
+  // Guardado centralizado en "Guardar Todo" global.
 
   const handleCambio = (campo: keyof PasoSolicitud, valor: string | number | boolean | Date | undefined) => {
-    if (datosEditados) {
-      setDatosEditados(prev => prev ? { ...prev, [campo]: valor } : null);
+    if (!datosEditados) return;
+    const next = { ...datosEditados, [campo]: valor } as PasoSolicitud;
+    setDatosEditados(next);
+    // Stage PascalCase metadata patch
+    const patch: Record<string, unknown> = {};
+    switch (campo) {
+      case 'nombre':
+        patch['Nombre'] = valor; break;
+      case 'tipo_paso':
+        patch['TipoPaso'] = (valor as string)?.toLowerCase() === 'aprobacion' ? 'Aprobacion' : 'Ejecucion'; break;
+      case 'responsable_id':
+        patch['ResponsableId'] = valor; break;
+      case 'regla_aprobacion':
+        patch['ReglaAprobacion'] = valor; break;
+      case 'tipo_flujo':
+        patch['TipoFlujo'] = valor; break;
+      default:
+        break;
+    }
+    if (Object.keys(patch).length > 0) {
+      stagePasoMetadata(next.id_paso_solicitud, patch);
     }
   };
 
@@ -177,12 +106,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
   const handleRegistrarDecision = async (decision: TipoDecision) => {
     if (datosEditados && onRegistrarDecision) {
       const nuevoEstado: PasoSolicitud['estado'] = decision === 'si' ? 'aprobado' : 'rechazado';
-      const pasoActualizado = { ...datosEditados, estado: nuevoEstado };
-      setDatosEditados(pasoActualizado);
-      await onGuardar(pasoActualizado);
-      if (flujoSeleccionado) {
-        loadPasosYConexiones(flujoSeleccionado);
-      }
+      setDatosEditados({ ...datosEditados, estado: nuevoEstado });
       onRegistrarDecision(decision);
     }
   };
@@ -194,6 +118,12 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
     return (
       <div className="h-full flex flex-col">
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div />
+            {pasoDraft && (
+              <Badge variant="outline" className="bg-amber-50 text-amber-700">Cambios sin guardar</Badge>
+            )}
+          </div>
           <Tabs defaultValue="configuracion" className="w-full h-full">
             <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="configuracion" className="flex items-center gap-2">
@@ -317,7 +247,17 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
               <div className="mt-4">
                 <ConfiguracionReglasFlujo
                   paso={datosEditados}
-                  onUpdatePaso={(p) => setDatosEditados(p)}
+                  onUpdatePaso={(p) => {
+                    setDatosEditados(p);
+                    // Map changes to staging
+                    const patch: Record<string, unknown> = {
+                      TipoFlujo: p.tipo_flujo,
+                    };
+                    if (p.tipo_paso === 'aprobacion') {
+                      patch['ReglaAprobacion'] = p.regla_aprobacion;
+                    }
+                    stagePasoMetadata(p.id_paso_solicitud, patch);
+                  }}
                   showTipoFlujo={false}
                 />
               </div>
@@ -352,11 +292,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
         <div className="flex gap-3 p-6 border-t bg-gray-50/50">
           <Button variant="outline" onClick={onClose} className="flex-1 h-12">
             <X className="w-4 h-4 mr-2" />
-            Cancelar
-          </Button>
-          <Button onClick={handleGuardar} className="flex-1 h-12 bg-primary text-primary-foreground hover:bg-primary/90">
-            <Save className="w-4 h-4 mr-2" />
-            Guardar Cambios
+            Cerrar
           </Button>
         </div>
       </div>
@@ -498,7 +434,16 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
               <div className="mt-4">
                 <ConfiguracionReglasFlujo
                   paso={datosEditados}
-                  onUpdatePaso={setDatosEditados}
+                  onUpdatePaso={(p) => {
+                    setDatosEditados(p);
+                    const patch: Record<string, unknown> = {
+                      TipoFlujo: p.tipo_flujo,
+                    };
+                    if (p.tipo_paso === 'aprobacion') {
+                      patch['ReglaAprobacion'] = p.regla_aprobacion;
+                    }
+                    stagePasoMetadata(p.id_paso_solicitud, patch);
+                  }}
                   showTipoFlujo={false}
                 />
               </div>
@@ -534,11 +479,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
         <DialogFooter className="flex gap-2">
           <Button variant="outline" onClick={onClose}>
             <X className="w-4 h-4 mr-2" />
-            Cancelar
-          </Button>
-          <Button onClick={handleGuardar} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            <Save className="w-4 h-4 mr-2" />
-            Guardar Cambios
+            Cerrar
           </Button>
         </DialogFooter>
       </DialogContent>

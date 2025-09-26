@@ -9,6 +9,9 @@ import { Input as InputUI } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Calendar, Hash, Upload, Trash2, Plus, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
+import { selectPasoDraft } from '@/store/bpm/bpmSlice';
 
 interface EditorPasoEjecucionProps {
   paso: PasoSolicitud;
@@ -16,16 +19,19 @@ interface EditorPasoEjecucionProps {
   inputsDisponibles?: Input[];
 }
 
+type VisibleRelacion = RelacionInput & { tmpId?: string };
+
 export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
   paso,
   relacionesInput = [],
   inputsDisponibles = [],
 }) => {
-  const [inputsPaso, setInputsPaso] = useState<RelacionInput[]>([]);
+  const [inputsPaso, setInputsPaso] = useState<VisibleRelacion[]>([]);
   const [addSelectValue, setAddSelectValue] = useState<string>('');
   const [editOpciones, setEditOpciones] = useState<Record<number, boolean>>({});
   const [opcionesDraft, setOpcionesDraft] = useState<Record<number, string[]>>({});
-  const { addPasoInput, updatePasoInput, deletePasoInput, pasosPorFlujo, flujoSeleccionado } = useBpm();
+  const { stageInputAdd, stageInputUpdate, stageInputCreateUpdate, stageInputDelete, pasosPorFlujo, flujoSeleccionado } = useBpm();
+  const draft = useSelector((state: RootState) => selectPasoDraft(state, paso.id_paso_solicitud));
 
   // Cargar datos existentes desde Store (preferido) o props/paso
   useEffect(() => {
@@ -39,39 +45,76 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
           ? paso.relacionesInput
           : (relacionesInput || []));
 
-  const delPaso = fuente.filter((r) => r.paso_solicitud_id === paso.id_paso_solicitud);
-  setInputsPaso(delPaso);
-  }, [flujoSeleccionado, pasosPorFlujo, relacionesInput, paso.id_paso_solicitud, paso.relacionesInput]);
+    // filtrar por paso y aplicar parches del draft (updated)
+    let base: VisibleRelacion[] = fuente
+      .filter((r) => r.paso_solicitud_id === paso.id_paso_solicitud)
+      .map((r) => ({ ...r }));
+
+    if (draft?.inputs?.updated?.length) {
+      base = base.map((r) => {
+        const upd = draft.inputs.updated.find(u => u.id === r.id_relacion);
+        if (!upd) return r;
+        const patched = { ...r } as VisibleRelacion;
+        if (upd.patch.Nombre !== undefined) patched.nombre = upd.patch.Nombre as string;
+        if (upd.patch.PlaceHolder !== undefined) patched.placeholder = upd.patch.PlaceHolder as string;
+        if (upd.patch.Requerido !== undefined) patched.requerido = Boolean(upd.patch.Requerido);
+        return patched;
+      });
+    }
+
+    // agregar creados del draft
+    const createdDrafts = draft?.inputs?.created ?? [];
+    const created: VisibleRelacion[] = createdDrafts.map((c) => ({
+      id_relacion: Number.NEGATIVE_INFINITY + Math.floor(Math.random() * 1000000),
+      paso_solicitud_id: paso.id_paso_solicitud,
+      input_id: c.InputId,
+      nombre: c.Nombre,
+      placeholder: c.PlaceHolder,
+      requerido: Boolean(c.Requerido),
+      valor: '',
+      tmpId: (c as { _tmpId?: string })._tmpId,
+    })) as VisibleRelacion[];
+
+    setInputsPaso([...base, ...created]);
+  }, [flujoSeleccionado, pasosPorFlujo, relacionesInput, paso.id_paso_solicitud, paso.relacionesInput, draft]);
 
   const agregarInput = async (inputId: number) => {
     const input = inputsDisponibles.find(i => i.id_input === inputId);
     if (!input) return;
     const countSame = inputsPaso.filter(r => r.input_id === inputId).length;
-    await addPasoInput(paso.id_paso_solicitud, {
-      InputId: inputId,
-      Nombre: (input.etiqueta || `Campo ${inputId}`) + (countSame > 0 ? ` ${countSame + 1}` : ''),
-      PlaceHolder: input.placeholder,
-      Requerido: Boolean(input.validacion?.required),
-      Valor: { RawValue: '' }
-    });
+    const tmpId = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    stageInputAdd(
+      paso.id_paso_solicitud,
+      {
+        InputId: inputId,
+        Nombre: (input.etiqueta || `Campo ${inputId}`) + (countSame > 0 ? ` ${countSame + 1}` : ''),
+        PlaceHolder: input.placeholder,
+        Requerido: Boolean(input.validacion?.required),
+        Valor: { RawValue: '' }
+      },
+      tmpId
+    );
     // reset selector so user can add more
     setAddSelectValue('');
   };
 
   // Editores de metadatos (Título y Placeholder) por relación
-  const actualizarNombre = async (relacionId: number, nombre: string) => {
-    setInputsPaso((prev) => prev.map((r) => (r.id_relacion === relacionId ? { ...r, nombre } : r)));
-    await updatePasoInput(paso.id_paso_solicitud, relacionId, { Nombre: nombre });
+  const actualizarNombre = async (rel: VisibleRelacion, nombre: string) => {
+    setInputsPaso((prev) => prev.map((r) => (r === rel ? { ...r, nombre } : r)));
+    if (rel.tmpId) stageInputCreateUpdate(paso.id_paso_solicitud, rel.tmpId, { Nombre: nombre });
+    else stageInputUpdate(paso.id_paso_solicitud, rel.id_relacion, { Nombre: nombre });
   };
 
-  const actualizarPlaceholder = async (relacionId: number, placeholder: string) => {
-    setInputsPaso((prev) => prev.map((r) => (r.id_relacion === relacionId ? { ...r, placeholder } : r)));
-    await updatePasoInput(paso.id_paso_solicitud, relacionId, { PlaceHolder: placeholder });
+  const actualizarPlaceholder = async (rel: VisibleRelacion, placeholder: string) => {
+    setInputsPaso((prev) => prev.map((r) => (r === rel ? { ...r, placeholder } : r)));
+    if (rel.tmpId) stageInputCreateUpdate(paso.id_paso_solicitud, rel.tmpId, { PlaceHolder: placeholder });
+    else stageInputUpdate(paso.id_paso_solicitud, rel.id_relacion, { PlaceHolder: placeholder });
   };
 
-  const actualizarRequerido = async (relacionId: number, requerido: boolean) => {
-    setInputsPaso((prev) => prev.map((r) => (r.id_relacion === relacionId ? { ...r, requerido } : r)));
-    await updatePasoInput(paso.id_paso_solicitud, relacionId, { Requerido: requerido });
+  const actualizarRequerido = async (rel: VisibleRelacion, requerido: boolean) => {
+    setInputsPaso((prev) => prev.map((r) => (r === rel ? { ...r, requerido } : r)));
+    if (rel.tmpId) stageInputCreateUpdate(paso.id_paso_solicitud, rel.tmpId, { Requerido: requerido });
+    else stageInputUpdate(paso.id_paso_solicitud, rel.id_relacion, { Requerido: requerido });
   };
 
   // Reordenar visualmente (no hay persistencia conocida en backend)
@@ -138,7 +181,10 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
             Configura los campos del formulario. Los ejecutores completarán los valores.
           </p>
         </div>
-        <Badge variant="outline" className="bg-blue-50 text-blue-700">Ejecución</Badge>
+        <div className="flex items-center gap-2">
+          {draft && <Badge variant="outline" className="bg-amber-50 text-amber-700">Cambios sin guardar</Badge>}
+          <Badge variant="outline" className="bg-blue-50 text-blue-700">Ejecución</Badge>
+        </div>
       </div>
 
       <Card>
@@ -212,7 +258,11 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                       variant="outline"
                       className="h-8 w-8 border-destructive text-destructive hover:bg-destructive hover:text-white"
                       onClick={async () => {
-                        await deletePasoInput(paso.id_paso_solicitud, relacion.id_relacion);
+                        if ((relacion as VisibleRelacion).tmpId) {
+                          stageInputDelete(paso.id_paso_solicitud, undefined, (relacion as VisibleRelacion).tmpId);
+                        } else {
+                          stageInputDelete(paso.id_paso_solicitud, relacion.id_relacion);
+                        }
                       }}
                       title="Eliminar campo"
                     >
@@ -233,11 +283,9 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                       value={relacion.nombre ?? ''}
                       placeholder={input?.etiqueta || 'Título del campo'}
                       onChange={(e) =>
-                        setInputsPaso((prev) =>
-                          prev.map((r) => (r.id_relacion === relacion.id_relacion ? { ...r, nombre: e.target.value } : r))
-                        )
+                        setInputsPaso((prev) => prev.map((r) => (r === relacion ? { ...r, nombre: e.target.value } : r)))
                       }
-                      onBlur={(e) => actualizarNombre(relacion.id_relacion, e.target.value.trim())}
+                      onBlur={(e) => actualizarNombre(relacion as VisibleRelacion, e.target.value.trim())}
                     />
                   </div>
                   {!(input?.tipo_input === 'combobox' || input?.tipo_input === 'multiplecheckbox') && (
@@ -247,11 +295,9 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                         value={relacion.placeholder ?? ''}
                         placeholder={input?.placeholder || 'Texto de ayuda'}
                         onChange={(e) =>
-                          setInputsPaso((prev) =>
-                            prev.map((r) => (r.id_relacion === relacion.id_relacion ? { ...r, placeholder: e.target.value } : r))
-                          )
+                          setInputsPaso((prev) => prev.map((r) => (r === relacion ? { ...r, placeholder: e.target.value } : r)))
                         }
-                        onBlur={(e) => actualizarPlaceholder(relacion.id_relacion, e.target.value)}
+                        onBlur={(e) => actualizarPlaceholder(relacion as VisibleRelacion, e.target.value)}
                       />
                     </div>
                   )}
@@ -262,7 +308,7 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                         id={`req-${relacion.id_relacion}`}
                         type="checkbox"
                         checked={!!relacion.requerido}
-                        onChange={(e) => actualizarRequerido(relacion.id_relacion, e.target.checked)}
+                        onChange={(e) => actualizarRequerido(relacion as VisibleRelacion, e.target.checked)}
                       />
                       <Label htmlFor={`req-${relacion.id_relacion}`} className="text-sm">Obligatorio</Label>
                     </div>
@@ -325,9 +371,12 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                           const cleaned = (opcionesDraft[relacion.id_relacion] || [])
                             .map((s) => s.trim())
                             .filter(Boolean);
-                          await updatePasoInput(paso.id_paso_solicitud, relacion.id_relacion, {
-                            PlaceHolder: JSON.stringify(cleaned),
-                          });
+                          const patch = { PlaceHolder: JSON.stringify(cleaned) } as const;
+                          if ((relacion as VisibleRelacion).tmpId) {
+                            stageInputCreateUpdate(paso.id_paso_solicitud, (relacion as VisibleRelacion).tmpId!, patch);
+                          } else {
+                            stageInputUpdate(paso.id_paso_solicitud, relacion.id_relacion, patch);
+                          }
                           setEditOpciones((prev) => ({ ...prev, [relacion.id_relacion]: false }));
                         }}
                       >
