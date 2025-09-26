@@ -4,14 +4,16 @@ import bpmReducer from './bpm/bpmSlice';
 import approvalGroupsReducer from './approvalGroups/approvalGroupsSlice';
 import solicitudesReducer from './solicitudes/solicitudesSlice';
 import templatesReducer from './templates/templatesSlice';
+import executionInputsReducer from './bpm/executionInputsSlice';
 
 export const store = configureStore({
   reducer: {
     bpm: bpmReducer,
     auth: authReducer,
     approvalGroups: approvalGroupsReducer,
-  solicitudes: solicitudesReducer,
-  templates: templatesReducer,
+    solicitudes: solicitudesReducer,
+    templates: templatesReducer,
+    executionInputs: executionInputsReducer,
   },
 });
 

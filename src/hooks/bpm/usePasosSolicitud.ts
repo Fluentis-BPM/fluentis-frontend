@@ -17,18 +17,19 @@ interface UsePasosSolicitudReturn {
 }
 
 interface PasoSolicitudApiResponse {
-  id: number;
-  pasoId: number;
-  solicitudId: number;
-  usuarioAsignadoId: number;
-  tipoPaso: string;
-  estado: string;
-  nombre: string;
+  // Campos estándar esperados
+  id?: number;
+  pasoId?: number;
+  solicitudId?: number;
+  usuarioAsignadoId?: number;
+  tipoPaso?: string;
+  estado?: string;
+  nombre?: string;
   descripcion?: string;
-  fechaCreacion: string;
+  fechaCreacion?: string;
   fechaVencimiento?: string;
   fechaCompletado?: string;
-  prioridad: string;
+  prioridad?: string;
   solicitudNombre?: string;
   solicitanteNombre?: string;
   flujoId?: number;
@@ -40,6 +41,20 @@ interface PasoSolicitudApiResponse {
   };
   metadatos?: Record<string, unknown>;
   comentarios?: string;
+  // Posibles alias provenientes del backend (nomenclatura snake_case/camel mezcla)
+  id_paso_solicitud?: number;
+  paso_id?: number;
+  usuario_asignado_id?: number;
+  tipo_paso?: string;
+  fecha_creacion?: string;
+  fecha_vencimiento?: string;
+  fecha_completado?: string;
+  solicitud_nombre?: string;
+  solicitante_nombre?: string;
+  flujo_id?: number;
+  flujo_nombre?: string;
+  prioridad_paso?: string;
+  solicitud_id?: number;
 }
 
 /**
@@ -56,23 +71,32 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
 
   // Mapear respuesta de API a tipos internos
   const mapApiResponseToPaso = (apiPaso: PasoSolicitudApiResponse): PasoSolicitud => {
+    const id = apiPaso.id ?? apiPaso.id_paso_solicitud ?? 0;
+    const pasoId = apiPaso.pasoId ?? apiPaso.paso_id ?? id;
+    const solicitudId = apiPaso.solicitudId ?? apiPaso.solicitud_id ?? 0;
+    const usuarioAsignadoId = apiPaso.usuarioAsignadoId ?? apiPaso.usuario_asignado_id ?? 0;
+    const tipoPasoRaw = apiPaso.tipoPaso ?? apiPaso.tipo_paso ?? 'ejecucion';
+    const estadoRaw = apiPaso.estado ?? 'pendiente';
+    const nombre = apiPaso.nombre ?? `Paso ${pasoId || id}`;
+    const fechaCreacion = apiPaso.fechaCreacion ?? apiPaso.fecha_creacion ?? new Date().toISOString();
+    const prioridadRaw = apiPaso.prioridad ?? apiPaso.prioridad_paso ?? 'media';
     return {
-      id: apiPaso.id,
-      pasoId: apiPaso.pasoId,
-      solicitudId: apiPaso.solicitudId,
-      usuarioAsignadoId: apiPaso.usuarioAsignadoId,
-      tipoPaso: apiPaso.tipoPaso as PasoSolicitud['tipoPaso'],
-      estado: apiPaso.estado as PasoSolicitud['estado'],
-      nombre: apiPaso.nombre,
+      id,
+      pasoId,
+      solicitudId,
+      usuarioAsignadoId,
+      tipoPaso: tipoPasoRaw as PasoSolicitud['tipoPaso'],
+      estado: estadoRaw as PasoSolicitud['estado'],
+      nombre,
       descripcion: apiPaso.descripcion,
-      fechaCreacion: apiPaso.fechaCreacion,
-      fechaVencimiento: apiPaso.fechaVencimiento,
-      fechaCompletado: apiPaso.fechaCompletado,
-      prioridad: apiPaso.prioridad as PasoSolicitud['prioridad'],
-      solicitudNombre: apiPaso.solicitudNombre,
-      solicitanteNombre: apiPaso.solicitanteNombre,
-      flujoId: apiPaso.flujoId,
-      flujoNombre: apiPaso.flujoNombre,
+      fechaCreacion,
+      fechaVencimiento: apiPaso.fechaVencimiento ?? apiPaso.fecha_vencimiento,
+      fechaCompletado: apiPaso.fechaCompletado ?? apiPaso.fecha_completado,
+      prioridad: prioridadRaw as PasoSolicitud['prioridad'],
+      solicitudNombre: apiPaso.solicitudNombre ?? apiPaso.solicitud_nombre,
+      solicitanteNombre: apiPaso.solicitanteNombre ?? apiPaso.solicitante_nombre,
+      flujoId: apiPaso.flujoId ?? apiPaso.flujo_id,
+      flujoNombre: apiPaso.flujoNombre ?? apiPaso.flujo_nombre,
       usuarioAsignado: apiPaso.usuarioAsignado,
       metadatos: apiPaso.metadatos,
       comentarios: apiPaso.comentarios,
@@ -89,7 +113,8 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
     if (filtros.estado) params.append('estado', filtros.estado);
     if (filtros.fechaDesde) params.append('fechaDesde', filtros.fechaDesde);
     if (filtros.fechaHasta) params.append('fechaHasta', filtros.fechaHasta);
-    if (filtros.prioridad) params.append('prioridad', filtros.prioridad);
+  // prioridad no está definida actualmente en FiltrosPasoSolicitud (comentado para evitar error TS)
+  // if (filtros.prioridad) params.append('prioridad', filtros.prioridad);
     if (filtros.solicitudId) params.append('solicitudId', filtros.solicitudId.toString());
     if (filtros.flujoId) params.append('flujoId', filtros.flujoId.toString());
     
@@ -181,9 +206,9 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
           if (filtros.estado) {
             mockPasos = mockPasos.filter(paso => paso.estado === filtros.estado);
           }
-          if (filtros.prioridad) {
-            mockPasos = mockPasos.filter(paso => paso.prioridad === filtros.prioridad);
-          }
+          // if (filtros.prioridad) {
+          //   mockPasos = mockPasos.filter(paso => paso.prioridad === filtros.prioridad);
+          // }
           if (filtros.fechaDesde) {
             mockPasos = mockPasos.filter(paso => paso.fechaCreacion >= filtros.fechaDesde!);
           }
@@ -223,11 +248,12 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
       // Actualizar el paso local si la acción fue exitosa
       if (response.data.exito && response.data.pasoActualizado) {
         setPasos(prevPasos => 
-          prevPasos.map(paso => 
-            paso.pasoId === pasoId 
+          prevPasos.map(paso => {
+            const same = paso.pasoId === pasoId || paso.id === pasoId;
+            return same
               ? mapApiResponseToPaso(response.data.pasoActualizado as PasoSolicitudApiResponse)
-              : paso
-          )
+              : paso;
+          })
         );
       }
 
@@ -244,21 +270,19 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
         console.warn('Simulating action success due to network error');
         
         // Simular actualización local del paso
-        setPasos(prevPasos => 
-          prevPasos.map(paso => {
-            if (paso.pasoId === pasoId) {
-              const nuevoEstado = accion.accion === 'aprobar' ? 'completado' as const : 
-                                accion.accion === 'rechazar' ? 'rechazado' as const : 'completado' as const;
-              return {
-                ...paso,
-                estado: nuevoEstado,
-                fechaCompletado: new Date().toISOString(),
-                comentarios: accion.comentarios || `${accion.accion} ejecutado`
-              };
-            }
-            return paso;
-          })
-        );
+        setPasos(prevPasos => prevPasos.map(paso => {
+          if (paso.pasoId === pasoId || paso.id === pasoId) {
+            // Usamos 'entregado' como estado final genérico en ausencia de 'completado'
+            const nuevoEstado = accion.accion === 'rechazar' ? 'rechazado' : 'entregado';
+            return {
+              ...paso,
+              estado: nuevoEstado,
+              fechaCompletado: new Date().toISOString(),
+              comentarios: accion.comentarios || `${accion.accion} ejecutado (simulado)`
+            } as PasoSolicitud;
+          }
+          return paso;
+        }));
         
         return {
           exito: true,

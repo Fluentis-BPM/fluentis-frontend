@@ -25,6 +25,7 @@ import {
 import { useToast } from '@/hooks/bpm/use-toast';
 import { useBpm } from '@/hooks/bpm/useBpm'; // Nuevo import para usar el estado global
 import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
+import { useUsers } from '@/hooks/users/useUsers';
 
 interface VistaDiagramaFlujoProps {
   flujo: FlujoActivo;
@@ -53,6 +54,8 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     clearAllDrafts
   } = useBpm();
   const { grupos: gruposAprobacion } = useAprobations();
+  // Load real users to replace mock responsables list used previously
+  const { users: allUsers } = useUsers();
   const { toast } = useToast();
   const [modoEdicion, setModoEdicion] = useState(true); // Empezar en modo edición por defecto
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
@@ -384,12 +387,14 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                       handleNodeSelect(null); // Cerrar el editor
                       return p;
                     }}
-                    responsablesDisponibles={[
-                      { id: 1, nombre: 'Ana García', rol: 'Supervisor', departamento: 'Operaciones' },
-                      { id: 2, nombre: 'Carlos López', rol: 'Gerente', departamento: 'Finanzas' },
-                      { id: 3, nombre: 'María Silva', rol: 'Analista', departamento: 'Calidad' },
-                      { id: 4, nombre: 'Juan Pérez', rol: 'Director', departamento: 'General' }
-                    ]}
+                    responsablesDisponibles={allUsers
+                      .filter(u => typeof u.idUsuario === 'number')
+                      .map(u => ({
+                        id: u.idUsuario as number,
+                        nombre: u.nombre || u.name || `Usuario ${u.idUsuario}`,
+                        rol: (u.rolNombre || u.rol || 'Miembro') as string,
+                        departamento: u.departamentoNombre || u.departamento || '—'
+                      }))}
                     isPanel={true}
                     inputsDisponibles={[
                       {
@@ -590,7 +595,10 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                         {paso.responsable_id && (
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Users className="w-3 h-3" />
-                            ID: {paso.responsable_id}
+                            {(() => {
+                              const u = allUsers.find(x => x.idUsuario === paso.responsable_id);
+                              return u ? u.nombre || u.name : `ID: ${paso.responsable_id}`;
+                            })()}
                           </div>
                         )}
                         <Badge variant={

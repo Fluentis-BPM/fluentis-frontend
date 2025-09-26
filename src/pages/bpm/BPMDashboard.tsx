@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ModuloSolicitudes } from '@/components/bpm/requests/ModuloSolicitudes';
 import { ModuloFlujos } from '@/components/bpm/flows/ModuloFlujos';
 import { useSolicitudes } from '@/hooks/bpm/useSolicitudes';
+import { useBpm } from '@/hooks/bpm/useBpm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -17,20 +18,24 @@ import {
 
 export const BPMDashboard: React.FC = () => {
   const solicitudesData = useSolicitudes();
+  const { flujosActivos, loadFlujosActivos } = useBpm();
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     // Best-effort fetch; hook also auto-loads when authenticated
-    try { solicitudesData.cargarSolicitudes(); } catch (e) { /* noop */ }
-  }, []);
+    try { solicitudesData.cargarSolicitudes(); } catch { /* noop */ }
+    // Load active flows using the same source as the Flujos module to keep counters consistent
+    try { loadFlujosActivos(); } catch { /* noop */ }
+  }, [loadFlujosActivos]);
 
+  // Derive counts; active flows should match what the Flujos section displays (length of flujosActivos array)
   const stats = {
     totalSolicitudes: solicitudesData.solicitudes.length,
     solicitudesAprobadas: solicitudesData.filtrarPorEstado('aprobado').length,
     solicitudesPendientes: solicitudesData.filtrarPorEstado('pendiente').length,
     solicitudesRechazadas: solicitudesData.filtrarPorEstado('rechazado').length,
-    flujosActivos: solicitudesData.flujosActivos.length,
-    flujosEnCurso: solicitudesData.flujosActivos.filter(f => f.estado === 'encurso').length
+    flujosActivos: flujosActivos.length,
+    flujosEnCurso: flujosActivos.filter(f => f.estado === 'encurso').length,
   };
 
   return (
@@ -86,7 +91,7 @@ export const BPMDashboard: React.FC = () => {
               className="p-6 flex flex-col items-center justify-center"
             >
               <Workflow className="h-8 w-8 text-purple-600 mb-2" />
-              <div className="text-2xl font-bold text-purple-600">{stats.flujosEnCurso}</div>
+              <div className="text-2xl font-bold text-purple-600">{stats.flujosActivos}</div>
               <div className="text-xs text-[#6b7a90] mt-1">Flujos activos</div>
             </motion.div>
           </div>
