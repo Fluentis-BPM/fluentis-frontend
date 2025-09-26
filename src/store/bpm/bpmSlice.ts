@@ -4,6 +4,31 @@ import { FlujoActivo, PasoSolicitud, CaminoParalelo, FlujoActivoResponse } from 
 import api from '@/services/api';
 import type { RootState } from '@/store';
 
+// Draft staging types
+type MetadataPatch = Record<string, unknown>; // PascalCase keys for backend
+export interface PasoRelacionInputValorDto { RawValue: string | number | boolean | null }
+export interface PasoRelacionInputCreateDto {
+  InputId: number;
+  Nombre?: string;
+  PlaceHolder?: string;
+  Valor?: PasoRelacionInputValorDto | null;
+  Requerido?: boolean;
+}
+interface DraftInputUpdate {
+  id: number; // relation id
+  patch: Partial<PasoRelacionInputCreateDto>;
+}
+interface PasoDraft {
+  metadata?: MetadataPatch;
+  position?: { x: number; y: number };
+  groupApprovalId?: number | null; // null => delete
+  inputs: {
+    created: Array<PasoRelacionInputCreateDto & { _tmpId: string }>;
+    updated: DraftInputUpdate[];
+    deleted: number[];
+  };
+}
+
 interface BpmState {
   flujosActivos: FlujoActivo[];
   pasosPorFlujo: { [key: number]: PasoSolicitud[] };
@@ -13,6 +38,7 @@ interface BpmState {
   flujoSeleccionado: number | null;
   deleting: boolean;
   lastActionError: string | null;
+  draftsByPasoId: Record<number, PasoDraft>;
 }
 
 const initialState: BpmState = {
@@ -24,6 +50,7 @@ const initialState: BpmState = {
   flujoSeleccionado: null,
   deleting: false,
   lastActionError: null,
+  draftsByPasoId: {},
 };
 
 export const fetchFlujosActivos = createAsyncThunk(
@@ -143,14 +170,7 @@ export const createRelacionGrupoAprobacionPaso = createAsyncThunk<void, { id: nu
 );
 
 // DTOs for PasoSolicitud Inputs
-export interface PasoRelacionInputValorDto { RawValue: string | number | boolean | null }
-export interface PasoRelacionInputCreateDto {
-  InputId: number;
-  Nombre?: string;
-  PlaceHolder?: string;
-  Valor?: PasoRelacionInputValorDto | null;
-  Requerido?: boolean;
-}
+// (types moved above for reuse)
 
 // Add an input to a PasoSolicitud (only for tipo Ejecucion)
 export const addPasoInput = createAsyncThunk<unknown, { id: number; input: PasoRelacionInputCreateDto }, { state: RootState; rejectValue: string }>(
@@ -221,6 +241,13 @@ export const deletePasoInput = createAsyncThunk<void, { id: number; inputId: num
   }
 );
 
+// ensure a draft exists for pasoId
+function ensureDraft(state: BpmState, pasoId: number): PasoDraft {
+  if (!state.draftsByPasoId[pasoId]) {
+    state.draftsByPasoId[pasoId] = { inputs: { created: [], updated: [], deleted: [] } };
+  }
+  return state.draftsByPasoId[pasoId];
+}
 
 const bpmSlice = createSlice({
   name: 'bpm',
@@ -228,6 +255,58 @@ const bpmSlice = createSlice({
   reducers: {
     setFlujoSeleccionado: (state, action: PayloadAction<number | null>) => {
       state.flujoSeleccionado = action.payload;
+    },
+    stagePasoMetadata: (state, action: PayloadAction<{ pasoId: number; patch: MetadataPatch }>) => {
+      const { pasoId, patch } = action.payload;
+      const draft = ensureDraft(state, pasoId);
+      draft.metadata = { ...(draft.metadata || {}), ...patch };
+    },
+    stagePosition: (state, action: PayloadAction<{ pasoId: number; x: number; y: number }>) => {
+      const { pasoId, x, y } = action.payload;
+      const draft = ensureDraft(state, pasoId);
+      draft.position = { x, y };
+    },
+    stageGroupApproval: (state, action: PayloadAction<{ pasoId: number; groupId: number | null }>) => {
+      const { pasoId, groupId } = action.payload;
+      const draft = ensureDraft(state, pasoId);
+      draft.groupApprovalId = groupId;
+    },
+    stageInputAdd: (state, action: PayloadAction<{ pasoId: number; input: PasoRelacionInputCreateDto; tmpId?: string }>) => {
+      const { pasoId, input, tmpId: providedTmp } = action.payload;
+      const draft = ensureDraft(state, pasoId);
+      const tmpId = providedTmp || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      draft.inputs.created.push({ ...input, _tmpId: tmpId });
+    },
+    stageInputCreateUpdate: (state, action: PayloadAction<{ pasoId: number; tmpId: string; patch: Partial<PasoRelacionInputCreateDto> }>) => {
+      const { pasoId, tmpId, patch } = action.payload;
+      const draft = ensureDraft(state, pasoId);
+      const idx = draft.inputs.created.findIndex(c => c._tmpId === tmpId);
+      if (idx >= 0) {
+        draft.inputs.created[idx] = { ...draft.inputs.created[idx], ...patch };
+      }
+    },
+    stageInputUpdate: (state, action: PayloadAction<{ pasoId: number; relationId: number; patch: Partial<PasoRelacionInputCreateDto> }>) => {
+      const { pasoId, relationId, patch } = action.payload;
+      const draft = ensureDraft(state, pasoId);
+      const existing = draft.inputs.updated.find(u => u.id === relationId);
+      if (existing) existing.patch = { ...existing.patch, ...patch };
+      else draft.inputs.updated.push({ id: relationId, patch });
+    },
+    stageInputDelete: (state, action: PayloadAction<{ pasoId: number; relationId?: number; tmpId?: string }>) => {
+      const { pasoId, relationId, tmpId } = action.payload;
+      const draft = ensureDraft(state, pasoId);
+      if (typeof relationId === 'number') {
+        if (!draft.inputs.deleted.includes(relationId)) draft.inputs.deleted.push(relationId);
+        draft.inputs.updated = draft.inputs.updated.filter(u => u.id !== relationId);
+      } else if (tmpId) {
+        draft.inputs.created = draft.inputs.created.filter(c => c._tmpId !== tmpId);
+      }
+    },
+    clearPasoDraft: (state, action: PayloadAction<{ pasoId: number }>) => {
+      delete state.draftsByPasoId[action.payload.pasoId];
+    },
+    clearAllDrafts: (state) => {
+      state.draftsByPasoId = {};
     },
   },
   extraReducers: (builder) => {
@@ -291,5 +370,91 @@ const bpmSlice = createSlice({
   },
 });
 
-export const { setFlujoSeleccionado } = bpmSlice.actions;
+// Selectors for drafts
+export const selectPasoDraft = (state: RootState, pasoId: number) => state.bpm.draftsByPasoId[pasoId];
+export const selectDirtyPasoIds = (state: RootState) => Object.keys(state.bpm.draftsByPasoId).map(Number);
+export const selectIsAnyDirty = (state: RootState) => selectDirtyPasoIds(state).length > 0;
+
+// Save All: commit all staged paso drafts
+export const commitAllPasoDrafts = createAsyncThunk<void, void, { state: RootState; rejectValue: string }>(
+  'bpm/commitAllPasoDrafts',
+  async (_: void, { getState, dispatch, rejectWithValue }) => {
+    const state = getState();
+    const pasoIds = Object.keys(state.bpm.draftsByPasoId).map(Number);
+    if (pasoIds.length === 0) return;
+    try {
+      for (const pasoId of pasoIds) {
+        const draft = state.bpm.draftsByPasoId[pasoId];
+        // Paso metadata/position
+        const body: Record<string, unknown> = {};
+        if (draft?.metadata) Object.assign(body, draft.metadata);
+        if (draft?.position) {
+          body['PosX'] = Math.round(draft.position.x);
+          body['PosY'] = Math.round(draft.position.y);
+        }
+        if (Object.keys(body).length > 0) {
+          await api.put(`/api/PasoSolicitud/${pasoId}`, body);
+        }
+        // Group approval
+        if (Object.prototype.hasOwnProperty.call(draft || {}, 'groupApprovalId')) {
+          const groupId = draft?.groupApprovalId ?? null;
+          if (groupId === null) {
+            await api.delete(`/api/PasoSolicitud/${pasoId}/grupoaprobacion`);
+          } else if (typeof groupId === 'number') {
+            await api.post(`/api/PasoSolicitud/${pasoId}/grupoaprobacion`, { GrupoAprobacionId: groupId });
+          }
+        }
+        // Inputs create -> update -> delete
+        if (draft?.inputs?.created?.length) {
+          for (const c of draft.inputs.created) {
+            try {
+              const { _tmpId, ...payload } = c as typeof c & { _tmpId?: string };
+              await api.post(`/api/PasoSolicitud/${pasoId}/inputs`, payload);
+            } catch (err: unknown) {
+              const e = err as { response?: { status?: number; data?: unknown } };
+              const serverMsg = String(e?.response?.data as string ?? '');
+              if (!(e?.response?.status === 500 && (serverMsg.includes('possible object cycle') || serverMsg.includes('SerializerCycleDetected')))) {
+                throw err;
+              }
+            }
+          }
+        }
+        if (draft?.inputs?.updated?.length) {
+          for (const u of draft.inputs.updated) {
+            try {
+              await api.put(`/api/PasoSolicitud/${pasoId}/inputs/${u.id}`, u.patch);
+            } catch (err: unknown) {
+              const e = err as { response?: { status?: number; data?: unknown } };
+              const serverMsg = String(e?.response?.data as string ?? '');
+              if (!(e?.response?.status === 500 && (serverMsg.includes('possible object cycle') || serverMsg.includes('SerializerCycleDetected')))) {
+                throw err;
+              }
+            }
+          }
+        }
+        if (draft?.inputs?.deleted?.length) {
+          for (const d of draft.inputs.deleted) {
+            try {
+              await api.delete(`/api/PasoSolicitud/${pasoId}/inputs/${d}`);
+            } catch (err: unknown) {
+              const e = err as { response?: { status?: number; data?: unknown } };
+              const serverMsg = String(e?.response?.data as string ?? '');
+              if (!(e?.response?.status === 500 && (serverMsg.includes('possible object cycle') || serverMsg.includes('SerializerCycleDetected')))) {
+                throw err;
+              }
+            }
+          }
+        }
+      }
+      const flujoId = getState().bpm.flujoSeleccionado;
+      dispatch(clearAllDrafts());
+      if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Error guardando cambios';
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+export const { setFlujoSeleccionado, stagePasoMetadata, stagePosition, stageGroupApproval, stageInputAdd, stageInputCreateUpdate, stageInputUpdate, stageInputDelete, clearPasoDraft, clearAllDrafts } = bpmSlice.actions;
 export default bpmSlice.reducer;

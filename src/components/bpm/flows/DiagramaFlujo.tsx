@@ -23,6 +23,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FloatingAddButton } from './FloatingAddButton';
+import { useBpm } from '@/hooks/bpm/useBpm';
 import { 
   Play, 
   CheckCircle, 
@@ -32,6 +33,8 @@ import {
   Users,
   FileText
 } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
 
 // Tipo para los datos del nodo
 interface PasoNodeData {
@@ -53,7 +56,6 @@ interface DiagramaFlujoProps {
   flujoActivoId: number; // Añadir esta prop para evitar el problema del ID 0
   onNodeSelect?: (paso: PasoSolicitud | null) => void;
   onCreatePaso?: (data: unknown) => void;
-  onUpdatePaso?: (id: number, data: unknown) => void;
   onDeletePaso?: (id: number) => void;
   onCreateConexion?: (id: number, destinoId: number, esExcepcion?: boolean) => void;
   // Opcionales para compatibilidad con vistas que administran conexiones en bloque
@@ -267,20 +269,24 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   flujoActivoId, // Añadir esta prop
   onNodeSelect,
   onCreatePaso,
-  onUpdatePaso,
   onDeletePaso,
   onCreateConexion
 }) => {
+  const { stagePosition } = useBpm();
+  const draftsByPasoId = useSelector((state: RootState) => state.bpm?.draftsByPasoId || {});
   
   // Convertir pasos a nodos de React Flow
   const initialNodes: Node[] = useMemo(() => {
     const nodesFromPasos: Node[] = pasos.map(paso => {
       const esInicial = paso.tipo_paso === 'inicio'; // Ahora identificamos por tipo_paso
       const nodeId = paso.id_paso_solicitud.toString();
+      const draft = draftsByPasoId[paso.id_paso_solicitud];
+      const posX = draft?.position?.x ?? paso.posicion_x ?? 0;
+      const posY = draft?.position?.y ?? paso.posicion_y ?? 0;
       return {
         id: nodeId,
         type: 'pasoNode',
-        position: { x: paso.posicion_x || 0, y: paso.posicion_y || 0 },
+        position: { x: posX, y: posY },
         data: { 
           paso, 
           readOnly,
@@ -301,7 +307,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
 
     // Ya no creamos el nodo sintético, todos los pasos vienen del backend
     return nodesFromPasos;
-  }, [pasos, readOnly, datosSolicitudIniciales, selectedNodeId, onNodeSelect, onDeletePaso]);
+  }, [pasos, readOnly, datosSolicitudIniciales, selectedNodeId, onNodeSelect, onDeletePaso, draftsByPasoId]);
 
   // Convertir caminos a edges de React Flow
   const initialEdges: Edge[] = useMemo(() => 
@@ -342,18 +348,11 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
 
   // Función mejorada para actualizar posición del paso
   const handleNodeDragEnd: OnNodeDrag<Node> = useCallback((_event, node) => {
-    console.log('🎯 Node drag ended:', { id: node.id, position: node.position });
     const paso = pasos.find(p => p.id_paso_solicitud.toString() === node.id);
-    if (paso && onUpdatePaso) {
-      const pasoActualizado = {
-        ...paso,
-        posicion_x: Math.round(node.position.x),
-        posicion_y: Math.round(node.position.y)
-      };
-      console.log('💾 Guardando nueva posición:', pasoActualizado);
-      onUpdatePaso(paso.id_paso_solicitud, pasoActualizado);
+    if (paso) {
+      stagePosition(paso.id_paso_solicitud, Math.round(node.position.x), Math.round(node.position.y));
     }
-  }, [pasos, onUpdatePaso]);
+  }, [pasos, stagePosition]);
 
   // Personalizar onNodesChange para manejar el arrastre
   const customOnNodesChange = useCallback((changes: NodeChange[]) => {
@@ -363,18 +362,12 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         const nodeId = change.id;
         const newPosition = change.position;
         const paso = pasos.find(p => p.id_paso_solicitud.toString() === nodeId);
-        if (paso && onUpdatePaso) {
-          const pasoActualizado = {
-            ...paso,
-            posicion_x: Math.round(newPosition.x),
-            posicion_y: Math.round(newPosition.y)
-          };
-          console.log('💾 Actualizando posición del paso:', pasoActualizado);
-          setTimeout(() => onUpdatePaso(paso.id_paso_solicitud, pasoActualizado), 0);
+        if (paso) {
+          stagePosition(paso.id_paso_solicitud, Math.round(newPosition.x), Math.round(newPosition.y));
         }
       }
     });
-  }, [onNodesChange, pasos, onUpdatePaso]);
+  }, [onNodesChange, pasos, stagePosition]);
 
   // Sincronizar nodos cuando cambien los pasos
   useEffect(() => {
@@ -384,20 +377,24 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
       const updatedNodes = initialNodes.map(newNode => {
         const existingNode = existingNodesMap.get(newNode.id);
         if (existingNode) {
+          // Use backend-provided position so server changes are reflected
           return {
+            ...existingNode,
             ...newNode,
-            position: existingNode.position,
+            // Respect staged draft positions (already included in newNode.position)
+            position: newNode.position,
             selected: existingNode.selected,
-            data: {
-              ...newNode.data,
-            }
           };
         }
         return newNode;
       });
       return updatedNodes;
     });
-  }, [pasos.map(p => `${p.id_paso_solicitud}-${p.nombre}-${p.estado}`).join(',')]);
+  }, [
+    // Re-sync when names, states, or POSITIONS change in backend
+    pasos.map(p => `${p.id_paso_solicitud}-${p.nombre}-${p.estado}-${p.posicion_x}-${p.posicion_y}`).join(','),
+    initialNodes
+  ]);
 
   // Sincronizar edges cuando cambien los caminos
   useEffect(() => {

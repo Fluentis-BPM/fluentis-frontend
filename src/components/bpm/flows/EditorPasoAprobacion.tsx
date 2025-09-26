@@ -11,6 +11,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Users, CheckCircle, XCircle, Clock, UserCheck } from 'lucide-react';
 import { useBpm } from '@/hooks/bpm/useBpm';
 import { useToast } from '@/hooks/bpm/use-toast';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
+import { selectPasoDraft } from '@/store/bpm/bpmSlice';
 
 interface EditorPasoAprobacionProps {
   paso: PasoSolicitud;
@@ -32,9 +35,9 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
 }) => {
   const [grupoSeleccionado, setGrupoSeleccionado] = useState<number | undefined>(relacionGrupo?.grupo_aprobacion_id);
   const [miDecision, setMiDecision] = useState<TipoDecision | undefined>();
-  const [saving, setSaving] = useState(false);
-  const { createRelacionGrupoAprobacionPaso } = useBpm();
+  const { stageGroupApproval } = useBpm();
   const { toast } = useToast();
+  const draft = useSelector((state: RootState) => selectPasoDraft(state, paso.id_paso_solicitud));
 
   // Cargar mi decisión si ya existe
   useEffect(() => {
@@ -48,18 +51,16 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
     }
   }, [usuarioActualId, relacionGrupo, decisiones]);
 
-  const asignarGrupo = async () => {
+  const asignarGrupo = () => {
     if (!grupoSeleccionado) return;
-    try {
-      setSaving(true);
-      await createRelacionGrupoAprobacionPaso(paso.id_paso_solicitud, grupoSeleccionado);
-      toast({ title: 'Grupo asignado', description: 'Se vinculó el grupo al paso de aprobación.' });
-    } catch (e) {
-      // los thunks ya setean errores globales; brindamos feedback local opcional
-      toast({ title: 'Error asignando grupo', description: e instanceof Error ? e.message : 'Intenta nuevamente.', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
+    stageGroupApproval(paso.id_paso_solicitud, grupoSeleccionado);
+    toast({ title: 'Grupo preparado', description: 'Se asignará el grupo al guardar todos los cambios.' });
+  };
+
+  const quitarGrupo = () => {
+    stageGroupApproval(paso.id_paso_solicitud, null);
+    setGrupoSeleccionado(undefined);
+    toast({ title: 'Remoción preparada', description: 'Se quitará el grupo al guardar todos los cambios.' });
   };
 
   const registrarDecision = (decision: TipoDecision) => {
@@ -69,7 +70,14 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
 
   // Usar relacion proporcionada o derivarla del paso (si viene cargada en pasosPorFlujo)
   const relacionActual: RelacionGrupoAprobacion | undefined = relacionGrupo || (paso.relacionesGrupoAprobacion && paso.relacionesGrupoAprobacion[0] as unknown as RelacionGrupoAprobacion);
-  const grupoAsignado = gruposDisponibles.find(g => g.id_grupo === relacionActual?.grupo_aprobacion_id);
+  const stagedGrupoId = draft && Object.prototype.hasOwnProperty.call(draft, 'groupApprovalId') ? draft.groupApprovalId : undefined;
+  const grupoIdEfectivo = stagedGrupoId !== undefined ? stagedGrupoId ?? undefined : relacionActual?.grupo_aprobacion_id;
+  const grupoAsignado = gruposDisponibles.find(g => g.id_grupo === grupoIdEfectivo);
+
+  // Mantener el selector sincronizado con el estado efectivo (staged o actual)
+  useEffect(() => {
+    setGrupoSeleccionado(grupoIdEfectivo);
+  }, [grupoIdEfectivo]);
   
   // Simular miembros del grupo (en una implementación real vendría de la base de datos)
   const miembrosGrupo = [
@@ -134,7 +142,7 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
                 </SelectContent>
               </Select>
             </div>
-    <Button onClick={asignarGrupo} disabled={!grupoSeleccionado || saving} className="w-full">
+    <Button onClick={asignarGrupo} disabled={!grupoSeleccionado} className="w-full">
               Asignar Grupo
             </Button>
           </CardContent>
@@ -148,6 +156,17 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Acciones del grupo asignado */}
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className="text-amber-700 bg-amber-50">
+                Cambios {stagedGrupoId !== undefined ? 'sin guardar' : 'guardados'}
+              </Badge>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={quitarGrupo}>
+                  Quitar grupo
+                </Button>
+              </div>
+            </div>
             {/* Estadísticas de decisiones */}
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-3 bg-green-50 rounded-lg">

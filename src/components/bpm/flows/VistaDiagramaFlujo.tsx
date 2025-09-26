@@ -18,7 +18,9 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  Maximize2
+  Maximize2,
+  Minimize2,
+  Save
 } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
 import { useBpm } from '@/hooks/bpm/useBpm'; // Nuevo import para usar el estado global
@@ -37,7 +39,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     pasosPorFlujo, 
     caminosPorFlujo, 
     loading, 
-  error, 
+    error, 
     loadPasosYConexiones,
     createPasoSolicitud,
     updatePasoSolicitud,
@@ -45,7 +47,10 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     createConexionPaso,
     putConexionesPaso,
     deleteConexionPaso,
-    lastActionError
+    lastActionError,
+    isAnyDirty,
+    commitAllPasoDrafts,
+    clearAllDrafts
   } = useBpm();
   const { grupos: gruposAprobacion } = useAprobations();
   const { toast } = useToast();
@@ -102,6 +107,18 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
       });
     }
   }, [error, flujo.id_flujo_activo, toast]);
+
+  // Warn on unload if there are unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isAnyDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isAnyDirty]);
 
   // Mostrar errores de acciones
   useEffect(() => {
@@ -215,6 +232,9 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {isAnyDirty && (
+                <Badge variant="secondary" className="mr-2">Cambios sin guardar</Badge>
+              )}
               {onVolverALista && (
                 <Button
                   variant="outline"
@@ -225,6 +245,16 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                   ← Volver a la Lista
                 </Button>
               )}
+              {isAnyDirty && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => clearAllDrafts()}
+                  className="hover:bg-muted hover:scale-105 transition-all duration-300"
+                >
+                  Descartar Cambios
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -233,33 +263,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refrescar
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setMostrarPantallaCompleta(true)}
-                className="mr-2 hover:bg-blue-600 hover:scale-105 transition-all duration-300"
-              >
-                <Maximize2 className="w-4 h-4 mr-2" />
-                Pantalla Completa
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setModoEdicion(!modoEdicion)}
-                className={modoEdicion ? "border-primary text-primary bg-primary/10" : "hover:bg-primary/10 hover:border-primary"}
-              >
-                {modoEdicion ? (
-                  <>
-                    <Eye className="w-4 h-4 mr-2" />
-                    Solo Ver
-                  </>
-                ) : (
-                  <>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Editar
-                  </>
-                )}
               </Button>
             </div>
           </div>
@@ -285,9 +288,45 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
         </TabsList>
 
         <TabsContent value="diagrama" className="space-y-4">
-          <div className="relative h-[600px] border rounded-lg overflow-hidden bg-gray-50">
+          <div className={`${mostrarPantallaCompleta ? 'fixed inset-0 z-40' : 'relative h-[600px]'} border rounded-lg overflow-hidden bg-gray-50`}>
+            {/* Floating action buttons: view/edit + fullscreen + save */}
+            <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
+              {isAnyDirty && (
+                <Button
+                  size="icon"
+                  variant="success"
+                  className="rounded-full shadow-md"
+                  onClick={async () => {
+                    await commitAllPasoDrafts();
+                    toast({ title: 'Cambios guardados', description: 'Se aplicaron todos los cambios pendientes.' });
+                  }}
+                  title="Guardar todos los cambios"
+                  aria-label="Guardar todos los cambios"
+                >
+                  <Save className="w-4 h-4" />
+                </Button>
+              )}
+              <Button
+                size="icon"
+                variant={modoEdicion ? 'outline' : 'outline'}
+                className="rounded-full shadow-md"
+                onClick={() => setModoEdicion(!modoEdicion)}
+                title={modoEdicion ? 'Solo ver' : 'Editar'}
+              >  
+                {modoEdicion ? <Eye className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+              </Button>
+              <Button
+                size="icon"
+                variant="outline"
+                className="rounded-full shadow-md"
+                onClick={() => setMostrarPantallaCompleta(!mostrarPantallaCompleta)}
+                title={mostrarPantallaCompleta ? 'Salir de pantalla completa' : 'Pantalla completa'}
+              >
+                {mostrarPantallaCompleta ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </Button>
+            </div>
             <div 
-              className={`h-full transition-all duration-300`}
+              className={`h-full transition-all duration-300 ${mostrarPantallaCompleta ? 'min-h-screen' : ''}`}
               style={{ marginRight: pasoEditando ? `${editorWidth}px` : '0' }}
             >
               <DiagramaFlujo
@@ -300,7 +339,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 datosSolicitudIniciales={flujo.datos_solicitud}
                 flujoActivoId={flujo.id_flujo_activo}
                 onCreatePaso={createPasoSolicitud}
-                onUpdatePaso={updatePasoSolicitud}
                 onDeletePaso={deletePasoSolicitud}
                 onCreateConexion={createConexionPaso}
                 onReplaceConexiones={putConexionesPaso}
