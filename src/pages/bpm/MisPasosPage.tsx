@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { DateRangePicker } from '@/components/ui/date-picker';
 import { ConfirmActionDialog } from '@/components/bpm/ConfirmActionDialog';
+import PasoExecutionDrawer from '@/components/bpm/execution/PasoExecutionDrawer';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { usePasosSolicitud } from '@/hooks/bpm/usePasosSolicitud';
@@ -39,11 +40,9 @@ import {
   RefreshCw,
   Filter,
   Grid,
-  List,
-  Search
+  List
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { fmtDateTime } from '@/lib/utils';
 
 const MisPasosPage: React.FC = () => {
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario ?? 0);
@@ -82,6 +81,7 @@ const MisPasosPage: React.FC = () => {
     paso: PasoSolicitud | null;
     accion: 'aprobar' | 'rechazar' | 'ejecutar';
   }>({ open: false, paso: null, accion: 'aprobar' });
+  const [execDrawer, setExecDrawer] = useState<{ open: boolean; pasoId: number | null; nombre?: string }>({ open: false, pasoId: null });
   
   // Hooks
   const { pasos, loading, error, fetchPasos, ejecutarAccion, clearError } = usePasosSolicitud();
@@ -89,10 +89,11 @@ const MisPasosPage: React.FC = () => {
   
   // Actualizar filtros cuando cambien las fechas
   useEffect(() => {
+    const toYMD = (d?: Date) => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : undefined;
     setFiltros(prev => ({
       ...prev,
-      fechaDesde: fechaDesde ? format(fechaDesde, 'yyyy-MM-dd') : undefined,
-      fechaHasta: fechaHasta ? format(fechaHasta, 'yyyy-MM-dd') : undefined,
+      fechaDesde: toYMD(fechaDesde),
+      fechaHasta: toYMD(fechaHasta),
     }));
   }, [fechaDesde, fechaHasta]);
   
@@ -137,8 +138,39 @@ const MisPasosPage: React.FC = () => {
   };
   
   // Abrir modal de confirmación
+  const isTipoEjecucion = (value: string | undefined) => {
+    if (!value) return false;
+    const v = value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+    return v === 'ejecucion';
+  };
+
+  // Resuelve el identificador válido del PasoSolicitud para acciones/ejecución.
+  // Algunos registros vienen con pasoId=0 (o indefinido) y el id real está en `id`.
+  const resolvePasoSolicitudId = (p: PasoSolicitud | null | undefined): number => {
+    if (!p) return 0;
+    // Priorizar paso.pasoId solo si es un número positivo; de lo contrario usar p.id
+    if (typeof p.pasoId === 'number' && p.pasoId > 0) return p.pasoId;
+    if (typeof p.id === 'number' && p.id > 0) return p.id;
+    return 0;
+  };
+
   const openConfirmDialog = (paso: PasoSolicitud, accion: 'aprobar' | 'rechazar' | 'ejecutar') => {
-    setConfirmDialog({ open: true, paso, accion });
+    const resolvedId = resolvePasoSolicitudId(paso);
+    console.log('[MisPasos] Acción solicitada:', accion, 'Paso:', {
+      rawTipo: paso.tipoPaso,
+      normalizedEjecucion: isTipoEjecucion(paso.tipoPaso),
+      pasoId: paso.pasoId,
+      id: paso.id,
+      resolvedId
+    });
+    if (accion === 'ejecutar') {
+      if (resolvedId <= 0) {
+        console.warn('No se pudo abrir ejecución: identificador inválido', paso);
+      }
+      setExecDrawer({ open: true, pasoId: resolvedId, nombre: paso.nombre });
+      return;
+    }
+    setConfirmDialog({ open: true, paso: { ...paso, pasoId: resolvedId }, accion });
   };
   
   // Ejecutar acción confirmada
@@ -146,11 +178,12 @@ const MisPasosPage: React.FC = () => {
     if (!confirmDialog.paso) return;
     
     try {
-      setActionLoading(confirmDialog.paso.pasoId);
+      const targetPasoId = resolvePasoSolicitudId(confirmDialog.paso);
+      setActionLoading(targetPasoId);
       setActionMessage(null);
       clearError();
       
-      const response = await ejecutarAccion(confirmDialog.paso.pasoId, {
+      const response = await ejecutarAccion(targetPasoId, {
         usuarioId: selectedUserId,
         accion: confirmDialog.accion,
         comentarios: comentarios || `${confirmDialog.accion} ejecutado desde Mis Pasos`
@@ -166,7 +199,7 @@ const MisPasosPage: React.FC = () => {
         setActionMessage(`Error: ${response.mensaje}`);
       }
     } catch (err) {
-      setActionMessage(`Error al ${confirmDialog.accion} el paso: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+        setActionMessage(`Error al ${confirmDialog.accion} el paso: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     } finally {
       setActionLoading(null);
     }
@@ -210,6 +243,8 @@ const MisPasosPage: React.FC = () => {
   // Renderizar botones de acción según el tipo
   const renderAccionButtons = (paso: PasoSolicitud) => {
     const isLoading = actionLoading === paso.pasoId;
+    const resolvedId = resolvePasoSolicitudId(paso);
+    const noId = resolvedId <= 0;
     
     if (paso.estado === 'entregado' || paso.estado === 'cancelado') {
       return (
@@ -245,17 +280,17 @@ const MisPasosPage: React.FC = () => {
       );
     }
     
-    if (paso.tipoPaso === 'ejecucion') {
+    if (isTipoEjecucion(paso.tipoPaso)) {
       return (
         <Button
           size="sm"
           variant="default"
           className="bg-blue-600 hover:bg-blue-700 text-white"
           onClick={() => openConfirmDialog(paso, 'ejecutar')}
-          disabled={isLoading}
+          disabled={isLoading || noId}
         >
           {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-          Ejecutar
+          {noId ? 'Sin ID' : 'Procesar'}
         </Button>
       );
     }
@@ -265,10 +300,11 @@ const MisPasosPage: React.FC = () => {
         size="sm"
         variant="outline"
         onClick={() => openConfirmDialog(paso, 'ejecutar')}
-        disabled={isLoading}
+        disabled={isLoading || noId}
+        title={noId ? 'El paso aún no tiene identificador persistido' : 'Procesar paso'}
       >
         {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-        Procesar
+        {noId ? 'Sin ID' : 'Procesar'}
       </Button>
     );
   };
@@ -277,7 +313,7 @@ const MisPasosPage: React.FC = () => {
   const renderCardsView = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {pasosFiltrados.map((paso) => (
-        <Card key={`${paso.solicitudId}-${paso.pasoId}`} className="hover:shadow-lg transition-shadow">
+  <Card key={`${paso.solicitudId}-${paso.pasoId || paso.id}`} className="hover:shadow-lg transition-shadow">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -302,7 +338,7 @@ const MisPasosPage: React.FC = () => {
               )}
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-3 w-3" />
-                {format(new Date(paso.fechaCreacion), 'dd/MM/yyyy HH:mm', { locale: es })}
+                {fmtDateTime(paso.fechaCreacion)}
               </div>
               {paso.descripcion && (
                 <div className="text-sm text-muted-foreground line-clamp-2">
@@ -341,7 +377,7 @@ const MisPasosPage: React.FC = () => {
       </TableHeader>
       <TableBody>
         {pasosFiltrados.map((paso) => (
-          <TableRow key={`${paso.solicitudId}-${paso.pasoId}`}>
+          <TableRow key={`${paso.solicitudId}-${paso.pasoId || paso.id}`}>
             <TableCell className="font-medium">
               <div className="flex items-center gap-2">
                 {getTipoIcon(paso.tipoPaso)}
@@ -367,7 +403,7 @@ const MisPasosPage: React.FC = () => {
               </div>
             </TableCell>
             <TableCell className="text-sm">
-              {format(new Date(paso.fechaCreacion), 'dd/MM/yyyy HH:mm', { locale: es })}
+              {fmtDateTime(paso.fechaCreacion)}
             </TableCell>
             <TableCell>
               {renderAccionButtons(paso)}
@@ -575,6 +611,13 @@ const MisPasosPage: React.FC = () => {
         accion={confirmDialog.accion}
         onConfirm={handleConfirmedAction}
         loading={actionLoading !== null}
+      />
+      <PasoExecutionDrawer
+        open={execDrawer.open}
+        pasoId={execDrawer.pasoId}
+        pasoNombre={execDrawer.nombre}
+        usuarioId={selectedUserId}
+        onClose={() => setExecDrawer({ open: false, pasoId: null })}
       />
     </div>
   );

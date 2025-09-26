@@ -10,7 +10,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Upload, X, FileText, CheckSquare } from 'lucide-react';
+import { CalendarIcon, Upload, X, FileText, CheckSquare, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { uploadToGoFile, getStoredGoFileFolderId, storeGoFileFolderId } from '@/services/gofile';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -223,37 +224,11 @@ export const CampoDinamico: React.FC<Props> = ({
 
   case 'archivo':
         return (
-          <div className="space-y-2">
-            <div className="border-2 border-dashed border-muted rounded-lg p-4 text-center">
-              <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Arrastra archivos aquí o haz clic para seleccionar
-              </p>
-              <Input
-                type="file"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  handleValueChange(file ? file.name : '');
-                }}
-                className="mt-2 cursor-pointer"
-                accept="*/*"
-              />
-            </div>
-            {valor && (
-              <div className="flex items-center gap-2 p-2 bg-muted rounded">
-                <FileText className="w-4 h-4" />
-                <span className="text-sm flex-1">{valor}</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-destructive text-destructive hover:bg-destructive hover:text-white"
-                  onClick={() => handleValueChange('')}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </div>
+          <ArchivoUpload
+            currentValue={valor}
+            onValueChange={handleValueChange}
+            requerido={requerido}
+          />
         );
 
       default:
@@ -337,6 +312,121 @@ export const CampoDinamico: React.FC<Props> = ({
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// --- Archivo Upload Subcomponent ---
+interface ArchivoUploadProps {
+  currentValue: string;
+  onValueChange: (v: string) => void;
+  requerido: boolean;
+}
+
+const ArchivoUpload: React.FC<ArchivoUploadProps> = ({ currentValue, onValueChange, requerido }) => {
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [successMeta, setSuccessMeta] = useState<{ name: string; link?: string } | null>(null);
+
+  // Access vite env safely
+  const envObj = (import.meta as unknown as { env?: Record<string, string> })?.env || {};
+  const token: string | undefined = envObj.VITE_GOFILE_TOKEN || undefined;
+  const fixedFolderId: string | undefined = envObj.VITE_GOFILE_DEFAULT_FOLDER_ID || undefined;
+  // One-time console diagnostic (dev only) to confirm env usage
+  if (import.meta.env?.DEV && (fixedFolderId || token)) {
+    // Avoid spamming: attach a symbol to window
+    const w = window as unknown as { __gofileEnvLogged?: boolean };
+    if (!w.__gofileEnvLogged) {
+      w.__gofileEnvLogged = true;
+      console.info('[GoFile] Using env config', { hasToken: !!token, fixedFolderId });
+    }
+  }
+
+  const humanName = (() => {
+    if (!currentValue) return '';
+    try {
+      const obj = JSON.parse(currentValue);
+      return obj.fileName || obj.name || obj.fileId || 'Archivo';
+    } catch { return currentValue; }
+  })();
+
+  const startUpload = async (file: File) => {
+    setUploading(true); setProgress(0); setError(null); setSuccessMeta(null);
+    // If a fixed folder is configured via env, we always target that and skip localStorage logic
+    const storedFolder = fixedFolderId ? null : getStoredGoFileFolderId();
+    const effectiveFolder = fixedFolderId || storedFolder || undefined;
+    const res = await uploadToGoFile({ file, token, folderId: effectiveFolder, onProgress: (p) => setProgress(p) });
+    if (res.ok) {
+      if (!fixedFolderId && res.folderId && !storedFolder) storeGoFileFolderId(res.folderId);
+      const payload = JSON.stringify({ provider: 'gofile', fileId: res.fileId, fileName: res.fileName, directLink: res.directLink, folderId: fixedFolderId || res.folderId });
+      onValueChange(payload);
+      setSuccessMeta({ name: res.fileName || file.name, link: res.directLink });
+    } else {
+      setError(res.error || 'Error subiendo archivo');
+    }
+    setUploading(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="border-2 border-dashed border-muted rounded-lg p-4 text-center relative">
+        <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground mb-2">
+          {uploading ? 'Subiendo...' : 'Arrastra o selecciona un archivo'}
+          {requerido && <span className="text-red-500 ml-1">*</span>}
+        </p>
+        <Input
+          type="file"
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) startUpload(file);
+          }}
+          className="mt-2 cursor-pointer"
+          accept="*/*"
+        />
+        {uploading && (
+          <div className="mt-3 flex flex-col items-center gap-1">
+            <div className="w-full h-2 bg-muted rounded overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: progress + '%' }} />
+            </div>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <RefreshCw className="h-3 w-3 animate-spin" /> {progress}%
+            </span>
+          </div>
+        )}
+      </div>
+      {currentValue && !uploading && !error && (
+        <div className="flex items-center gap-2 p-2 bg-muted rounded">
+          <FileText className="w-4 h-4" />
+          <span className="text-sm flex-1 truncate" title={humanName}>{humanName}</span>
+          {successMeta?.link && (
+            <a href={successMeta.link} target="_blank" rel="noopener noreferrer" className="text-xs underline text-primary">Ver</a>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-destructive text-destructive hover:bg-destructive hover:text-white"
+            onClick={() => { onValueChange(''); setSuccessMeta(null); setError(null); }}
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+      {error && (
+        <div className="flex items-center gap-1 text-xs text-red-600">
+          <AlertTriangle className="h-3 w-3" /> {error}
+        </div>
+      )}
+      {successMeta && !error && (
+        <div className="flex items-center gap-1 text-xs text-green-600">
+          <CheckCircle2 className="h-3 w-3" /> Archivo subido
+        </div>
+      )}
+      {!token && (
+        <div className="text-[10px] text-amber-600">Comprime tus archivos para minimizar el tamaño de la carga.</div>
+      )}
     </div>
   );
 };
