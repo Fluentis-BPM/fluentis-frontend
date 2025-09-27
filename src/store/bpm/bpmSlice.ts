@@ -5,7 +5,7 @@ import api from '@/services/api';
 import type { RootState } from '@/store';
 
 // Draft staging types
-type MetadataPatch = Record<string, unknown>; // PascalCase keys for backend
+type MetadataPatch = Record<string, unknown>;
 export interface PasoRelacionInputValorDto { RawValue: string | number | boolean | null }
 export interface PasoRelacionInputCreateDto {
   InputId: number;
@@ -371,8 +371,8 @@ const bpmSlice = createSlice({
 });
 
 // Selectors for drafts
-export const selectPasoDraft = (state: RootState, pasoId: number) => state.bpm.draftsByPasoId[pasoId];
-export const selectDirtyPasoIds = (state: RootState) => Object.keys(state.bpm.draftsByPasoId).map(Number);
+export const selectPasoDraft = (state: RootState, pasoId: number) => state.bpm.draftsByPasoId?.[pasoId];
+export const selectDirtyPasoIds = (state: RootState) => Object.keys(state.bpm.draftsByPasoId || {}).map(Number);
 export const selectIsAnyDirty = (state: RootState) => selectDirtyPasoIds(state).length > 0;
 
 // Save All: commit all staged paso drafts

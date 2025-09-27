@@ -259,10 +259,17 @@ export const ModuloSolicitudes: React.FC<{
   // Determinar usuario que está visualizando (developer o impersonado)
   const viewerUserId = (impersonationEnabled && impersonatedUserId) ? impersonatedUserId : currentUserId;
 
-  // Si impersonation está activo, filtrar client-side para mostrar sólo
-  // las solicitudes en las que el usuario impersonado/visualizador es miembro del grupo de aprobación
+  // Filtrar para mostrar:
+  // 1. Solicitudes creadas por el usuario actual
+  // 2. Solicitudes donde el usuario es miembro del grupo de aprobación
   const solicitudesFiltradas = (viewerUserId)
     ? baseFiltrado.filter(solicitud => {
+        // Mostrar si el usuario es el solicitante
+        if (solicitud.solicitante_id === viewerUserId) {
+          return true;
+        }
+        
+        // Mostrar si el usuario es miembro del grupo de aprobación
         const relacion = relacionesGrupo.find(r => r.solicitud_id === solicitud.id_solicitud);
         const assignedGroupId = relacion?.grupo_aprobacion_id ?? (solicitud as { grupo_aprobacion_id?: number }).grupo_aprobacion_id;
         if (!assignedGroupId) return false;
