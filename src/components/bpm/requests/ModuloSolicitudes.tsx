@@ -317,8 +317,9 @@ export const ModuloSolicitudes: React.FC<{
           
           <Button 
             onClick={() => setMostrarFormulario(!mostrarFormulario)}
-            className="bg-gradient-primary hover:opacity-90 hover:scale-105 transition-smooth shadow-elegant"
+            variant="gradient"
             size="sm"
+            className="hover:scale-105 transition-smooth"
           >
             <Plus className="w-4 h-4 mr-2" />
             {mostrarFormulario ? 'Ocultar' : 'Nueva Solicitud'}

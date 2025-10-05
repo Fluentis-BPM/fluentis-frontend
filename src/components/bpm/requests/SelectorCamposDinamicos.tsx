@@ -87,7 +87,7 @@ export const SelectorCamposDinamicos: React.FC<Props> = ({ camposDinamicos, onCh
           <Button 
             onClick={agregarCampo}
             disabled={!inputSeleccionado}
-            className="bg-gradient-primary hover:opacity-90 transition-smooth"
+            variant="gradient"
           >
             <Plus className="w-4 h-4" />
           </Button>

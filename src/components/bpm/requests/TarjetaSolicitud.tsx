@@ -112,9 +112,11 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
             <IconoEstado className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-lg">Solicitud #{solicitud.id_solicitud}</h3>
+            <h3 className="font-semibold text-lg">
+              {solicitud.nombre || `Solicitud #${solicitud.id_solicitud}`}
+            </h3>
             <p className="text-sm text-muted-foreground">
-              {diasTranscurridos === 0 ? 'Hoy' : `Hace ${diasTranscurridos} días`}
+              {solicitud.nombre ? `#${solicitud.id_solicitud} • ` : ''}{diasTranscurridos === 0 ? 'Hoy' : `Hace ${diasTranscurridos} días`}
             </p>
           </div>
         </div>

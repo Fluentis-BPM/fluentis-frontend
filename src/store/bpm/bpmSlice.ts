@@ -1,5 +1,5 @@
 // src/store/bpm/bpmSlice.ts
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction, createSelector } from '@reduxjs/toolkit';
 import { FlujoActivo, PasoSolicitud, CaminoParalelo, FlujoActivoResponse } from '@/types/bpm/flow';
 import api from '@/services/api';
 import type { RootState } from '@/store';
@@ -372,8 +372,28 @@ const bpmSlice = createSlice({
 
 // Selectors for drafts
 export const selectPasoDraft = (state: RootState, pasoId: number) => state.bpm.draftsByPasoId?.[pasoId];
-export const selectDirtyPasoIds = (state: RootState) => Object.keys(state.bpm.draftsByPasoId || {}).map(Number);
-export const selectIsAnyDirty = (state: RootState) => selectDirtyPasoIds(state).length > 0;
+// Memoized selectors to prevent unnecessary rerenders
+export const selectBpmState = (state: RootState) => state.bpm;
+
+export const selectDirtyPasoIds = createSelector(
+  [selectBpmState],
+  (bpmState) => Object.keys(bpmState.draftsByPasoId || {}).map(Number)
+);
+
+export const selectIsAnyDirty = createSelector(
+  [selectBpmState],
+  (bpmState) => Object.keys(bpmState.draftsByPasoId || {}).length > 0
+);
+
+export const selectDraftByPasoId = createSelector(
+  [selectBpmState, (_: RootState, pasoId: number) => pasoId],
+  (bpmState, pasoId) => bpmState.draftsByPasoId?.[pasoId] || null
+);
+
+export const selectHasDraftForPaso = createSelector(
+  [selectBpmState, (_: RootState, pasoId: number) => pasoId],
+  (bpmState, pasoId) => Boolean(bpmState.draftsByPasoId?.[pasoId])
+);
 
 // Save All: commit all staged paso drafts
 export const commitAllPasoDrafts = createAsyncThunk<void, void, { state: RootState; rejectValue: string }>(

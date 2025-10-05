@@ -187,7 +187,7 @@ export const GestionGruposAprobacion: React.FC<GestionGruposAprobacionProps> = (
           <Button variant="outline" size="sm" onClick={() => setMostrarHistorial(true)}>Historial</Button>
           <Dialog open={mostrarCrear} onOpenChange={(o) => { if(!o) resetForm(); setMostrarCrear(o); }}>
           <DialogTrigger asChild>
-            <Button onClick={() => resetForm()} className="bg-gradient-primary hover:opacity-90 shadow-soft">
+            <Button onClick={() => resetForm()} variant="gradient">
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Grupo
             </Button>

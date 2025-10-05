@@ -45,6 +45,7 @@ export interface Solicitud extends SolicitudBase {
 // Interfaz para crear nuevas solicitudes
 export interface CrearSolicitudInput {
   solicitante_id: number;
+  nombre?: string;
   flujo_base_id?: number;
   estado?: EstadoSolicitud;
   datos_adicionales?: DatosAdicionales;

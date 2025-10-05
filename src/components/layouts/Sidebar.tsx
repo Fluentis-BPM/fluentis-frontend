@@ -75,12 +75,13 @@ export default function Sidebar({ user }: SidebarProps) {
     },
     {
       id: 'flujosSolicitudes',
-      label: 'Flujos y Solicitudes',
+      label: 'BPM',
       icon: <GitPullRequest className="h-5 w-5" />,
       items: [
-        { path: '/bpm', label: 'Panel BPM' },
-        { path: '/flujos/plantillas', label: 'Flujos (Plantillas)' },
-        { path: '/flujos/solicitudes', label: 'Solicitudes' },
+        { path: '/bpm', label: 'Resumen' },
+        { path: '/bpm/solicitudes', label: 'Solicitudes' },
+        { path: '/bpm/flujos', label: 'Flujos' },
+        { path: '/flujos/plantillas', label: 'Plantillas' },
         { path: '/flujos/activos', label: 'Flujos Activos' },
         { path: '/flujos/mis-pasos', label: 'Mis Pasos' },
         { path: '/flujos/propuestas-votaciones', label: 'Propuestas y Votaciones' },
