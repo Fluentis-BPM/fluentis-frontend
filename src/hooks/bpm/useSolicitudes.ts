@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Solicitud, CrearSolicitudInput, EstadoSolicitud } from '@/types/bpm/request';
 import { RelacionInput } from '@/types/bpm/inputs';
 import { TipoDecision } from '@/types/bpm/approval';
@@ -51,11 +51,18 @@ export const useSolicitudes = () => {
   // Auto-cargar si la lista está vacía
   // Auto-cargar al montar o cuando el token/usuario estén listos
   const isAuthenticated = useSelector((s: RootState) => s.auth.isAuthenticated);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
+  
   useEffect(() => {
-    if ((!items || items.length === 0) && isAuthenticated) {
-      dispatch(fetchSolicitudesThunk());
+    if ((!items || items.length === 0) && isAuthenticated && !loading && !hasInitialLoad) {
+      // Debounce to prevent rapid consecutive calls
+      const timeoutId = setTimeout(() => {
+        dispatch(fetchSolicitudesThunk());
+        setHasInitialLoad(true);
+      }, 100);
+      return () => clearTimeout(timeoutId);
     }
-  }, [dispatch, items?.length, isAuthenticated]);
+  }, [dispatch, items?.length, isAuthenticated, loading, hasInitialLoad]);
 
   // Ensure local approval relations exist for all solicitudes with a backend group id
   useEffect(() => {
@@ -73,9 +80,8 @@ export const useSolicitudes = () => {
   // Crear nueva solicitud (backend)
   const crearSolicitud = useCallback(async (input: CrearSolicitudInput): Promise<Solicitud> => {
     // Preparar DTO
-    const nombreDesdeCampos = input.campos_dinamicos?.[1]?.valor?.toString()?.trim();
-    const nombre: string = (nombreDesdeCampos && nombreDesdeCampos.length > 0)
-      ? nombreDesdeCampos.substring(0, 255)
+    const nombre: string = input.nombre && input.nombre.trim().length > 0
+      ? input.nombre.trim().substring(0, 255)
       : `Solicitud ${new Date().toLocaleString()}`;
 
     const solicitanteId = (currentUserId && currentUserId > 0) ? currentUserId : input.solicitante_id;
@@ -108,12 +114,17 @@ export const useSolicitudes = () => {
     if (nuevoEstado === 'aprobado') {
       const solicitud = items.find(s => s.id_solicitud === id_solicitud);
       const relacionesSolicitud: RelacionInput[] = solicitud?.campos_dinamicos || [];
-      flujos.crearFlujoDesde(
+      // Crear flujo con el nombre de la solicitud
+      const nuevoFlujo = flujos.crearFlujoDesde(
         id_solicitud,
         (solicitud?.datos_adicionales as unknown) as Record<string, string | number | boolean | undefined>,
         relacionesSolicitud,
         solicitud?.flujo_base_id
       );
+      // Actualizar el nombre del flujo con el nombre de la solicitud
+      if (solicitud?.nombre && nuevoFlujo) {
+        nuevoFlujo.nombre = solicitud.nombre;
+      }
     }
     const apiEstado: EstadoSolicitudApi = nuevoEstado === 'aprobado' ? 'Aprobado' : nuevoEstado === 'rechazado' ? 'Rechazado' : 'Pendiente';
     dispatch(updateSolicitudEstadoThunk({ id: id_solicitud, estado: apiEstado }));
@@ -137,22 +148,36 @@ export const useSolicitudes = () => {
     decision: TipoDecision,
     onEstadoCambiado?: (nuevoEstado: 'aprobado' | 'rechazado') => void
   ) => {
+    // Check if decision already exists to prevent duplicates
+    const existingDecision = aprobacion.decisiones.find(
+      d => d.id_usuario === id_usuario && 
+           aprobacion.relacionesGrupo.some(r => r.id_relacion === d.relacion_grupo_aprobacion_id && r.solicitud_id === solicitud_id)
+    );
+    
+    if (existingDecision && existingDecision.decision === decision) {
+      console.log('Decision already exists, skipping duplicate call');
+      return;
+    }
+
     // 1) Actualizar estado local (UI) usando hook de aprobación existente
     const relacion = aprobacion.relacionesGrupo.find(r => r.solicitud_id === solicitud_id);
     const relacionId = relacion?.id_relacion ?? (solicitud_id * 1000);
     aprobacion.registrarDecision(id_usuario, relacionId, decision, onEstadoCambiado);
 
     // 2) Persistir en backend y, si todos votaron, actualizar estado real
-    dispatch(addDecisionThunk({ id: solicitud_id, usuarioId: id_usuario, decision: decision === 'si' }))
-      .unwrap()
-      .then((res) => {
-        if (!res) return;
-        const estadoUi: EstadoSolicitud = res.EstadoActual === 'Aprobado' ? 'aprobado' : res.EstadoActual === 'Rechazado' ? 'rechazado' : 'pendiente';
-        if (res.TodosVotaron && (estadoUi === 'aprobado' || estadoUi === 'rechazado')) {
-          actualizarEstado(solicitud_id, estadoUi);
-        }
-      })
-      .catch(err => console.error('Error registrando decisión en backend:', err));
+    // Add debounce to prevent rapid consecutive calls
+    setTimeout(() => {
+      dispatch(addDecisionThunk({ id: solicitud_id, usuarioId: id_usuario, decision: decision === 'si' }))
+        .unwrap()
+        .then((res) => {
+          if (!res) return;
+          const estadoUi: EstadoSolicitud = res.EstadoActual === 'Aprobado' ? 'aprobado' : res.EstadoActual === 'Rechazado' ? 'rechazado' : 'pendiente';
+          if (res.TodosVotaron && (estadoUi === 'aprobado' || estadoUi === 'rechazado')) {
+            actualizarEstado(solicitud_id, estadoUi);
+          }
+        })
+        .catch(err => console.error('Error registrando decisión en backend:', err));
+    }, 100);
   }, [aprobacion, dispatch, actualizarEstado]);
 
   // Obtener solicitud por ID

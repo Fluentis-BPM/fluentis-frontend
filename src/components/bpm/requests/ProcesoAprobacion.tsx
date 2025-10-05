@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { TipoDecision, GrupoAprobacionCompleto, DecisionConUsuario } from '@/types/bpm/approval';
 import { CheckCircle, XCircle, Clock, Users, UserCheck, UserX } from 'lucide-react';
-import { useDecision } from '@/hooks/bpm/useDecision';
+// import { useDecision } from '@/hooks/bpm/useDecision'; // Removed to prevent duplicate API calls
 
 interface EstadisticasAprobacion {
   aprobaciones: number;
@@ -94,7 +94,7 @@ export const ProcesoAprobacion: React.FC<Props> = ({
   const estaAprobada = verificarAprobacionCompleta(solicitud_id, miembrosGrupo);
   const estaRechazada = verificarRechazo(solicitud_id);
 
-  const { executeSolicitud } = useDecision();
+
 
   const handleRegistrarDecision = async () => {
     if (!usuarioActual) {
@@ -102,19 +102,14 @@ export const ProcesoAprobacion: React.FC<Props> = ({
       return;
     }
 
-    // Convertir decision seleccionada ('si'/'no') a boolean para el backend
-    const decisionBool = decisionSeleccionada === 'si';
+    // Guardar en localStorage para la UX local (demo)
+    const key = `aprobacion_${solicitud_id}`;
+    const nuevasDecisiones = { ...decisionesLocal, [usuarioActual]: decisionSeleccionada };
+    localStorage.setItem(key, JSON.stringify(nuevasDecisiones));
+    setDecisionesLocal(nuevasDecisiones);
+
     try {
-      // Llamar al endpoint de solicitud para registrar la decisión
-      await executeSolicitud(solicitud_id, { IdUsuario: Number(usuarioActual), Decision: decisionBool });
-
-      // Guardar en localStorage para la UX local (demo)
-      const key = `aprobacion_${solicitud_id}`;
-      const nuevasDecisiones = { ...decisionesLocal, [usuarioActual]: decisionSeleccionada };
-      localStorage.setItem(key, JSON.stringify(nuevasDecisiones));
-      setDecisionesLocal(nuevasDecisiones);
-
-      // Mantener la lógica original si existe (notificar estado)
+      // Solo usar registrarDecision que ya maneja el backend, evitar executeSolicitud para prevenir duplicados
       if (registrarDecision) {
         let relacionId = relacionGrupoAprobacionId;
         if (!relacionId) {
@@ -282,11 +277,9 @@ export const ProcesoAprobacion: React.FC<Props> = ({
                     <div className="flex gap-2">
                       <Button
                         type="button"
-                        variant={decisionSeleccionada === 'si' ? 'default' : 'outline'}
+                        variant={decisionSeleccionada === 'si' ? 'gradient' : 'outline'}
                         onClick={() => setDecisionSeleccionada('si')}
-                        className={
-                          `flex-1 border border-primary/40 bg-white text-primary hover:bg-primary hover:text-white transition-smooth shadow-sm ${decisionSeleccionada === 'si' ? 'bg-gradient-primary text-white hover:opacity-90' : ''}`
-                        }
+                        className="flex-1"
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
                         Aprobar
@@ -295,9 +288,7 @@ export const ProcesoAprobacion: React.FC<Props> = ({
                         type="button"
                         variant={decisionSeleccionada === 'no' ? 'destructive' : 'outline'}
                         onClick={() => setDecisionSeleccionada('no')}
-                        className={
-                          `flex-1 border border-destructive/40 bg-white text-destructive hover:bg-destructive hover:text-white transition-smooth shadow-sm ${decisionSeleccionada === 'no' ? 'bg-destructive text-white hover:bg-red-600' : ''}`
-                        }
+                        className="flex-1"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
                         Rechazar
@@ -308,7 +299,8 @@ export const ProcesoAprobacion: React.FC<Props> = ({
                     <Button
                       onClick={handleRegistrarDecision}
                       disabled={!miembrosGrupo.includes(usuarioActual)}
-                      className="w-full bg-gradient-primary hover:opacity-90 shadow-md text-white"
+                      variant="gradient"
+                      className="w-full"
                     >
                       Registrar Decisión
                     </Button>

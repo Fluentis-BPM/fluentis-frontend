@@ -45,11 +45,11 @@ export const useFlujos = () => {
     const nuevoFlujo: FlujoActivo = {
       id_flujo_activo: generarIdUnico(),
       solicitud_id,
+      nombre: `Flujo para solicitud #${solicitud_id}`,
       flujo_ejecucion_id: plantilla_id,
       estado: 'encurso',
       fecha_inicio: new Date(),
-      datos_solicitud,
-      campos_dinamicos
+      datos_solicitud: datos_solicitud as Record<string, string> | undefined
     };
     
     console.log('🌊 FLUJO CREADO:', nuevoFlujo);

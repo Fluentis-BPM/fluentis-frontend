@@ -167,7 +167,7 @@ export default function PlantillasPage() {
             <Button onClick={() => dispatch(fetchPlantillas())} variant="outline">
               <RefreshCcw className="h-4 w-4 mr-2" />Refrescar
             </Button>
-            <Button onClick={openCreate} className="bg-gradient-primary text-white">
+            <Button onClick={openCreate} variant="gradient">
               <Plus className="h-4 w-4 mr-2" />Nueva plantilla
             </Button>
           </div>
@@ -204,7 +204,7 @@ export default function PlantillasPage() {
               <p className="text-base font-medium">No hay resultados</p>
               <p className="text-sm text-muted-foreground">Ajusta la búsqueda o crea tu primera plantilla.</p>
               <div className="mt-4">
-                <Button onClick={openCreate} className="bg-gradient-primary text-white">
+                <Button onClick={openCreate} variant="gradient">
                   <Plus className="h-4 w-4 mr-2" />Nueva plantilla
                 </Button>
               </div>
@@ -252,7 +252,7 @@ export default function PlantillasPage() {
                           <Trash2 className="h-4 w-4 mr-2" />{deleting ? 'Eliminando...' : 'Eliminar'}
                         </Button>
                       </div>
-                      <Button size="sm" onClick={() => navigate(`/flujos/plantillas/${tpl.idPlantilla}/usar`)} className="bg-gradient-primary text-white">
+                      <Button size="sm" onClick={() => navigate(`/flujos/plantillas/${tpl.idPlantilla}/usar`)} variant="gradient">
                         <Play className="h-4 w-4 mr-2" />Usar
                       </Button>
                     </div>
@@ -292,7 +292,7 @@ export default function PlantillasPage() {
               <TabsContent value="inputs" className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">Campos</h3>
-                  <Button size="sm" onClick={addInput} className="bg-gradient-primary text-white">
+                  <Button size="sm" onClick={addInput} variant="gradient">
                     <Plus className="h-4 w-4 mr-2" />Agregar campo
                   </Button>
                 </div>

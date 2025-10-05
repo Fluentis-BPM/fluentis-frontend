@@ -27,6 +27,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { usePasosSolicitud } from '@/hooks/bpm/usePasosSolicitud';
 import { useUsers } from '@/hooks/users/useUsers';
+import { useDecision } from '@/hooks/bpm/useDecision';
 import type { PasoSolicitud, FiltrosPasoSolicitud } from '@/types/bpm/paso';
 import type { EstadoPaso, TipoPaso } from '@/types/bpm/flow';
 import { 
@@ -86,6 +87,7 @@ const MisPasosPage: React.FC = () => {
   // Hooks
   const { pasos, loading, error, fetchPasos, ejecutarAccion, clearError } = usePasosSolicitud();
   const { users } = useUsers();
+  const { executePaso, loading: decisionLoading } = useDecision();
   
   // Actualizar filtros cuando cambien las fechas
   useEffect(() => {
@@ -183,21 +185,33 @@ const MisPasosPage: React.FC = () => {
       setActionMessage(null);
       clearError();
       
-      const response = await ejecutarAccion(targetPasoId, {
-        usuarioId: selectedUserId,
-        accion: confirmDialog.accion,
-        comentarios: comentarios || `${confirmDialog.accion} ejecutado desde Mis Pasos`
-      });
-      
-      if (response.exito) {
-        setActionMessage(`Paso ${confirmDialog.accion === 'aprobar' ? 'aprobado' : confirmDialog.accion === 'rechazar' ? 'rechazado' : 'ejecutado'} correctamente`);
-        // Refrescar lista después de 1 segundo
-        setTimeout(() => {
-          fetchPasos(selectedUserId, filtros);
-        }, 1000);
+      // Para pasos de aprobación, usar executePaso con la API correcta
+      if (confirmDialog.accion === 'aprobar' || confirmDialog.accion === 'rechazar') {
+        const decision = confirmDialog.accion === 'aprobar';
+        await executePaso(targetPasoId, {
+          IdUsuario: selectedUserId,
+          Decision: decision
+        });
+        setActionMessage(`Paso ${decision ? 'aprobado' : 'rechazado'} correctamente`);
       } else {
-        setActionMessage(`Error: ${response.mensaje}`);
+        // Para otros tipos de pasos, mantener la lógica anterior
+        const response = await ejecutarAccion(targetPasoId, {
+          usuarioId: selectedUserId,
+          accion: confirmDialog.accion,
+          comentarios: comentarios || `${confirmDialog.accion} ejecutado desde Mis Pasos`
+        });
+        
+        if (response.exito) {
+          setActionMessage('Paso ejecutado correctamente');
+        } else {
+          setActionMessage(`Error: ${response.mensaje}`);
+        }
       }
+      
+      // Refrescar lista después de 1 segundo
+      setTimeout(() => {
+        fetchPasos(selectedUserId, filtros);
+      }, 1000);
     } catch (err) {
         setActionMessage(`Error al ${confirmDialog.accion} el paso: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     } finally {
@@ -205,17 +219,26 @@ const MisPasosPage: React.FC = () => {
     }
   };
   
-  // Obtener color del badge según el estado
-  const getEstadoBadgeColor = (estado: EstadoPaso) => {
-    switch (estado) {
-      case 'pendiente': return 'default';
-      case 'aprobado': return 'default';
-      case 'entregado': return 'outline';
-      case 'rechazado': return 'destructive';
-      case 'cancelado': return 'destructive';
-      case 'excepcion': return 'secondary';
-      default: return 'default';
-    }
+  // Renderizar badge de estado más llamativo con icono
+  const renderEstadoBadge = (estado: EstadoPaso) => {
+    const configs = {
+      'pendiente': { icon: Clock, color: 'bg-amber-100 text-amber-800 border-amber-300', text: 'Pendiente' },
+      'aprobado': { icon: CheckCircle, color: 'bg-green-100 text-green-800 border-green-300', text: 'Aprobado' },
+      'entregado': { icon: CheckCircle, color: 'bg-blue-100 text-blue-800 border-blue-300', text: 'Entregado' },
+      'rechazado': { icon: XCircle, color: 'bg-red-100 text-red-800 border-red-300', text: 'Rechazado' },
+      'cancelado': { icon: XCircle, color: 'bg-gray-100 text-gray-800 border-gray-300', text: 'Cancelado' },
+      'excepcion': { icon: AlertTriangle, color: 'bg-orange-100 text-orange-800 border-orange-300', text: 'Excepción' },
+    };
+    
+    const config = configs[estado as keyof typeof configs] || configs.pendiente;
+    const Icon = config.icon;
+    
+    return (
+      <Badge variant="outline" className={`${config.color} border font-semibold flex items-center gap-1`}>
+        <Icon className="h-3 w-3" />
+        {config.text}
+      </Badge>
+    );
   };
   
   // Obtener color del badge según el tipo
@@ -242,19 +265,45 @@ const MisPasosPage: React.FC = () => {
   
   // Renderizar botones de acción según el tipo
   const renderAccionButtons = (paso: PasoSolicitud) => {
-    const isLoading = actionLoading === paso.pasoId;
+    const isLoading = actionLoading === paso.pasoId || decisionLoading;
     const resolvedId = resolvePasoSolicitudId(paso);
     const noId = resolvedId <= 0;
     
+    // Estados finales - no se pueden modificar
     if (paso.estado === 'entregado' || paso.estado === 'cancelado') {
       return (
-        <Badge variant="outline" className="text-xs">
-          {paso.estado === 'entregado' ? 'Entregado' : 'Cancelado'}
+        <Badge variant="outline" className="text-xs bg-gray-50">
+          {paso.estado === 'entregado' ? '✓ Completado' : '✗ Cancelado'}
         </Badge>
       );
     }
     
+    // Pasos de aprobación
     if (paso.tipoPaso === 'aprobacion') {
+      // Si ya está aprobado o rechazado, no permitir cambios
+      if (paso.estado === 'aprobado') {
+        return (
+          <div className="flex items-center gap-2">
+            <Badge className="bg-green-100 text-green-800 border-green-300 border">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Ya aprobado
+            </Badge>
+          </div>
+        );
+      }
+      
+      if (paso.estado === 'rechazado') {
+        return (
+          <div className="flex items-center gap-2">
+            <Badge className="bg-red-100 text-red-800 border-red-300 border">
+              <XCircle className="h-3 w-3 mr-1" />
+              Ya rechazado
+            </Badge>
+          </div>
+        );
+      }
+      
+      // Solo si está pendiente, mostrar botones de acción
       return (
         <div className="flex gap-2">
           <Button
@@ -348,9 +397,7 @@ const MisPasosPage: React.FC = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Badge variant={getEstadoBadgeColor(paso.estado)} className="text-xs">
-                {paso.estado}
-              </Badge>
+              {renderEstadoBadge(paso.estado)}
             </div>
             
             <div className="pt-2">
@@ -390,9 +437,7 @@ const MisPasosPage: React.FC = () => {
               </Badge>
             </TableCell>
             <TableCell>
-              <Badge variant={getEstadoBadgeColor(paso.estado)} className="text-xs">
-                {paso.estado}
-              </Badge>
+              {renderEstadoBadge(paso.estado)}
             </TableCell>
             <TableCell>
               <div>

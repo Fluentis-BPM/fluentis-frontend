@@ -29,6 +29,7 @@ export const FormularioSolicitud: React.FC<Props> = ({
   const initialSolicitante = useMemo(() => currentUserId || 0, [currentUserId]);
   const [formData, setFormData] = useState<CrearSolicitudInput>({
     solicitante_id: initialSolicitante,
+    nombre: '',
     flujo_base_id: undefined,
     estado: 'pendiente',
     datos_adicionales: {},
@@ -42,6 +43,12 @@ export const FormularioSolicitud: React.FC<Props> = ({
     e.preventDefault();
     
     if (formData.solicitante_id === 0) return;
+
+    // Validar nombre obligatorio
+    if (!formData.nombre || formData.nombre.trim() === '') {
+      alert('Por favor ingresa un nombre para la solicitud');
+      return;
+    }
 
     // Validar campos dinámicos requeridos
     const camposRequeridos = Object.entries(formData.campos_dinamicos || {}).filter(
@@ -65,7 +72,8 @@ export const FormularioSolicitud: React.FC<Props> = ({
     
     // Resetear formulario
     setFormData({
-      solicitante_id: 0,
+      solicitante_id: initialSolicitante,
+      nombre: '',
       flujo_base_id: undefined,
       estado: 'pendiente',
       datos_adicionales: {},
@@ -133,6 +141,26 @@ export const FormularioSolicitud: React.FC<Props> = ({
                     solicitante_id: parseInt(e.target.value) || 0
                   }))}
                   placeholder="Ingrese el ID del solicitante"
+                  required
+                  className="transition-smooth focus:ring-request-primary/50"
+                />
+              </div>
+
+              {/* Nombre de la Solicitud */}
+              <div className="space-y-2">
+                <Label htmlFor="nombre" className="flex items-center gap-2 font-medium">
+                  <Plus className="w-4 h-4 text-primary" />
+                  Nombre de la Solicitud *
+                </Label>
+                <Input
+                  id="nombre"
+                  type="text"
+                  value={formData.nombre || ''}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    nombre: e.target.value
+                  }))}
+                  placeholder="Ingrese un nombre descriptivo para la solicitud"
                   required
                   className="transition-smooth focus:ring-request-primary/50"
                 />
@@ -209,8 +237,9 @@ export const FormularioSolicitud: React.FC<Props> = ({
             <div className="mt-8 pt-6 border-t border-gray-200">
               <Button 
                 type="submit" 
-                disabled={isLoading || formData.solicitante_id === 0}
-                className="w-full bg-gradient-primary hover:opacity-90 hover:scale-105 disabled:hover:scale-100 disabled:opacity-50 transition-smooth shadow-elegant text-white font-medium h-12"
+                disabled={isLoading || formData.solicitante_id === 0 || !formData.nombre || formData.nombre.trim() === ''}
+                variant="gradient"
+                className="w-full hover:scale-105 disabled:hover:scale-100 transition-smooth h-12"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">

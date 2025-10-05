@@ -23,17 +23,22 @@ export const BPMDashboard: React.FC = () => {
 
   useEffect(() => {
     // Best-effort fetch; hook also auto-loads when authenticated
-    try { solicitudesData.cargarSolicitudes(); } catch { /* noop */ }
+    // Only load if we don't have data yet to prevent duplicates
+    if (solicitudesData?.solicitudes?.length === 0) {
+      try { solicitudesData.cargarSolicitudes(); } catch { /* noop */ }
+    }
     // Load active flows using the same source as the Flujos module to keep counters consistent
-    try { loadFlujosActivos(); } catch { /* noop */ }
-  }, [loadFlujosActivos]);
+    if (flujosActivos.length === 0) {
+      try { loadFlujosActivos(); } catch { /* noop */ }
+    }
+  }, [loadFlujosActivos, solicitudesData?.cargarSolicitudes, solicitudesData?.solicitudes?.length, flujosActivos.length]);
 
   // Derive counts; active flows should match what the Flujos section displays (length of flujosActivos array)
   const stats = {
-    totalSolicitudes: solicitudesData.solicitudes.length,
-    solicitudesAprobadas: solicitudesData.filtrarPorEstado('aprobado').length,
-    solicitudesPendientes: solicitudesData.filtrarPorEstado('pendiente').length,
-    solicitudesRechazadas: solicitudesData.filtrarPorEstado('rechazado').length,
+    totalSolicitudes: solicitudesData?.solicitudes?.length || 0,
+    solicitudesAprobadas: solicitudesData?.filtrarPorEstado('aprobado')?.length || 0,
+    solicitudesPendientes: solicitudesData?.filtrarPorEstado('pendiente')?.length || 0,
+    solicitudesRechazadas: solicitudesData?.filtrarPorEstado('rechazado')?.length || 0,
     flujosActivos: flujosActivos.length,
     flujosEnCurso: flujosActivos.filter(f => f.estado === 'encurso').length,
   };

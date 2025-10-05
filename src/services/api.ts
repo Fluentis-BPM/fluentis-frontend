@@ -69,12 +69,12 @@ export type PasoResp = unknown; // backend returns the full PasoSolicitud object
 export type DecisionSolicitudResp = { DecisionId: number; EstadoActual: string; TodosVotaron: boolean };
 
 export const postPasoDecision = async (pasoId: number, body: DecisionCreateReq): Promise<PasoResp> => {
-  const res = await api.post(`/api/pasosolicitudes/${pasoId}/decisiones`, body);
+  const res = await api.post(`/api/PasoSolicitud/${pasoId}/decisiones`, body);
   return res.data;
 };
 
 export const deletePasoDecision = async (pasoId: number, decisionId: number): Promise<void> => {
-  await api.delete(`/api/pasosolicitudes/${pasoId}/decisiones/${decisionId}`);
+  await api.delete(`/api/PasoSolicitud/${pasoId}/decisiones/${decisionId}`);
 };
 
 export const postSolicitudDecision = async (solicitudId: number, body: DecisionCreateReq): Promise<DecisionSolicitudResp> => {

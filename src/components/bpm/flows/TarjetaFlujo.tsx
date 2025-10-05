@@ -14,6 +14,12 @@ import {
   Square,
   Eye
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { FlujoActivo, EstadoFlujo, PasoSolicitud } from '@/types/bpm/flow';
 import { formatDistance } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -94,12 +100,23 @@ export const TarjetaFlujo: React.FC<Props> = ({
       <Card className="shadow-soft hover:shadow-elegant transition-smooth">
         <CardHeader className="bg-gradient-secondary text-white">
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Workflow className="w-5 h-5" />
-              <span>Flujo #{flujo.id_flujo_activo}</span>
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <Workflow className="w-5 h-5 flex-shrink-0" />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="truncate" title={flujo.nombre ? `Flujo para: ${flujo.nombre}` : `Flujo #${flujo.id_flujo_activo}`}>
+                      {flujo.nombre ? `Flujo para: ${flujo.nombre}` : `Flujo #${flujo.id_flujo_activo}`}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{flujo.nombre ? `Flujo para: ${flujo.nombre}` : `Flujo #${flujo.id_flujo_activo}`}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {getEstadoIcon()}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {getEstadoBadge()}
             </div>
           </CardTitle>
