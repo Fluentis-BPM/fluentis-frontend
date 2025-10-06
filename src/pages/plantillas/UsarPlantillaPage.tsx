@@ -168,6 +168,7 @@ export default function UsarPlantillaPage() {
                     tipo_input: tipo,
                     etiqueta: i.nombre || `Campo #${i.inputId}`,
                     placeholder: i.placeHolder || undefined,
+                    opciones: (['combobox','multiplecheckbox','radiogroup'].includes(tipo) ? (i.opciones || []) : undefined),
                   };
                   return (
                     <div key={i.inputId} className="space-y-2">

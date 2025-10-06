@@ -7,6 +7,7 @@ export interface PlantillaInputDto {
   placeHolder?: string | null;
   requerido?: boolean;
   valorPorDefecto?: string | null;
+  opciones?: string[] | null;
 }
 
 export interface PlantillaSolicitudDto {
@@ -31,6 +32,7 @@ export interface PlantillaSolicitudCreateDto {
     PlaceHolder?: string | null;
     Requerido?: boolean;
     ValorPorDefecto?: string | null;
+    Opciones?: string[];
   }>;
 }
 
@@ -47,6 +49,7 @@ export interface InstanciarSolicitudDesdePlantillaDto {
 // Inputs catálogo del backend (simplificado)
 export interface ApiInputCatalogItem {
   idInput: number;
-  tipoInput: string;
+  tipoInput: string; // clave normalizada/front-end (ej: combobox)
   esJson: boolean;
+  label?: string; // etiqueta amigable para UI
 }
