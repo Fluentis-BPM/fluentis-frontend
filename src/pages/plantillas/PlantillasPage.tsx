@@ -36,7 +36,7 @@ export default function PlantillasPage() {
 
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'inputs'>('recent');
-  const [catalog, setCatalog] = useState<{ idInput: number; tipoInput: string; esJson: boolean }[]>([]);
+  const [catalog, setCatalog] = useState<{ idInput: number; tipoInput: string; esJson: boolean; label?: string }[]>([]);
   const [openEditor, setOpenEditor] = useState(false);
   const [editTarget, setEditTarget] = useState<PlantillaSolicitudDto | null>(null);
   const [form, setForm] = useState<PlantillaSolicitudCreateDto>({ Nombre: '', Descripcion: '', Inputs: [] });
@@ -76,9 +76,41 @@ export default function PlantillasPage() {
       GrupoAprobacionId: tpl.grupoAprobacionId ?? null,
       Inputs: (tpl.inputs || []).map((i) => ({ InputId: i.inputId, Nombre: i.nombre, PlaceHolder: i.placeHolder ?? null, Requerido: i.requerido, ValorPorDefecto: i.valorPorDefecto ?? null })),
     });
-  setInputConfig({});
+  // Cargar opciones existentes por índice
+  const cfg: Record<number, { options: string[] }> = {};
+  (tpl.inputs || []).forEach((i, idx) => {
+    if (i.opciones && Array.isArray(i.opciones) && i.opciones.length > 0) {
+      cfg[idx] = { options: i.opciones.filter(o => !!o) };
+    }
+  });
+  setInputConfig(cfg);
     setOpenEditor(true);
   };
+
+  const isValid = useMemo(() => {
+    if ((form.Nombre?.trim().length ?? 0) === 0) return false;
+    for (const [idx, inp] of (form.Inputs || []).entries()) {
+      const nombre = (inp.Nombre || '').trim();
+      if (!nombre) return false;
+      const tipo = normTipo(catalog.find(c => c.idInput === inp.InputId)?.tipoInput || 'textocorto');
+      const needsOptions = ['combobox', 'multiplecheckbox', 'radiogroup'].includes(tipo);
+      if (needsOptions) {
+        const opts = inputConfig[idx]?.options || [];
+        if (opts.length === 0) return false;
+        if (inp.ValorPorDefecto) {
+          if (tipo === 'multiplecheckbox') {
+            try {
+              const arr = JSON.parse(String(inp.ValorPorDefecto));
+              if (!Array.isArray(arr) || arr.some(v => !opts.includes(String(v)))) return false;
+            } catch { return false; }
+          } else if (!opts.includes(String(inp.ValorPorDefecto))) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }, [form, catalog, inputConfig]);
 
   const submit = async () => {
     try {
@@ -86,18 +118,40 @@ export default function PlantillasPage() {
         toast({ title: 'Nombre requerido', description: 'La plantilla debe tener un nombre.' });
         return;
       }
+      const inputs = (form.Inputs || []).map((inp, idx) => {
+        const tipo = normTipo(catalog.find(c => c.idInput === inp.InputId)?.tipoInput || 'textocorto');
+        const needsOptions = ['combobox', 'multiplecheckbox', 'radiogroup'].includes(tipo);
+        const options = needsOptions ? (inputConfig[idx]?.options || []) : [];
+        return {
+          InputId: inp.InputId,
+          Nombre: (inp.Nombre || '').trim(),
+          PlaceHolder: inp.PlaceHolder?.trim() || null,
+          Requerido: !!inp.Requerido,
+          ValorPorDefecto: inp.ValorPorDefecto ?? null,
+          ...(options.length > 0 ? { Opciones: options } : {})
+        };
+      });
+      const payloadApi: PlantillaSolicitudCreateDto = {
+        Nombre: form.Nombre.trim(),
+        Descripcion: form.Descripcion?.trim() || null,
+        FlujoBaseId: form.FlujoBaseId ?? null,
+        GrupoAprobacionId: form.GrupoAprobacionId ?? null,
+        Inputs: inputs
+      };
       if (editTarget) {
-        await dispatch(updatePlantillaThunk({ id: editTarget.idPlantilla, body: form })).unwrap();
+        await dispatch(updatePlantillaThunk({ id: editTarget.idPlantilla, body: payloadApi })).unwrap();
         toast({ title: 'Plantilla actualizada' });
       } else {
-        await dispatch(createPlantillaThunk(form)).unwrap();
+        await dispatch(createPlantillaThunk(payloadApi)).unwrap();
         toast({ title: 'Plantilla creada' });
       }
       setOpenEditor(false);
       resetForm();
       dispatch(fetchPlantillas());
     } catch (e) {
-      toast({ title: 'Error', description: (e as Error).message || 'Operación fallida' });
+      const err = e as Error;
+      const msg = err.message || 'Operación fallida';
+      toast({ title: 'Error', description: msg });
     }
   };
 
@@ -141,7 +195,7 @@ export default function PlantillasPage() {
   };
   const setMultiDefault = (idx: number, next: string[]) => updateInput(idx, { ValorPorDefecto: JSON.stringify(next) });
 
-  const isValid = (form.Nombre?.trim().length ?? 0) > 0
+  // (Deprecated simple isValid replaced by memo logic above)
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -300,8 +354,11 @@ export default function PlantillasPage() {
                   {(form.Inputs || []).map((inp, idx) => {
                     const tipo = normTipo(catalog.find(c => c.idInput === inp.InputId)?.tipoInput || 'textocorto');
                     const opts = inputConfig[idx]?.options || [];
+                    const nombreVacio = !(inp.Nombre || '').trim();
+                    const needsOptions = ['combobox','multiplecheckbox','radiogroup'].includes(tipo);
+                    const faltanOpciones = needsOptions && opts.length === 0;
                     return (
-                    <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start rounded-lg p-4 border border-border/60 bg-muted/30 hover:border-primary/30 transition-colors">
+                    <div key={idx} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-start rounded-lg p-4 border bg-muted/30 transition-colors ${nombreVacio || faltanOpciones ? 'border-red-400/70 hover:border-red-500' : 'border-border/60 hover:border-primary/30'}`}> 
                       <div className="md:col-span-3">
                         <Label>Catálogo</Label>
                         <Select value={String(inp.InputId)} onValueChange={(v) => updateInput(idx, { InputId: Number(v) })}>
@@ -311,7 +368,10 @@ export default function PlantillasPage() {
                           <SelectContent>
                             {catalog.map((it) => (
                               <SelectItem key={it.idInput} value={String(it.idInput)}>
-                                #{it.idInput} • {it.tipoInput}
+                                <span className="flex flex-col text-left">
+                                  <span>{it.label || it.tipoInput}</span>
+                                  <span className="text-[10px] text-muted-foreground">{it.tipoInput} • ID #{it.idInput}</span>
+                                </span>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -319,7 +379,8 @@ export default function PlantillasPage() {
                       </div>
                       <div className="md:col-span-3">
                         <Label>Nombre</Label>
-                        <Input value={inp.Nombre ?? ''} onChange={(e) => updateInput(idx, { Nombre: e.target.value })} placeholder="Nombre visible" />
+                        <Input value={inp.Nombre ?? ''} onChange={(e) => updateInput(idx, { Nombre: e.target.value })} placeholder="Nombre visible" className={nombreVacio ? 'border-red-400 focus-visible:ring-red-500' : ''} />
+                        {nombreVacio && <p className="text-[10px] mt-1 text-red-500">Requerido</p>}
                       </div>
                       <div className="md:col-span-3">
                         <Label>Placeholder</Label>
@@ -349,7 +410,7 @@ export default function PlantillasPage() {
                               />
                             </PopoverContent>
                           </Popover>
-                        ) : tipo === 'combobox' ? (
+                        ) : tipo === 'combobox' || tipo === 'radiogroup' ? (
                           <UiSelect value={String(inp.ValorPorDefecto ?? '')} onValueChange={(v) => updateInput(idx, { ValorPorDefecto: v })}>
                             <UiSelectTrigger>
                               <UiSelectValue placeholder="Selecciona opción" />
@@ -396,7 +457,7 @@ export default function PlantillasPage() {
                       </div>
 
                       {/* Editor especial por tipo: opciones para combo / multiple */}
-                      {(tipo === 'combobox' || tipo === 'multiplecheckbox') && (
+                      {(tipo === 'combobox' || tipo === 'multiplecheckbox' || tipo === 'radiogroup') && (
                         <div className="md:col-span-12 grid grid-cols-1 gap-2">
                           <div>
                             <Label>Opciones ({opts.length})</Label>
@@ -434,7 +495,7 @@ export default function PlantillasPage() {
                                 </UiBadge>
                               ))}
                               {opts.length === 0 && (
-                                <span className="text-xs text-muted-foreground">Agrega opciones para habilitar selección por defecto</span>
+                                <span className="text-xs ${faltanOpciones ? 'text-red-500' : 'text-muted-foreground'}">Agrega opciones para habilitar selección por defecto</span>
                               )}
                             </div>
                           </div>

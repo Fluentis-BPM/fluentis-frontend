@@ -11,7 +11,8 @@ import {
   Edit, 
   ArrowLeft,
   RefreshCw,
-  Settings
+  Settings,
+  Save
 } from 'lucide-react';
 import { toast } from '@/hooks/bpm/use-toast';
 import { fmtDate } from '@/lib/utils';
@@ -20,18 +21,32 @@ interface FlowViewerPageProps {
   flujo: FlujoActivo;
   pasos: PasoSolicitud[];
   caminos: CaminoParalelo[];
-  // onActualizarPaso: (pasoId: number, estado: PasoSolicitud['estado']) => void; // TODO: Implementar thunk updatePasoSolicitud
-  // onAgregarPaso: (flujoId: number, x: number, y: number, tipo_paso?: 'ejecucion' | 'aprobacion') => void; // TODO: Implementar thunk createPasoSolicitud
-  // onCrearCamino: (origen: number, destino: number) => void; // TODO: Implementar thunk createCaminoParalelo
-  // onEditarPaso?: (pasoActualizado: PasoSolicitud) => void; // TODO: Implementar thunk updatePasoSolicitud
   onVolverALista?: () => void;
+  // Handlers opcionales para habilitar edición completa (fullscreen)
+  onCreatePaso?: (data: unknown) => void;
+  onDeletePaso?: (id: number) => void;
+  onCreateConexion?: (origenId: number, destinoId: number, esExcepcion?: boolean) => void;
+  onReplaceConexiones?: (id: number, destinos: number[]) => void;
+  onDeleteConexion?: (id: number, destinoId: number) => void;
+  // Estado de cambios sin guardar (pasado desde VistaDiagramaFlujo)
+  isAnyDirty?: boolean;
+  onCommitAllDrafts?: () => Promise<unknown> | unknown;
+  onClearDrafts?: () => void;
 }
 
 export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
   flujo,
   pasos,
   caminos,
-  onVolverALista
+  onVolverALista,
+  onCreatePaso,
+  onDeletePaso,
+  onCreateConexion,
+  onReplaceConexiones,
+  onDeleteConexion,
+  isAnyDirty,
+  onCommitAllDrafts,
+  onClearDrafts
 }) => {
   // const { toast, fetchPasosYConexiones, updatePasoSolicitud, createPasoSolicitud, createCaminoParalelo } = useBpm();
   const [modoEdicion, setModoEdicion] = useState(true);
@@ -150,6 +165,25 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {isAnyDirty && (
+              <Button
+                size="icon"
+                variant="success"
+                className="rounded-full shadow-md"
+                onClick={async () => {
+                  try {
+                    await onCommitAllDrafts?.();
+                    toast({ title: 'Cambios guardados', description: 'Se aplicaron todos los cambios pendientes.' });
+                  } catch (e) {
+                    toast({ title: 'Error al guardar', description: e instanceof Error ? e.message : 'Error desconocido', variant: 'destructive' });
+                  }
+                }}
+                title="Guardar todos los cambios"
+                aria-label="Guardar todos los cambios"
+              >
+                <Save className="w-4 h-4" />
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -184,6 +218,16 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
                 </>
               )}
             </Button>
+            {isAnyDirty && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onClearDrafts?.()}
+                className="hover:bg-muted"
+              >
+                Descartar
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -204,6 +248,11 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
             selectedNodeId={selectedNodeId || undefined}
             onNodeSelect={handleNodeSelect}
             datosSolicitudIniciales={flujo.datos_solicitud}
+            onCreatePaso={onCreatePaso}
+            onDeletePaso={onDeletePaso}
+            onCreateConexion={onCreateConexion}
+            onReplaceConexiones={onReplaceConexiones}
+            onDeleteConexion={onDeleteConexion}
           />
         </div>
 

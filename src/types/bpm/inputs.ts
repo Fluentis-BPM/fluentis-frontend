@@ -7,6 +7,7 @@ export type TipoInput =
   | 'textolargo' 
   | 'combobox' 
   | 'multiplecheckbox' 
+  | 'radiogroup'
   | 'date' 
   | 'number' 
   | 'archivo';
@@ -68,6 +69,12 @@ export const normalizeTipoInput = (t: string): TipoInput => {
     case 'multicheckbox':
     case 'multiopcion':
       return 'multiplecheckbox';
+    case 'radiogroup':
+    case 'radio':
+    case 'singlechoice':
+    case 'opcionunica':
+    case 'seleccionunica':
+      return 'radiogroup';
     case 'date':
     case 'fecha':
     case 'datetime':

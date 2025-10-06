@@ -3,6 +3,7 @@ import { Input as InputType, TipoInput } from '@/types/bpm/inputs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -133,7 +134,7 @@ export const CampoDinamico: React.FC<Props> = ({
           />
         );
 
-  case 'combobox':
+      case 'combobox':
         return (
           <Select value={valor} onValueChange={handleValueChange}>
             <SelectTrigger className="transition-smooth focus:ring-request-primary/50">
@@ -147,6 +148,18 @@ export const CampoDinamico: React.FC<Props> = ({
               ))}
             </SelectContent>
           </Select>
+        );
+
+  case 'radiogroup':
+        return (
+          <RadioGroup value={valor} onValueChange={handleValueChange} className="space-y-2">
+            {input.opciones?.map((opcion) => (
+              <div key={opcion} className="flex items-center space-x-2">
+                <RadioGroupItem value={opcion} id={`${input.id_input}-rg-${opcion}`} />
+                <Label htmlFor={`${input.id_input}-rg-${opcion}`} className="text-sm cursor-pointer">{opcion}</Label>
+              </div>
+            ))}
+          </RadioGroup>
         );
 
   case 'number':
@@ -247,7 +260,8 @@ export const CampoDinamico: React.FC<Props> = ({
     switch (tipo) {
       case 'textocorto': return <FileText className="w-4 h-4" />;
       case 'textolargo': return <FileText className="w-4 h-4" />;
-      case 'combobox': return <CheckSquare className="w-4 h-4" />;
+  case 'combobox': return <CheckSquare className="w-4 h-4" />;
+  case 'radiogroup': return <CheckSquare className="w-4 h-4" />;
       case 'multiplecheckbox': return <CheckSquare className="w-4 h-4" />;
       case 'date': return <CalendarIcon className="w-4 h-4" />;
       case 'number': return <FileText className="w-4 h-4" />;

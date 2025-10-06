@@ -624,6 +624,14 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
             flujo={flujo}
             pasos={pasos}
             caminos={caminos}
+            onCreatePaso={createPasoSolicitud}
+            onDeletePaso={deletePasoSolicitud}
+            onCreateConexion={createConexionPaso}
+            onReplaceConexiones={putConexionesPaso}
+            onDeleteConexion={deleteConexionPaso}
+            isAnyDirty={isAnyDirty}
+            onCommitAllDrafts={commitAllPasoDrafts}
+            onClearDrafts={clearAllDrafts}
            />
         </DialogContent>
       </Dialog>
