@@ -198,15 +198,24 @@ export default function Sidebar({ user }: SidebarProps) {
             isCollapsed ? "justify-center" : "space-x-3"
           )}>
             <div className={cn(
-              "rounded-full bg-primary flex items-center justify-center text-white flex-shrink-0",
-              isCollapsed ? "h-8 w-8" : "h-10 w-10"
+              "rounded-full bg-primary flex items-center justify-center text-white flex-shrink-0 font-semibold",
+              isCollapsed ? "h-8 w-8 text-sm" : "h-10 w-10 text-base"
             )}>
-              {user?.nombre?.charAt(0) || 'U'}
+              {user?.nombre?.charAt(0).toUpperCase() || 'U'}
             </div>
             {!isCollapsed && (
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="font-medium text-sm truncate">{user?.nombre || 'Usuario'}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.rol || 'Rol no definido'}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.cargoNombre || 'Cargo no definido'}</p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="text-xs text-primary font-medium truncate">{user?.rolNombre || 'Sin rol'}</span>
+                  {user?.departamentoNombre && (
+                    <>
+                      <span className="text-xs text-muted-foreground">•</span>
+                      <span className="text-xs text-muted-foreground truncate">{user.departamentoNombre}</span>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>

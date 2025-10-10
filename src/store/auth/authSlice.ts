@@ -27,6 +27,7 @@ export const verifyToken = createAsyncThunk(
           },
         }
       );
+      
       if (response.data.user) {
         return response.data.user;
       } else {
@@ -105,6 +106,7 @@ const authSlice = createSlice({
         state.status = "succeeded";
         state.user = action.payload;
         state.isAuthenticated = true;
+        
         // Ensure API token is set if we have an access token
         if (state.accessToken) {
           setApiToken(state.accessToken);

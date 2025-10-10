@@ -49,7 +49,8 @@ const MisPasosPage: React.FC = () => {
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario ?? 0);
   const currentUser = useSelector((s: RootState) => s.auth.user);
   const roleName = String(currentUser?.rolNombre ?? '');
-  const isAdmin = /admin|administrador|desarrollad|developer/i.test(roleName);
+  // Solo los usuarios con rol exacto "Administrador" pueden ver como otros usuarios
+  const isAdmin = roleName.toLowerCase() === 'administrador';
   
   console.log('Current user:', { currentUserId, currentUser, roleName, isAdmin });
   
