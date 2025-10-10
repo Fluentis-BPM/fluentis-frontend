@@ -117,6 +117,11 @@ const mapSolicitud = (sObj: unknown): Solicitud => {
 };
 
 // Thunks
+/**
+ * @deprecated INSEGURO: No usar desde el frontend. Obtiene TODAS las solicitudes sin filtrar.
+ * Use fetchSolicitudesByUsuario en su lugar.
+ * Este endpoint solo debería usarse desde herramientas de administración del backend.
+ */
 export const fetchSolicitudes = createAsyncThunk<Solicitud[], void, { rejectValue: string }>(
   'solicitudes/fetchAll',
   async (_, { rejectWithValue }) => {
@@ -126,6 +131,19 @@ export const fetchSolicitudes = createAsyncThunk<Solicitud[], void, { rejectValu
       return arr.map(mapSolicitud);
     } catch (e: unknown) {
       return rejectWithValue('Error al cargar solicitudes: ' + (e as Error).message);
+    }
+  }
+);
+
+export const fetchSolicitudesByUsuario = createAsyncThunk<Solicitud[], number, { rejectValue: string }>(
+  'solicitudes/fetchByUsuario',
+  async (usuarioId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/api/solicitudes/usuario/${usuarioId}`);
+      const arr: unknown[] = Array.isArray(data) ? data : [];
+      return arr.map(mapSolicitud);
+    } catch (e: unknown) {
+      return rejectWithValue('Error al cargar solicitudes del usuario: ' + (e as Error).message);
     }
   }
 );
@@ -279,6 +297,10 @@ const solicitudesSlice = createSlice({
       .addCase(fetchSolicitudes.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(fetchSolicitudes.fulfilled, (state, action: PayloadAction<Solicitud[]>) => { state.loading = false; state.items = action.payload; })
       .addCase(fetchSolicitudes.rejected, (state, action) => { state.loading = false; state.error = (action.payload as string) || 'Error'; })
+
+      .addCase(fetchSolicitudesByUsuario.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchSolicitudesByUsuario.fulfilled, (state, action: PayloadAction<Solicitud[]>) => { state.loading = false; state.items = action.payload; })
+      .addCase(fetchSolicitudesByUsuario.rejected, (state, action) => { state.loading = false; state.error = (action.payload as string) || 'Error'; })
 
       .addCase(createSolicitud.pending, (state) => { state.creating = true; state.error = null; })
       .addCase(createSolicitud.fulfilled, (state, action: PayloadAction<Solicitud>) => { state.creating = false; if (action.payload) state.items.unshift(action.payload); })

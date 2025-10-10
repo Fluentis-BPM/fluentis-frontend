@@ -13,7 +13,6 @@ export const useAuth = () => {
     try {
       const response = await instance.loginPopup(loginRequest);
       const accessToken = response.accessToken;
-      console.log("Response from MSAL:", response);
 
       // Save token to localStorage for persistence
       localStorage.setItem('accessToken', accessToken);

@@ -55,12 +55,28 @@ export const ModuloSolicitudes: React.FC<{
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const { grupos: gruposBackend } = useAprobations();
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario || 0);
+  const currentUserRole = useSelector((s: RootState) => s.auth.user?.rolNombre || '');
   const { users: usuariosBackend, loading: usersLoading } = useUsers();
 
-  // Impersonation (dev-only) state
+  // Verificar si el usuario es administrador
+  const isAdmin = currentUserRole.toLowerCase() === 'administrador';
+
+  // Impersonation (admin-only) state
   const _persistedImpersonated = typeof window !== 'undefined' ? window.localStorage.getItem('impersonatedUserId') : null;
-  const [impersonationEnabled, setImpersonationEnabled] = useState<boolean>(() => Boolean(_persistedImpersonated));
-  const [impersonatedUserId, setImpersonatedUserId] = useState<number | null>(() => _persistedImpersonated ? Number(_persistedImpersonated) : null);
+  const [impersonationEnabled, setImpersonationEnabled] = useState<boolean>(() => isAdmin && Boolean(_persistedImpersonated));
+  const [impersonatedUserId, setImpersonatedUserId] = useState<number | null>(() => (isAdmin && _persistedImpersonated) ? Number(_persistedImpersonated) : null);
+
+  // Limpiar impersonation si el usuario no es admin
+  useEffect(() => {
+    if (!isAdmin && (impersonationEnabled || impersonatedUserId)) {
+      setImpersonationEnabled(false);
+      setImpersonatedUserId(null);
+      clearImpersonation();
+      try { 
+        window.localStorage.removeItem('impersonatedUserId'); 
+      } catch (err) { /* noop */ }
+    }
+  }, [isAdmin, impersonationEnabled, impersonatedUserId]);
 
   // --- Ejemplo de usuario ficticio "Juan Pérez" ---
   // Usamos un id alto/ficticio que no choque con IDs reales
@@ -103,6 +119,13 @@ export const ModuloSolicitudes: React.FC<{
       setImpersonatedUserId(null);
       clearImpersonation();
       try { window.localStorage.removeItem('impersonatedUserId'); } catch (err) { /* noop */ }
+      // Recargar solicitudes con el usuario actual
+      if (currentUserId) {
+        solicitudesData.cargarSolicitudes(currentUserId);
+      }
+    } else if (impersonatedUserId) {
+      // Si se habilita y ya hay un usuario seleccionado, recargar
+      solicitudesData.cargarSolicitudes(impersonatedUserId);
     }
     // notify same-window listeners
     try { window.dispatchEvent(new CustomEvent('impersonation-changed', { detail: { id: enabled ? impersonatedUserId : null } })); } catch (err) { /* noop */ }
@@ -116,8 +139,14 @@ export const ModuloSolicitudes: React.FC<{
   setImpersonationEnabled(true);
       setImpersonateUserId(id);
       try { window.localStorage.setItem('impersonatedUserId', String(id)); } catch (err) { /* noop */ }
+      // Recargar solicitudes con el nuevo usuario
+      solicitudesData.cargarSolicitudes(id);
     } else {
       clearImpersonation();
+      // Recargar solicitudes con el usuario actual
+      if (currentUserId) {
+        solicitudesData.cargarSolicitudes(currentUserId);
+      }
     }
   // notify same-window listeners
   try { window.dispatchEvent(new CustomEvent('impersonation-changed', { detail: { id } })); } catch (err) { /* noop */ }
@@ -256,12 +285,12 @@ export const ModuloSolicitudes: React.FC<{
     return coincideBusqueda && coincideEstado;
   });
 
-  // Determinar usuario que está visualizando (developer o impersonado)
-  const viewerUserId = (impersonationEnabled && impersonatedUserId) ? impersonatedUserId : currentUserId;
+  // Determinar usuario que está visualizando (administrador impersonado o usuario actual)
+  const viewerUserId = (isAdmin && impersonationEnabled && impersonatedUserId) ? impersonatedUserId : currentUserId;
 
   // Filtrar para mostrar:
-  // 1. Solicitudes creadas por el usuario actual
-  // 2. Solicitudes donde el usuario es miembro del grupo de aprobación
+  // 1. Solicitudes creadas por el usuario (solicitante_id === viewerUserId)
+  // 2. Solicitudes donde el usuario es miembro de algún grupo de aprobación
   const solicitudesFiltradas = (viewerUserId)
     ? baseFiltrado.filter(solicitud => {
         // Mostrar si el usuario es el solicitante
@@ -269,17 +298,45 @@ export const ModuloSolicitudes: React.FC<{
           return true;
         }
         
-        // Mostrar si el usuario es miembro del grupo de aprobación
+        // Verificar si el usuario es miembro de algún grupo de aprobación de esta solicitud
+        // Primero verificar en el array grupos_aprobacion de la solicitud
+        if (solicitud.grupos_aprobacion && Array.isArray(solicitud.grupos_aprobacion)) {
+          for (const grupoRel of solicitud.grupos_aprobacion) {
+            const grupoId = grupoRel.grupo_aprobacion_id;
+            if (!grupoId) continue;
+            
+            let g = gruposBackend.find(gr => gr.id_grupo === grupoId);
+            // si es nuestro grupo ficticio, construirlo on-the-fly
+            if (!g && grupoId === GRUPO_PRUEBAS_ID) {
+              g = GRUPO_PRUEBAS_OBJ;
+            }
+            
+            if (g) {
+              const miembros = (g.usuarios || []).map(u => u.idUsuario).filter(Boolean) as number[];
+              if (miembros.includes(viewerUserId as number)) {
+                return true;
+              }
+            }
+          }
+        }
+        
+        // Fallback: verificar en relaciones locales si no hay grupos_aprobacion
         const relacion = relacionesGrupo.find(r => r.solicitud_id === solicitud.id_solicitud);
         const assignedGroupId = relacion?.grupo_aprobacion_id ?? (solicitud as { grupo_aprobacion_id?: number }).grupo_aprobacion_id;
-        if (!assignedGroupId) return false;
-        let g = gruposBackend.find(gr => gr.id_grupo === assignedGroupId);
-        // si es nuestro grupo ficticio, construirlo on-the-fly
-        if (!g && assignedGroupId === GRUPO_PRUEBAS_ID) {
-          g = GRUPO_PRUEBAS_OBJ;
+        if (assignedGroupId) {
+          let g = gruposBackend.find(gr => gr.id_grupo === assignedGroupId);
+          if (!g && assignedGroupId === GRUPO_PRUEBAS_ID) {
+            g = GRUPO_PRUEBAS_OBJ;
+          }
+          if (g) {
+            const miembros = (g.usuarios || []).map(u => u.idUsuario).filter(Boolean) as number[];
+            if (miembros.includes(viewerUserId as number)) {
+              return true;
+            }
+          }
         }
-        const miembros = (g?.usuarios || []).map(u => u.idUsuario).filter(Boolean) as number[];
-        return miembros.includes(viewerUserId as number);
+        
+        return false;
       })
     : baseFiltrado;
 
@@ -328,36 +385,38 @@ export const ModuloSolicitudes: React.FC<{
 
         <EstadisticasSolicitudes estadisticas={estadisticas} />
 
-        {/* Impersonation (dev-only): toggle + selector */}
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-end gap-3 mb-2">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-xs text-muted-foreground">Modo Develop (Ver como)</span>
-              <Toggle
-                pressed={impersonationEnabled}
-                onPressedChange={(v: boolean) => handleToggleImpersonation(v)}
-                size="sm"
-              >
-                {impersonationEnabled ? 'ON' : 'OFF'}
-              </Toggle>
-            </div>
+        {/* Impersonation (admin-only): toggle + selector */}
+        {isAdmin && (
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center justify-end gap-3 mb-2">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-xs text-muted-foreground">Modo Administrador (Ver como)</span>
+                <Toggle
+                  pressed={impersonationEnabled}
+                  onPressedChange={(v: boolean) => handleToggleImpersonation(v)}
+                  size="sm"
+                >
+                  {impersonationEnabled ? 'ON' : 'OFF'}
+                </Toggle>
+              </div>
 
-            <div className="w-60">
-              <Select value={impersonatedUserId ? String(impersonatedUserId) : ''} onValueChange={handleSelectImpersonatedUser}>
-                <SelectTrigger className="w-full h-9">
-                  <SelectValue placeholder={usersLoading ? 'Cargando usuarios...' : 'Seleccionar usuario...'} />
-                </SelectTrigger>
-                <SelectContent>
-                    {/* Juan Pérez ejemplo siempre disponible en el selector (dev-example) */}
-                    <SelectItem key="juan_perez" value={String(JUAN_PEREZ_ID)}>{JUAN_PEREZ_USER.nombre}</SelectItem>
-                    {usuariosBackend.map(u => (
-                      <SelectItem key={u.idUsuario} value={String(u.idUsuario)}>{u.nombre}</SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <div className="w-60">
+                <Select value={impersonatedUserId ? String(impersonatedUserId) : ''} onValueChange={handleSelectImpersonatedUser}>
+                  <SelectTrigger className="w-full h-9">
+                    <SelectValue placeholder={usersLoading ? 'Cargando usuarios...' : 'Seleccionar usuario...'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {/* Juan Pérez ejemplo siempre disponible en el selector (dev-example) */}
+                      <SelectItem key="juan_perez" value={String(JUAN_PEREZ_ID)}>{JUAN_PEREZ_USER.nombre}</SelectItem>
+                      {usuariosBackend.map(u => (
+                        <SelectItem key={u.idUsuario} value={String(u.idUsuario)}>{u.nombre}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Pestañas principales */}
         <Tabs defaultValue="solicitudes" className="space-y-4">

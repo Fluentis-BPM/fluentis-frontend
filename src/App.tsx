@@ -8,7 +8,7 @@ import { msalConfig } from "./authConfig";
 import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { setAccessToken, silentVerifyToken } from './store/auth/authSlice';
-import { fetchSolicitudes } from './store/solicitudes/solicitudesSlice';
+import { fetchSolicitudesByUsuario } from './store/solicitudes/solicitudesSlice';
 
 import { router } from './routes/index';
 import { Toaster } from '@/components/ui/toast';
@@ -31,9 +31,15 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
           dispatch(setAccessToken(storedToken));
           
           // Verify the token with the backend silently
-          await dispatch(silentVerifyToken(storedToken));
-          // After token is set and user verified, prefetch solicitudes
-          await dispatch(fetchSolicitudes());
+          const result = await dispatch(silentVerifyToken(storedToken));
+          
+          // After token is set and user verified, prefetch solicitudes del usuario autenticado
+          if (result.payload && typeof result.payload === 'object' && 'idUsuario' in result.payload) {
+            const userId = (result.payload as { idUsuario?: number }).idUsuario;
+            if (userId) {
+              await dispatch(fetchSolicitudesByUsuario(userId));
+            }
+          }
         }
       } catch (error) {
         console.error('Error initializing authentication:', error);

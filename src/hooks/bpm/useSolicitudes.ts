@@ -7,7 +7,7 @@ import { useFlujos } from './useFlujos';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '@/store';
 import {
-  fetchSolicitudes as fetchSolicitudesThunk,
+  fetchSolicitudesByUsuario as fetchSolicitudesByUsuarioThunk,
   createSolicitud as createSolicitudThunk,
   updateSolicitudEstado as updateSolicitudEstadoThunk,
   addGrupoAprobacion as addGrupoAprobacionThunk,
@@ -33,9 +33,19 @@ export const useSolicitudes = () => {
   // Generar ID único para nuevas solicitudes y relaciones
   // Helpers not needed here (handled in slice)
 
-  // Cargar solicitudes desde backend
-  const cargarSolicitudes = useCallback(async () => {
-    const res = await dispatch(fetchSolicitudesThunk()).unwrap();
+  // Cargar solicitudes desde backend - SIEMPRE usar endpoint filtrado por usuario (seguridad)
+  const cargarSolicitudes = useCallback(async (usuarioId?: number) => {
+    // Si no se proporciona usuarioId, usar el del usuario actual
+    const targetUserId = usuarioId ?? currentUserId;
+    
+    if (!targetUserId) {
+      console.warn('No se puede cargar solicitudes sin un userId válido');
+      return;
+    }
+
+    // SIEMPRE usar el endpoint filtrado por usuario (seguridad)
+    const res = await dispatch(fetchSolicitudesByUsuarioThunk(targetUserId)).unwrap();
+    
     // Sync backend grupo_aprobacion_id into local approval relations
     if (Array.isArray(res)) {
       res.forEach((s) => {
@@ -46,7 +56,7 @@ export const useSolicitudes = () => {
         }
       });
     }
-  }, [dispatch]);
+  }, [dispatch, aprobacion, currentUserId]);
 
   // Auto-cargar si la lista está vacía
   // Auto-cargar al montar o cuando el token/usuario estén listos
@@ -54,15 +64,16 @@ export const useSolicitudes = () => {
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
   
   useEffect(() => {
-    if ((!items || items.length === 0) && isAuthenticated && !loading && !hasInitialLoad) {
+    if ((!items || items.length === 0) && isAuthenticated && !loading && !hasInitialLoad && currentUserId) {
       // Debounce to prevent rapid consecutive calls
       const timeoutId = setTimeout(() => {
-        dispatch(fetchSolicitudesThunk());
+        // Usar el nuevo endpoint con el usuarioId del usuario actual
+        dispatch(fetchSolicitudesByUsuarioThunk(currentUserId));
         setHasInitialLoad(true);
       }, 100);
       return () => clearTimeout(timeoutId);
     }
-  }, [dispatch, items?.length, isAuthenticated, loading, hasInitialLoad]);
+  }, [dispatch, items?.length, isAuthenticated, loading, hasInitialLoad, currentUserId]);
 
   // Ensure local approval relations exist for all solicitudes with a backend group id
   useEffect(() => {
