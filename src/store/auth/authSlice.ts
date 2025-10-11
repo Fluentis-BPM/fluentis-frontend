@@ -18,7 +18,8 @@ export const verifyToken = createAsyncThunk(
   "auth/verifyToken",
   async (accessToken: string, { rejectWithValue }) => {
     try {
-      const response = await axios.post<{ user?: User; error?: string }>("http://localhost:8080/Auth/login", 
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+      const response = await axios.post<{ user?: User; error?: string }>(`${apiBaseUrl}/Auth/login`, 
         { accessToken },
         {
           headers: {
@@ -44,7 +45,8 @@ export const silentVerifyToken = createAsyncThunk(
   "auth/silentVerifyToken",
   async (accessToken: string, { rejectWithValue }) => {
     try {
-      const response = await axios.post<{ user?: User; error?: string }>("http://localhost:8080/Auth/login", 
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+      const response = await axios.post<{ user?: User; error?: string }>(`${apiBaseUrl}/Auth/login`, 
         { accessToken },
         {
           headers: {
