@@ -95,7 +95,17 @@ export interface EstadisticasFlujos {
 // Tipos básicos
 export type EstadoFlujo = 'encurso' | 'finalizado' | 'cancelado';
 export type TipoPaso = 'inicio' | 'ejecucion' | 'aprobacion' | 'fin';
-export type EstadoPaso = 'aprobado' | 'rechazado' | 'excepcion' | 'pendiente' | 'entregado' | 'cancelado';
+export type EstadoPaso =
+  | 'pendiente'
+  | 'enprogreso'
+  | 'en_proceso'
+  | 'completado'
+  | 'aprobado'
+  | 'rechazado'
+  | 'excepcion'
+  | 'entregado'
+  | 'fallido'
+  | 'cancelado';
 export type TipoFlujoPaso = 'normal' | 'bifurcacion' | 'union';
 export type ReglaAprobacion = 'unanime' | 'individual' | 'ancla';
 
@@ -134,10 +144,10 @@ export interface PasoSolicitud {
   tipo?: 'inicio' | 'proceso' | 'fin';
   // Campos dinámicos asociados (formas alternativas usadas en distintos módulos)
   campos_dinamicos?: CamposDinamicos | RelacionInput[];
-  relacionesInput: RelacionInput[];
-  relacionesGrupoAprobacion: RelacionGrupoAprobacion[];
-  comentarios: Comentario[];
-  excepciones: Excepcion[];
+  relacionesInput?: RelacionInput[];
+  relacionesGrupoAprobacion?: RelacionGrupoAprobacion[];
+  comentarios?: Comentario[];
+  excepciones?: Excepcion[];
 }
 
 // Entidad CaminoParalelo (conexión entre pasos)

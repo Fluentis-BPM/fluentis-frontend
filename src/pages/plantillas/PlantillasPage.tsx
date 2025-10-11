@@ -405,7 +405,13 @@ export default function PlantillasPage() {
                               <Calendar
                                 mode="single"
                                 selected={inp.ValorPorDefecto ? new Date(inp.ValorPorDefecto) : undefined}
-                                onSelect={(d) => updateInput(idx, { ValorPorDefecto: d ? d.toISOString() : '' })}
+                                onSelect={(d: Date | { from?: Date; to?: Date } | undefined) => {
+                                  let picked: Date | undefined;
+                                  if (!d) picked = undefined;
+                                  else if (d instanceof Date) picked = d;
+                                  else picked = (d as { from?: Date }).from;
+                                  updateInput(idx, { ValorPorDefecto: picked ? picked.toISOString() : '' });
+                                }}
                                 initialFocus
                               />
                             </PopoverContent>

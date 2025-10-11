@@ -444,7 +444,7 @@ export const useFlujos = () => {
       };
 
       // Asignar responsable automáticamente
-      setTimeout(() => asignarResponsableAutomatico(nuevoPaso.id_paso_solicitud, nuevoPaso.tipo_paso), 100);
+  setTimeout(() => asignarResponsableAutomatico(nuevoPaso.id_paso_solicitud, (nuevoPaso.tipo_paso as 'aprobacion' | 'ejecucion')), 100);
       
       return nuevoPaso;
     });
