@@ -89,9 +89,15 @@ export const CampoDinamico: React.FC<Props> = ({
     onChange(valor, !requerido);
   };
 
-  const handleDateSelect = (date: Date | undefined) => {
-    setSelectedDate(date);
-    handleValueChange(date ? date.toISOString() : '');
+  const handleDateSelect = (date: Date | { from?: Date; to?: Date } | undefined) => {
+    // Calendar component may return a Date or a range object; we only need a single date
+    let chosen: Date | undefined;
+    if (!date) chosen = undefined;
+    else if (date instanceof Date) chosen = date;
+    else chosen = (date as { from?: Date }).from;
+
+    setSelectedDate(chosen);
+    handleValueChange(chosen ? chosen.toISOString() : '');
   };
 
   const handleMultipleCheckboxChange = (option: string, checked: boolean) => {

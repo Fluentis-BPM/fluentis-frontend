@@ -31,8 +31,13 @@ export function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    onDateChange?.(selectedDate);
+  const handleDateSelect = (selectedDate: Date | { from?: Date; to?: Date } | undefined) => {
+    let chosen: Date | undefined;
+    if (!selectedDate) chosen = undefined;
+    else if (selectedDate instanceof Date) chosen = selectedDate;
+    else chosen = (selectedDate as { from?: Date }).from;
+
+    onDateChange?.(chosen);
     setOpen(false);
   };
 
@@ -56,15 +61,19 @@ export function DatePicker({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={handleDateSelect}
-          initialFocus
-          {...calendarProps}
-        />
-      </PopoverContent>
+        <PopoverContent className="w-auto p-0" align="start">
+          {/* Build props as any to avoid DayPicker/Calendar union typing issues in TS */}
+          {(() => {
+            const pickerProps = {
+              mode: 'single',
+              selected: date,
+              onSelect: (d: unknown) => handleDateSelect(d as Date | { from?: Date; to?: Date } | undefined),
+              initialFocus: true,
+              ...(calendarProps as React.ComponentProps<typeof Calendar>)
+            } as React.ComponentProps<typeof Calendar>;
+            return <Calendar {...pickerProps} />;
+          })()}
+        </PopoverContent>
     </Popover>
   );
 }
