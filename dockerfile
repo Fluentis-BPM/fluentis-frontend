@@ -17,7 +17,7 @@ COPY tsconfig.json /app/tsconfig.json
 COPY tsconfig.node.json /app/tsconfig.node.json
 COPY vite.config.ts /app/vite.config.ts
 
-RUN npm run build
+RUN npm run build:docker
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html

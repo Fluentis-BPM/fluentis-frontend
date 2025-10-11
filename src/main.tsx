@@ -1,12 +1,9 @@
-import React from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles/index.css'
-import { StrictMode } from 'react'
-import { RouterProvider } from 'react-router'
-import { router } from './routes'
+import App from './App'
 
+// StrictMode removed to prevent duplicate API calls
+// Re-enable for debugging: import { StrictMode } from 'react' and wrap <StrictMode><App /></StrictMode>
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <RouterProvider router={router}/>
-  </StrictMode> 
+  <App />
 )

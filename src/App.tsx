@@ -1,0 +1,94 @@
+
+import { RouterProvider } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { store, AppDispatch } from './store';
+import { PublicClientApplication } from "@azure/msal-browser";
+import { MsalProvider } from "@azure/msal-react";
+import { msalConfig } from "./authConfig";
+import { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { setAccessToken, silentVerifyToken } from './store/auth/authSlice';
+import { fetchSolicitudesByUsuario } from './store/solicitudes/solicitudesSlice';
+
+import { router } from './routes/index';
+import { Toaster } from '@/components/ui/toast';
+import { useToast } from '@/components/ui/use-toast';
+const msalInstance = new PublicClientApplication(msalConfig);
+
+// Component to handle authentication initialization
+function AuthInitializer({ children }: { children: React.ReactNode }) {
+  const dispatch = useDispatch<AppDispatch>();
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        // Check if there's a stored access token
+        const storedToken = localStorage.getItem('accessToken');
+        
+        if (storedToken) {
+          // Set the token in the store
+          dispatch(setAccessToken(storedToken));
+          
+          // Verify the token with the backend silently
+          const result = await dispatch(silentVerifyToken(storedToken));
+          
+          // After token is set and user verified, prefetch solicitudes del usuario autenticado
+          if (result.payload && typeof result.payload === 'object' && 'idUsuario' in result.payload) {
+            const userId = (result.payload as { idUsuario?: number }).idUsuario;
+            if (userId) {
+              await dispatch(fetchSolicitudesByUsuario(userId));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing authentication:', error);
+        // Clear invalid token
+        localStorage.removeItem('accessToken');
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeAuth();
+  }, [dispatch]);
+
+  // Don't render the app until auth is initialized
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-sm text-muted-foreground">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function AppInner() {
+  // Subscribe to the toast store and render the toaster
+  const { toasts } = useToast();
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster toasts={toasts} />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Provider store={store}>
+      <MsalProvider instance={msalInstance}>
+        <AuthInitializer>
+          <AppInner />
+        </AuthInitializer>
+      </MsalProvider>
+    </Provider>
+  );
+}
+
+export default App;
