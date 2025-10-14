@@ -13,6 +13,7 @@ export interface PasoRelacionInputCreateDto {
   PlaceHolder?: string;
   Valor?: PasoRelacionInputValorDto | null;
   Requerido?: boolean;
+  Opciones?: string[]; // Persisted to OptionsJson on backend
 }
 interface DraftInputUpdate {
   id: number; // relation id
@@ -429,6 +430,12 @@ export const commitAllPasoDrafts = createAsyncThunk<void, void, { state: RootSta
           for (const c of draft.inputs.created) {
             try {
               const { _tmpId, ...payload } = c as typeof c & { _tmpId?: string };
+              // Remove empty Opciones arrays to avoid noisy payloads
+              const pRec = payload as Record<string, unknown>;
+              const maybeOpc = pRec['Opciones'];
+              if (Array.isArray(maybeOpc) && maybeOpc.length === 0) {
+                delete pRec['Opciones'];
+              }
               await api.post(`/api/PasoSolicitud/${pasoId}/inputs`, payload);
             } catch (err: unknown) {
               const e = err as { response?: { status?: number; data?: unknown } };
@@ -442,6 +449,12 @@ export const commitAllPasoDrafts = createAsyncThunk<void, void, { state: RootSta
         if (draft?.inputs?.updated?.length) {
           for (const u of draft.inputs.updated) {
             try {
+              // Clean empty Opciones arrays
+              const upRec = u.patch as Record<string, unknown>;
+              const upOpc = upRec['Opciones'];
+              if (Array.isArray(upOpc) && upOpc.length === 0) {
+                delete upRec['Opciones'];
+              }
               await api.put(`/api/PasoSolicitud/${pasoId}/inputs/${u.id}`, u.patch);
             } catch (err: unknown) {
               const e = err as { response?: { status?: number; data?: unknown } };
