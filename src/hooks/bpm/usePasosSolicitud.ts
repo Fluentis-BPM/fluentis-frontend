@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { PasoSolicitud, FiltrosPasoSolicitud, AccionPasoRequest, AccionPasoResponse } from '@/types/bpm/paso';
+import type { TipoPaso, EstadoPaso } from '@/types/bpm/flow';
 import api from '@/services/api';
 import { AxiosError } from 'axios';
 
@@ -70,13 +71,32 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
   } | null>(null);
 
   // Mapear respuesta de API a tipos internos
+  const normalizeTipoPaso = (v: unknown): TipoPaso => {
+    const s = String(v ?? '').trim().toLowerCase();
+    if (s.includes('aprob')) return 'aprobacion';
+    if (s.includes('ini')) return 'inicio';
+    if (s.includes('fin')) return 'fin';
+    return 'ejecucion';
+  };
+
+  const normalizeEstadoPaso = (v: unknown): EstadoPaso => {
+    // Unificar variantes comunes: en_proceso -> enprogreso, completado -> entregado (para el UI actual)
+    let s = String(v ?? 'pendiente').trim().toLowerCase();
+    s = s.replace(/\s+/g, ''); // quitar espacios
+    if (s === 'en_proceso' || s === 'en-proceso' || s === 'enproceso') return 'enprogreso';
+    if (s === 'completado' || s === 'completo') return 'entregado';
+    // valores esperados permanecen
+    const allowed: EstadoPaso[] = ['pendiente','enprogreso','completado','aprobado','rechazado','excepcion','entregado','fallido','cancelado','en_proceso'];
+    return (allowed.includes(s as EstadoPaso) ? (s as EstadoPaso) : 'pendiente');
+  };
+
   const mapApiResponseToPaso = (apiPaso: PasoSolicitudApiResponse): PasoSolicitud => {
     const id = apiPaso.id ?? apiPaso.id_paso_solicitud ?? 0;
     const pasoId = apiPaso.pasoId ?? apiPaso.paso_id ?? id;
     const solicitudId = apiPaso.solicitudId ?? apiPaso.solicitud_id ?? 0;
     const usuarioAsignadoId = apiPaso.usuarioAsignadoId ?? apiPaso.usuario_asignado_id ?? 0;
-    const tipoPasoRaw = apiPaso.tipoPaso ?? apiPaso.tipo_paso ?? 'ejecucion';
-    const estadoRaw = apiPaso.estado ?? 'pendiente';
+  const tipoPasoRaw = apiPaso.tipoPaso ?? apiPaso.tipo_paso ?? 'ejecucion';
+  const estadoRaw = apiPaso.estado ?? 'pendiente';
     const nombre = apiPaso.nombre ?? `Paso ${pasoId || id}`;
     const fechaCreacion = apiPaso.fechaCreacion ?? apiPaso.fecha_creacion ?? new Date().toISOString();
     const prioridadRaw = apiPaso.prioridad ?? apiPaso.prioridad_paso ?? 'media';
@@ -85,8 +105,8 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
       pasoId,
       solicitudId,
       usuarioAsignadoId,
-      tipoPaso: tipoPasoRaw as PasoSolicitud['tipoPaso'],
-      estado: estadoRaw as PasoSolicitud['estado'],
+  tipoPaso: normalizeTipoPaso(tipoPasoRaw),
+  estado: normalizeEstadoPaso(estadoRaw),
       nombre,
       descripcion: apiPaso.descripcion,
       fechaCreacion,

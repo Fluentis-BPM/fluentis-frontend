@@ -90,7 +90,11 @@ export const validateRawValue = ({ tipo, requerido, rawValue }: ValidacionCampoC
       if (Number.isNaN(Number(trimmed))) return 'Número inválido';
       break;
     case 'date':
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return 'Fecha inválida (YYYY-MM-DD)';
+      // Accept YYYY-MM-DD or full ISO strings; fallback to Date.parse
+      if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(trimmed)) {
+        const d = Date.parse(trimmed);
+        if (Number.isNaN(d)) return 'Fecha inválida';
+      }
       break;
     case 'multiplecheckbox':
       try {
@@ -98,6 +102,12 @@ export const validateRawValue = ({ tipo, requerido, rawValue }: ValidacionCampoC
         if (!Array.isArray(arr)) return 'Formato inválido';
         if (requerido && arr.length === 0) return 'Seleccione al menos una opción';
       } catch { return 'JSON inválido'; }
+      break;
+    case 'archivo':
+      try {
+        const obj = JSON.parse(trimmed);
+        if (requerido && (!obj || typeof obj !== 'object')) return 'Archivo requerido';
+      } catch { return 'Formato de archivo inválido'; }
       break;
     default:
       break;
@@ -110,6 +120,7 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
   'executionInputs/fetchPasoExecutionRelations',
   async ({ pasoId }, { rejectWithValue }) => {
     try {
+      const isDev = typeof import.meta !== 'undefined' && !!((import.meta as unknown as { env?: Record<string, unknown> }).env?.DEV);
       // We expect an endpoint that returns paso detail including relacionesInput.
       // Reuse existing endpoint from bpm flow if available; fallback to generic /api/PasoSolicitud/{id}
       const { data } = await api.get(`/api/PasoSolicitud/${pasoId}`);
@@ -127,22 +138,223 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
           console.warn('[executionInputs] Fallback inputs endpoint falló', e);
         }
       }
-      const mapped: PasoExecutionRelation[] = rawRelations.map((raw) => {
+      // Intentar obtener un mapa idInput -> tipo desde el catálogo
+      let inputTypeMap: Record<number, string> = {};
+      let inputOptionsMap: Record<number, string[]> = {};
+      try {
+        const cat = await api.get('/api/inputs');
+        const arr: unknown[] = Array.isArray(cat.data) ? cat.data : [];
+        inputTypeMap = arr.reduce<Record<number, string>>((acc, it) => {
+          const o = it as Record<string, unknown>;
+          const id = Number(o['idInput'] ?? o['IdInput'] ?? o['id_input'] ?? 0);
+          const tipo = String(o['tipoInput'] ?? o['TipoInput'] ?? o['tipo_input'] ?? '');
+          if (id && tipo) acc[id] = tipo;
+          return acc;
+        }, {});
+        inputOptionsMap = arr.reduce<Record<number, string[]>>((acc, it) => {
+          const o = it as Record<string, unknown>;
+          const id = Number(o['idInput'] ?? o['IdInput'] ?? o['id_input'] ?? 0);
+          let opts = o['opciones'] ?? o['Opciones'] ?? o['options'];
+          if (!opts) opts = o['OpcionesJson'] ?? o['opcionesJson'] ?? o['OptionsJson'] ?? o['optionsJson'];
+          let list: string[] | undefined;
+          if (Array.isArray(opts)) {
+            list = (opts as unknown[]).filter(x => typeof x === 'string') as string[];
+          } else if (typeof opts === 'string') {
+            // try JSON first, then delimiters
+            const s = opts as string;
+            try { const parsed = JSON.parse(s); if (Array.isArray(parsed)) list = parsed.filter(x => typeof x === 'string'); } catch { /* noop */ }
+            if (!list) {
+              const sep = s.includes(';') ? ';' : (s.includes('|') ? '|' : (s.includes(',') ? ',' : null));
+              if (sep) list = s.split(sep).map(x => x.trim()).filter(Boolean);
+            }
+          }
+          if (id && list && list.length) acc[id] = list;
+          return acc;
+        }, {});
+      } catch {/* opcional */}
+
+      let mapped: PasoExecutionRelation[] = rawRelations.map((raw) => {
         const r = raw as Record<string, unknown>;
         const idCandidate = (r['idRelacion'] ?? r['IdRelacion'] ?? r['id_relacion'] ?? r['id_relacion'] ?? r['id'] ?? r['IdRelacionInput']);
         const id = typeof idCandidate === 'number' ? idCandidate : 0;
-        const valorObj = r['valor'] ?? r['Valor'];
-        const valor = (() => {
-          if (valorObj && typeof valorObj === 'object' && 'RawValue' in (valorObj as Record<string, unknown>)) {
-            return String((valorObj as Record<string, unknown>)['RawValue'] ?? '');
+  const valorObj = r['valor'] ?? r['Valor'] ?? r['InputValue'];
+  // Derivar valor plano (RawValue) y metadatos de tipo/opciones desde objeto anidado si existe
+  let valor: string = '';
+  const tipoInputFromRelation: string | undefined = (r['tipo_input'] ?? r['tipoInput'] ?? r['tipo'] ?? undefined) as string | undefined;
+  let tipoInputFromValor: string | undefined;
+  let tipoInputFromMeta: string | undefined;
+  let opciones: string[] | undefined;
+        if (valorObj && typeof valorObj === 'object') {
+          const vrec = valorObj as Record<string, unknown>;
+          // RawValue
+          if ('RawValue' in vrec) {
+            valor = String(vrec['RawValue'] ?? '');
           }
-          return String(valorObj ?? '');
-        })();
-        const tipoInput = (r['tipo_input'] ?? r['tipoInput'] ?? r['tipo'] ?? '') as string;
-        let opciones: string[] | undefined;
-        const rawOpciones = r['opciones'] ?? r['Opciones'] ?? r['options'];
-        if (Array.isArray(rawOpciones)) {
-          opciones = rawOpciones.filter(o => typeof o === 'string') as string[];
+          // TipoInput puede venir como PascalCase (e.g., RadioGroup)
+          tipoInputFromValor = (vrec['tipoInput'] ?? vrec['TipoInput']) as string | undefined;
+          // Opciones puede venir como arreglo o string JSON
+          let nestedOpts = vrec['Options'] ?? vrec['Opciones'];
+          if (!nestedOpts) nestedOpts = vrec['options'];
+          if (Array.isArray(nestedOpts)) {
+            opciones = (nestedOpts as unknown[]).filter(o => typeof o === 'string') as string[];
+          } else if (typeof nestedOpts === 'string') {
+            try {
+              const parsed = JSON.parse(nestedOpts);
+              if (Array.isArray(parsed)) opciones = parsed.filter(o => typeof o === 'string');
+            } catch { /* ignore */ }
+          }
+        } else {
+          valor = String(valorObj ?? '');
+        }
+  // También intentar leer tipo/opciones desde r.input (metadata del catálogo)
+        const inputMeta = r['input'];
+        if (inputMeta && typeof inputMeta === 'object') {
+          const im = inputMeta as Record<string, unknown>;
+          // Preferir tipo desde input meta (normalizado en interceptor como tipo_input_front)
+          const metaTipo = (im['tipo_input_front'] ?? im['tipo_input'] ?? im['tipoInput'] ?? im['TipoInput']) as string | undefined;
+          if (typeof metaTipo === 'string') tipoInputFromMeta = metaTipo;
+          // Fallback opciones desde input meta
+          if (!opciones) {
+            const imOpts = im['opciones'] ?? im['Opciones'] ?? im['options'];
+            if (Array.isArray(imOpts)) {
+              opciones = (imOpts as unknown[]).filter(o => typeof o === 'string') as string[];
+            } else if (typeof imOpts === 'string') {
+              try {
+                const parsed = JSON.parse(String(imOpts));
+                if (Array.isArray(parsed)) opciones = parsed.filter(o => typeof o === 'string');
+              } catch { /* ignore */ }
+            }
+          }
+        }
+        // Leer opciones nivel relación si vienen como arreglo directo (algunos endpoints ya las devuelven así)
+        if (!opciones) {
+          const topArr = (r['opciones'] ?? r['Opciones'] ?? r['options']) as unknown;
+          if (Array.isArray(topArr)) {
+            opciones = (topArr as unknown[]).filter(o => typeof o === 'string') as string[];
+          }
+        }
+        // Intentar leer JSON desde placeholder como último recurso legacy
+        if (!opciones) {
+          const ph = (r['placeHolder'] ?? r['PlaceHolder'] ?? r['placeholder']) as string | undefined;
+          if (typeof ph === 'string' && ph.trim().startsWith('[')) {
+            try {
+              const parsed = JSON.parse(ph);
+              if (Array.isArray(parsed)) opciones = parsed.filter(o => typeof o === 'string');
+            } catch {/* ignore */}
+          }
+        }
+  // Resolver mejor tipo con precedencia: meta > catálogo por inputId > valor > relation field
+  const inputIdResolved = Number(r['inputId'] ?? r['InputId'] ?? r['input_id'] ?? 0);
+  const tipoFromCatalog = inputIdResolved ? inputTypeMap[inputIdResolved] : undefined;
+  let rawTipo = tipoInputFromMeta || tipoFromCatalog || tipoInputFromValor || tipoInputFromRelation;
+        // Heurísticas: si no tenemos tipo, inferir por forma del valor/opciones
+        if (!rawTipo) {
+          try {
+            const parsed = valor ? JSON.parse(valor) : undefined;
+            if (Array.isArray(parsed)) rawTipo = 'MultipleCheckbox';
+            else if (parsed && typeof parsed === 'object') {
+              const keys = Object.keys(parsed as Record<string, unknown>);
+              if (keys.some(k => ['fileId', 'fileName', 'provider', 'directLink'].includes(k))) rawTipo = 'Archivo';
+            }
+          } catch {/* ignore */}
+        }
+    if (!rawTipo && opciones && opciones.length > 0) rawTipo = 'Combobox';
+  if (!rawTipo && valor && /^\d{4}-\d{2}-\d{2}(T.*)?$/.test(valor)) rawTipo = 'Date';
+  if (!rawTipo && valor && !isNaN(Number(valor))) rawTipo = 'Number';
+  // Catálogo ya considerado en la precedencia anterior
+  // Normalizar valor por tipo conocido (para evitar estados inválidos en UI)
+  let inferredTipo = rawTipo ? normalizeTipoInput(String(rawTipo)) : undefined;
+        if (inferredTipo === 'multiplecheckbox') {
+          try {
+            const arr = JSON.parse(valor);
+            if (!Array.isArray(arr)) valor = '[]';
+          } catch { valor = '[]'; }
+        }
+        if (inferredTipo === 'archivo') {
+          if (valor && valor.trim()) {
+            try { JSON.parse(valor); } catch { valor = ''; }
+          }
+        }
+        // Si aún hay ambigüedad, aplicar heurísticas por nombre del campo
+        const nombreStr = String(r['nombre'] ?? r['Nombre'] ?? r['etiqueta'] ?? '').toLowerCase();
+        let heuristicApplied: string | undefined;
+        if (inferredTipo === 'number' && nombreStr.includes('archivo')) { inferredTipo = 'archivo'; heuristicApplied = 'nombre→archivo'; }
+        if (inferredTipo === 'multiplecheckbox' && (nombreStr.includes('fecha') || nombreStr.includes('date'))) { inferredTipo = 'date'; heuristicApplied = 'nombre→date'; }
+        // Detectar números por nombre/valor cuando el catálogo falla (presupuesto, precio, monto, cantidad, total, número)
+        const numberHints = ['presupuesto','precio','monto','cantidad','total','numero','número','importe','costo','coste'];
+        const seemsNumeric = valor && !isNaN(Number(valor));
+        if ((!inferredTipo || ['textocorto','textolargo','date'].includes(inferredTipo)) && (numberHints.some(h => nombreStr.includes(h)) || seemsNumeric)) {
+          inferredTipo = 'number'; heuristicApplied = (heuristicApplied ? heuristicApplied + '+' : '') + 'nombre/valor→number';
+        }
+        // Si hay opciones pero el tipo quedó en date/number/texto, corrígelo a un tipo basado en opciones
+        if (opciones && opciones.length > 0 && (!inferredTipo || ['textocorto','textolargo','date','number'].includes(inferredTipo))) {
+          let looksArray = false;
+          try { const pv = valor ? JSON.parse(valor) : undefined; looksArray = Array.isArray(pv); } catch { /* noop */ }
+          if (looksArray || nombreStr.includes('múltiple') || nombreStr.includes('multip') || nombreStr.includes('multiple')) {
+            inferredTipo = 'multiplecheckbox'; heuristicApplied = (heuristicApplied ? heuristicApplied + '+' : '') + 'opciones→multiplecheckbox';
+          } else if (nombreStr.includes('radio') || (tipoInputFromRelation === 'radiogroup')) {
+            inferredTipo = 'radiogroup'; heuristicApplied = (heuristicApplied ? heuristicApplied + '+' : '') + 'opciones→radiogroup';
+          } else {
+            inferredTipo = 'combobox'; heuristicApplied = (heuristicApplied ? heuristicApplied + '+' : '') + 'opciones→combobox';
+          }
+        }
+        // Último fallback de opciones por catálogo
+        if (!opciones && inputIdResolved && inputOptionsMap[inputIdResolved]) {
+          opciones = inputOptionsMap[inputIdResolved];
+        }
+        // Fallback para opciones en string JSON a nivel de relación (OpcionesJson/optionsJson)
+        if (!opciones) {
+          const j = (r['OpcionesJson'] ?? r['opcionesJson'] ?? r['OptionsJson'] ?? r['optionsJson']) as string | undefined;
+          if (typeof j === 'string' && j.trim()) {
+            try {
+              const parsed = JSON.parse(j);
+              if (Array.isArray(parsed)) opciones = parsed.filter(o => typeof o === 'string');
+            } catch {/* ignore */}
+          }
+        }
+        // Fallback adicional: si hay 'opciones' como string con separadores comunes
+        if (!opciones) {
+          const s = (r['opciones'] ?? r['Opciones'] ?? r['options']) as string | undefined;
+          if (typeof s === 'string' && s.trim()) {
+            const sep = s.includes(';') ? ';' : (s.includes('|') ? '|' : (s.includes(',') ? ',' : null));
+            if (sep) {
+              opciones = s.split(sep).map(x => x.trim()).filter(Boolean);
+            }
+          }
+        }
+
+        if (isDev) {
+          // Consola de diagnóstico para cada relación
+          try {
+            // Evitar log gigantesco (clonar superficialmente algunas claves)
+            const dbg: Record<string, unknown> = {
+              id,
+              inputId: inputIdResolved,
+              nombre: String(r['nombre'] ?? r['Nombre'] ?? r['etiqueta'] ?? ''),
+              requerido: Boolean(r['requerido'] ?? r['Requerido'] ?? r['es_requerido'] ?? false),
+              fromRelationTipo: tipoInputFromRelation,
+              fromValorTipo: tipoInputFromValor,
+              fromMetaTipo: tipoInputFromMeta,
+              resolvedRawTipo: rawTipo,
+              normalizedTipo: inferredTipo,
+              opcionesCount: opciones?.length ?? 0,
+              catalogTipo: inputIdResolved ? inputTypeMap[inputIdResolved] : undefined,
+              precedence: ['meta','catalog','valor','relacion'],
+              heuristicApplied,
+            };
+            // Peek minimal valor info
+            let valorShape: string = 'empty';
+            if (valor && valor.trim()) {
+              try {
+                const pv = JSON.parse(valor);
+                valorShape = Array.isArray(pv) ? `array(${pv.length})` : typeof pv;
+              } catch { valorShape = 'string'; }
+            }
+            dbg['valorShape'] = valorShape;
+            console.groupCollapsed(`[execInputs] Relación ${id}`);
+            console.log(dbg);
+            console.groupEnd();
+          } catch {/* ignore logging errors */}
         }
         return {
           id,
@@ -151,11 +363,55 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
           requerido: Boolean(r['requerido'] ?? r['Requerido'] ?? r['es_requerido'] ?? false),
           placeHolder: (r['placeHolder'] ?? r['PlaceHolder'] ?? r['placeholder'] ?? null) as string | null,
           valor,
-          tipo_input: typeof tipoInput === 'string' ? tipoInput : undefined,
+          tipo_input: inferredTipo,
           opciones,
         } as PasoExecutionRelation;
       }).filter(r => r.id !== 0);
-      
+      // Post-procesar: completar opciones consultando /api/inputs/{id} para los que las necesiten
+      try {
+        const needOptions = mapped.filter(m => {
+          const t = m.tipo_input ? normalizeTipoInput(m.tipo_input) : 'textocorto';
+          return (!m.opciones || m.opciones.length === 0) && (t === 'combobox' || t === 'multiplecheckbox' || t === 'radiogroup') && m.inputId;
+        });
+        if (needOptions.length > 0) {
+          const uniqIds = Array.from(new Set(needOptions.map(n => n.inputId)));
+          const fetched = await Promise.all(uniqIds.map(async (iid) => {
+            try { const res = await api.get(`/api/inputs/${iid}`); return { iid, data: res.data }; }
+            catch { return { iid, data: null }; }
+          }));
+          const optsMap: Record<number, string[]> = {};
+          for (const f of fetched) {
+            const d = f.data as Record<string, unknown> | null;
+            if (!d) continue;
+            let opts = d['opciones'] ?? d['Opciones'] ?? d['Options'];
+            if (!opts) opts = d['OpcionesJson'] ?? d['opcionesJson'] ?? d['OptionsJson'] ?? d['optionsJson'];
+            let list: string[] | undefined;
+            if (Array.isArray(opts)) list = (opts as unknown[]).filter(x => typeof x === 'string') as string[];
+            else if (typeof opts === 'string') {
+              const s = opts as string;
+              try { const parsed = JSON.parse(s); if (Array.isArray(parsed)) list = parsed.filter(x => typeof x === 'string'); } catch { /* noop */ }
+              if (!list) {
+                const sep = s.includes(';') ? ';' : (s.includes('|') ? '|' : (s.includes(',') ? ',' : null));
+                if (sep) list = s.split(sep).map(x => x.trim()).filter(Boolean);
+              }
+            }
+            if (list && list.length) optsMap[f.iid] = list;
+          }
+          if (Object.keys(optsMap).length) {
+            mapped = mapped.map(m => {
+              if ((!m.opciones || m.opciones.length === 0) && m.inputId && optsMap[m.inputId]) {
+                const updated = { ...m, opciones: optsMap[m.inputId] };
+                if (isDev) {
+                  console.log(`[execInputs] Opciones completadas desde /api/inputs/${m.inputId}`, updated.opciones?.length);
+                }
+                return updated;
+              }
+              return m;
+            });
+          }
+        }
+      } catch {/* ignore */}
+
       return { pasoId, relations: mapped };
     } catch (e: unknown) {
       return rejectWithValue('Error cargando campos de ejecución del paso');
@@ -297,6 +553,18 @@ export const selectCanExecutePaso = (state: RootState & { executionInputs?: Exec
   if (paso.flushInProgress) return false;
   const relations = Object.values(paso.relations) as PasoExecutionRelation[];
   const drafts = Object.values(paso.drafts) as PasoExecutionDraft[];
-  const missing = relations.filter(r => r.requerido && !((paso.drafts[r.id]?.rawValue ?? r.valor)?.toString().trim()));
+  const hasValue = (r: PasoExecutionRelation): boolean => {
+    const raw = (paso.drafts[r.id]?.rawValue ?? r.valor ?? '').toString();
+    const tipo = r.tipo_input ? normalizeTipoInput(r.tipo_input as string) : 'textocorto';
+    if (!raw.trim()) return false;
+    if (tipo === 'multiplecheckbox') {
+      try { const arr = JSON.parse(raw); return Array.isArray(arr) && arr.length > 0; } catch { return false; }
+    }
+    if (tipo === 'archivo') {
+      try { const obj = JSON.parse(raw); return obj && typeof obj === 'object'; } catch { return false; }
+    }
+    return true;
+  };
+  const missing = relations.filter(r => r.requerido && !hasValue(r));
   return missing.length === 0 && !drafts.some(d => d.error) && !drafts.some(d => d.saving);
 };
