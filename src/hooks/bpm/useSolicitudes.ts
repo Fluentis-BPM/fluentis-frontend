@@ -221,6 +221,43 @@ export const useSolicitudes = () => {
     pendientes: items.filter(s => s.estado === 'pendiente').length,
   }), [items]);
 
+  // Obtener grupo con decisiones completas desde Redux store (sobrescribe el del hook de aprobación)
+  const obtenerGrupoPorSolicitudConDatos = useCallback((solicitud_id: number) => {
+    const solicitud = items.find(s => s.id_solicitud === solicitud_id);
+    if (!solicitud || !solicitud.grupos_aprobacion || solicitud.grupos_aprobacion.length === 0) {
+      return aprobacion.obtenerGrupoPorSolicitud(solicitud_id);
+    }
+    
+    // Obtener el primer grupo de aprobación (normalmente solo hay uno por solicitud)
+    const grupoRelacion = solicitud.grupos_aprobacion[0];
+    const decisiones = (grupoRelacion as { decisiones?: unknown[] }).decisiones || [];
+    
+    // Mapear decisiones con la estructura correcta incluyendo el usuario
+    const decisionesConUsuario = decisiones.map((d: unknown) => {
+      const decision = d as { 
+        id_relacion?: number; 
+        id_usuario?: number; 
+        decision?: boolean | TipoDecision; 
+        usuario?: { idUsuario?: number; nombre?: string; email?: string }
+      };
+      return {
+        id_relacion: decision.id_relacion || 0,
+        id_usuario: decision.id_usuario || 0,
+        relacion_grupo_aprobacion_id: grupoRelacion.id_relacion || 0,
+        decision: decision.decision === true || decision.decision === 'si' ? 'si' as TipoDecision : decision.decision === false || decision.decision === 'no' ? 'no' as TipoDecision : null,
+        usuario: decision.usuario // Incluir el objeto usuario completo
+      };
+    });
+    
+    return {
+      id_grupo: grupoRelacion.grupo_aprobacion_id || 0,
+      nombre: 'Grupo de Aprobación',
+      miembros: [],
+      decisiones: decisionesConUsuario,
+      usuarios: [] // Se puede poblar desde otro lado si es necesario
+    };
+  }, [items, aprobacion]);
+
   return {
   solicitudes: items,
   relacionesInput: useMemo<RelacionInputLocal[]>(() => items.flatMap(s => (s.campos_dinamicos || []).map(r => ({ ...r, solicitud_id: s.id_solicitud }))), [items]),
@@ -235,8 +272,9 @@ export const useSolicitudes = () => {
     asignarGrupoAprobacion,
   registrarDecisionSolicitud,
     estadisticas,
-    // Exponer funcionalidades de aprobación
+    // Exponer funcionalidades de aprobación (con override de obtenerGrupoPorSolicitud)
     ...aprobacion,
+    obtenerGrupoPorSolicitud: obtenerGrupoPorSolicitudConDatos, // Override con datos completos del store
     // Exponer funcionalidades de flujos
     ...flujos
   };
