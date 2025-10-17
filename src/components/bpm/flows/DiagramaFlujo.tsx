@@ -75,6 +75,11 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       return <Play className="w-4 h-4" />;
     }
     
+    // Special icon for final step
+    if (paso.tipo_paso === 'fin') {
+      return <CheckCircle className="w-4 h-4" />;
+    }
+    
     switch (paso.tipo_flujo) { // Corregido de 'tipo' a 'tipo_flujo' según la interfaz PasoSolicitud
       case 'normal': return <Settings className="w-4 h-4" />;
       case 'bifurcacion': return <AlertTriangle className="w-4 h-4" />;
@@ -88,6 +93,11 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   };
 
   const getColorByEstado = () => {
+    // Special style for final step - purple/violet theme
+    if (paso.tipo_paso === 'fin') {
+      return 'border-purple-600 bg-purple-50';
+    }
+    
     switch (paso.estado) {
       case 'aprobado': return 'border-success bg-success/10';
       case 'rechazado': return 'border-destructive bg-destructive/10';
@@ -100,8 +110,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   };
 
   const getBadgeVariant = () => {
-    // Don't show estado badge for initial step
-    if (paso.tipo_paso === 'inicio') return null;
+    // Don't show estado badge for initial or final step
+    if (paso.tipo_paso === 'inicio' || paso.tipo_paso === 'fin') return null;
     
     switch (paso.estado) {
       case 'aprobado': return 'default';
@@ -115,18 +125,21 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   };
 
   const getTipoPasoColor = () => {
+    if (paso.tipo_paso === 'fin') return 'text-purple-600';
     return paso.tipo_paso === 'aprobacion' ? 'text-orange-600' : 'text-blue-600';
   };
 
   return (
     <Card 
-      className={`p-4 min-w-[220px] transition-all b-2 border-2 border-blue-500 duration-300 cursor-pointer ${getColorByEstado()} ${
+      className={`p-4 min-w-[220px] transition-all b-2 border-2 border-blue-500 duration-300 ${
+        paso.tipo_paso === 'fin' ? '' : 'cursor-pointer'
+      } ${getColorByEstado()} ${
       isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'
       }`}
 
       onClick={() => {
-        // Don't open editor for initial step
-        if (paso.tipo_paso === 'inicio') return;
+        // Don't open editor for initial or final step
+        if (paso.tipo_paso === 'inicio' || paso.tipo_paso === 'fin') return;
         onNodeClick?.(paso);
       }}
     >
@@ -141,6 +154,9 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
               {paso.tipo_paso === 'inicio' && (
                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Inicial</span>
               )}
+              {paso.tipo_paso === 'fin' && (
+                <span className="text-xs bg-purple-600/10 text-purple-600 px-2 py-0.5 rounded-full font-semibold">Final</span>
+              )}
             </div>
           </div>
           
@@ -151,6 +167,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
               {getIconByTipoPaso()}
               <span className="text-xs font-medium">
                 {paso.tipo_paso === 'inicio' ? 'Inicial' : 
+                 paso.tipo_paso === 'fin' ? 'Finalización' :
                  (paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución')}
               </span>
             </div>
@@ -184,7 +201,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
           )}
 
           {/* Botones de acción */}
-          {data.readOnly !== true && paso.id_paso_solicitud !== 0 && (
+          {data.readOnly !== true && paso.id_paso_solicitud !== 0 && paso.tipo_paso !== 'inicio' && paso.tipo_paso !== 'fin' && (
             <div className="flex gap-1 mt-2">
               {paso.estado === 'pendiente' && (
                 <>
@@ -564,6 +581,8 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
           nodeColor={(node) => {
             const paso = pasos.find(p => p.id_paso_solicitud.toString() === node.id);
             if (!paso) return 'hsl(var(--primary))';
+            // Special color for final step
+            if (paso.tipo_paso === 'fin') return '#9333ea'; // purple-600
             if (paso.tipo_flujo === 'normal' && !paso.camino_id) return 'hsl(var(--secondary))';
             switch (paso.estado) {
               case 'aprobado': return 'hsl(var(--success))';

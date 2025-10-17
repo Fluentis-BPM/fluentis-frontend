@@ -81,11 +81,17 @@ const mapSolicitud = (sObj: unknown): Solicitud => {
         const dd = (d ?? {}) as Record<string, unknown>;
         const raw = pick<boolean | null>(dd, ['decision','Decision']);
         const decision: 'si' | 'no' | null = raw === true ? 'si' : raw === false ? 'no' : null;
+        const usuarioData = pick<Record<string, unknown>>(dd, ['usuario','Usuario']);
         return {
           id_relacion: pick<number>(dd, ['idRelacion','IdRelacion']) ?? 0,
           id_usuario: pick<number>(dd, ['idUsuario','IdUsuario']) ?? 0,
           decision,
-          fecha_decision: pick<string>(dd, ['fechaDecision','FechaDecision'])
+          fecha_decision: pick<string>(dd, ['fechaDecision','FechaDecision']),
+          usuario: usuarioData ? {
+            idUsuario: pick<number>(usuarioData, ['idUsuario','IdUsuario']) ?? 0,
+            nombre: pick<string>(usuarioData, ['nombre','Nombre']) ?? '',
+            email: pick<string>(usuarioData, ['email','Email']) ?? ''
+          } : undefined
         };
       })
     };

@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { TipoDecision, GrupoAprobacionCompleto, DecisionConUsuario } from '@/types/bpm/approval';
 import { CheckCircle, XCircle, Clock, Users, UserCheck, UserX } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
 // import { useDecision } from '@/hooks/bpm/useDecision'; // Removed to prevent duplicate API calls
 
 interface EstadisticasAprobacion {
@@ -42,6 +44,9 @@ export const ProcesoAprobacion: React.FC<Props> = ({
   verificarRechazo,
   obtenerEstadisticasAprobacion
 }) => {
+  // Obtener el rol del usuario actual desde Redux
+  const currentUserRole = useSelector((s: RootState) => s.auth.user?.rolNombre || '');
+  const isAdmin = currentUserRole.toLowerCase() === 'administrador';
 
   // Estado local para simular persistencia
   const [usuarioActual, setUsuarioActual] = useState<number>(miembrosGrupo[0] || usuarioActualId);
@@ -67,10 +72,13 @@ export const ProcesoAprobacion: React.FC<Props> = ({
   React.useEffect(() => {
     if (usuarioActualId === JUAN_PEREZ_ID) {
       setUsuarioActual(JUAN_PEREZ_ID);
+    } else if (!isAdmin) {
+      // Si NO es admin, forzar a que solo pueda aprobar como su propio usuario
+      setUsuarioActual(usuarioActualId);
     } else {
       setUsuarioActual(miembrosGrupo[0] || usuarioActualId);
     }
-  }, [usuarioActualId, miembrosGrupo]);
+  }, [usuarioActualId, miembrosGrupo, isAdmin]);
 
   // Demo: prefijar una decisión para uno de los mock members para ejemplificar UI
   React.useEffect(() => {
@@ -94,7 +102,57 @@ export const ProcesoAprobacion: React.FC<Props> = ({
   const estaAprobada = verificarAprobacionCompleta(solicitud_id, miembrosGrupo);
   const estaRechazada = verificarRechazo(solicitud_id);
 
+  // Verificar si el usuario actual puede votar
+  const puedeVotar = React.useMemo(() => {
+    console.log('Verificando permisos de voto:', {
+      isAdmin,
+      usuarioActualId,
+      miembrosGrupo,
+      includes: miembrosGrupo.includes(usuarioActualId),
+      grupo: grupo
+    });
+    
+    // Si no es admin, solo puede votar si está en el grupo
+    if (!isAdmin) {
+      // Si miembrosGrupo está vacío o no está poblado correctamente, permitir votar
+      // (la validación real se hace en el backend)
+      if (miembrosGrupo.length === 0) {
+        console.warn('miembrosGrupo está vacío, permitiendo voto (validación en backend)');
+        return true;
+      }
+      return miembrosGrupo.includes(usuarioActualId);
+    }
+    // Si es admin, puede votar como cualquier usuario del grupo
+    return true;
+  }, [isAdmin, miembrosGrupo, usuarioActualId, grupo]);
 
+  // Función auxiliar para obtener el nombre del usuario desde las decisiones del backend
+  const obtenerNombreUsuario = React.useCallback((idUsuario: number): string | null => {
+    // Intentar obtener el nombre desde grupo.usuarios (si está disponible)
+    if (grupo?.usuarios) {
+      const usuario = grupo.usuarios.find(u => u.idUsuario === idUsuario);
+      if (usuario?.nombre) return usuario.nombre;
+    }
+    
+    // Intentar obtener el nombre desde las decisiones del backend
+    // Las decisiones vienen con un objeto usuario: {idUsuario, nombre, email}
+    if (grupo?.decisiones) {
+      const decision = grupo.decisiones.find((d: DecisionConUsuario | { idUsuario?: number; usuario?: { nombre?: string }; nombre_usuario?: string }) => 
+        (d as DecisionConUsuario).id_usuario === idUsuario || (d as { idUsuario?: number }).idUsuario === idUsuario
+      );
+      if (decision) {
+        // Intentar diferentes estructuras de datos
+        const decisionExtended = decision as { usuario?: { nombre?: string }; nombre_usuario?: string };
+        if (decisionExtended.usuario?.nombre) return decisionExtended.usuario.nombre;
+        if (decisionExtended.nombre_usuario) return decisionExtended.nombre_usuario;
+      }
+    }
+    
+    // Fallback para usuarios mock
+    if (MOCK_MEMBER_NAMES[idUsuario]) return MOCK_MEMBER_NAMES[idUsuario];
+    
+    return null;
+  }, [grupo, MOCK_MEMBER_NAMES]);
 
   const handleRegistrarDecision = async () => {
     if (!usuarioActual) {
@@ -202,13 +260,20 @@ export const ProcesoAprobacion: React.FC<Props> = ({
           <div className="space-y-2">
             {miembrosGrupo.map(idUsuario => {
               const decision = obtenerDecisionUsuario(idUsuario);
-              const nombreReal = grupo?.usuarios?.find(u => u.idUsuario === idUsuario)?.nombre;
+              const nombreReal = obtenerNombreUsuario(idUsuario);
+              const usuarioEnGrupo = grupo?.usuarios?.find(u => u.idUsuario === idUsuario);
+              
               return (
                 <div 
                   key={idUsuario} 
                   className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
                 >
-                  <span className="font-medium">{nombreReal || `Usuario ${idUsuario}`}</span>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{nombreReal || `Usuario ${idUsuario}`}</span>
+                    {usuarioEnGrupo?.email && (
+                      <span className="text-xs text-muted-foreground">{usuarioEnGrupo.email}</span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     {decision === 'si' && (
                       <Badge variant="success" className="flex items-center gap-1">
@@ -243,15 +308,24 @@ export const ProcesoAprobacion: React.FC<Props> = ({
                 <h4 className="font-medium text-foreground">Registrar Tu Decisión</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="space-y-2">
-                            {/* Si se está impersonando a Juan Pérez, no mostrar selector: votar sólo como Juan */}
-                            {usuarioActualId === JUAN_PEREZ_ID ? (
+                            {/* Si NO es admin, mostrar solo el nombre del usuario logueado (sin selector) */}
+                            {!isAdmin ? (
+                              <div>
+                                <Label>Votando como</Label>
+                                <div className="px-3 py-2 border rounded bg-muted/20 font-medium">
+                                  {obtenerNombreUsuario(usuarioActualId) || `Usuario ${usuarioActualId}`}
+                                </div>
+                              </div>
+                            ) : usuarioActualId === JUAN_PEREZ_ID ? (
+                              /* Si se está impersonando a Juan Pérez (admin mode), no mostrar selector: votar sólo como Juan */
                               <div>
                                 <Label>Votando como</Label>
                                 <div className="px-3 py-2 border rounded bg-muted/20">Juan Pérez</div>
                               </div>
                             ) : (
+                              /* Si es admin y no está impersonando, mostrar selector completo */
                               <>
-                                <Label htmlFor="usuario">Selecciona Tu Usuario</Label>
+                                <Label htmlFor="usuario">Selecciona Usuario</Label>
                                 <select
                                   id="usuario"
                                   value={usuarioActual}
@@ -260,7 +334,7 @@ export const ProcesoAprobacion: React.FC<Props> = ({
                                 >
                                   {displayMiembros.map(id => (
                                     <option key={id} value={id}>
-                                      {grupo?.usuarios?.find(u => u.idUsuario === id)?.nombre || MOCK_MEMBER_NAMES[id] || `Usuario ${id}`} {obtenerDecisionUsuario(id) && '(Ya votó)'}
+                                      {obtenerNombreUsuario(id) || `Usuario ${id}`} {obtenerDecisionUsuario(id) && '(Ya votó)'}
                                     </option>
                                   ))}
                                 </select>
@@ -295,15 +369,20 @@ export const ProcesoAprobacion: React.FC<Props> = ({
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-end">
+                  <div className="flex flex-col gap-2">
                     <Button
                       onClick={handleRegistrarDecision}
-                      disabled={!miembrosGrupo.includes(usuarioActual)}
+                      disabled={!puedeVotar}
                       variant="gradient"
                       className="w-full"
                     >
                       Registrar Decisión
                     </Button>
+                    {!puedeVotar && (
+                      <p className="text-xs text-destructive text-center">
+                        No eres miembro de este grupo de aprobación
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
