@@ -16,6 +16,8 @@ import {
   Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
+import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType } from '@/types/bpm/inputs';
+import { fetchInputsCatalog } from '@/services/inputs';
 
 interface EditorFlujoPageProps {
   flujo?: FlujoActivo;
@@ -35,6 +37,7 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
   const [modoVista, setModoVista] = useState<'diagrama' | 'editor' | 'split'>('split');
   const [modoEdicion, setModoEdicion] = useState(true);
+  const [inputsDisponiblesCat, setInputsDisponiblesCat] = useState<InputType[]>([]);
 
   const handleVolverAtras = () => {
     if (onVolverALista) {
@@ -45,6 +48,23 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
   };
 
   // Editor actions are handled locally
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const items = await fetchInputsCatalog();
+        const mapped: InputType[] = items.map(it => ({
+          id_input: it.idInput,
+          tipo_input: normalizeTipoInput(it.tipoInput),
+          etiqueta: it.label || normalizeTipoInput(it.tipoInput),
+        }));
+        if (mounted) setInputsDisponiblesCat(mapped);
+      } catch {
+        if (mounted) setInputsDisponiblesCat([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const handleGuardarPaso = (pasoActualizado: PasoSolicitud) => {
     toast({
@@ -215,22 +235,7 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
                     { id: 3, nombre: 'María Silva', rol: 'Analista', departamento: 'Calidad' },
                     { id: 4, nombre: 'Juan Pérez', rol: 'Director', departamento: 'General' }
                   ]}
-                  inputsDisponibles={[
-                    {
-                      id_input: 1,
-                      tipo_input: 'textocorto',
-                      etiqueta: 'Título de la solicitud',
-                      placeholder: 'Ingrese un título descriptivo',
-                      validacion: { required: true, max: 100 }
-                    },
-                    {
-                      id_input: 2,
-                      tipo_input: 'textolargo',
-                      etiqueta: 'Justificación detallada',
-                      placeholder: 'Explique los motivos de la solicitud...',
-                      validacion: { required: true, max: 1000 }
-                    }
-                  ]}
+                  inputsDisponibles={inputsDisponiblesCat.length ? inputsDisponiblesCat : INPUT_TEMPLATES}
                   gruposAprobacion={[
                     { id_grupo: 1, nombre: 'Gerencia General' },
                     { id_grupo: 2, nombre: 'Finanzas y Contabilidad' },
@@ -296,15 +301,7 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
                         { id: 3, nombre: 'María Silva', rol: 'Analista', departamento: 'Calidad' },
                         { id: 4, nombre: 'Juan Pérez', rol: 'Director', departamento: 'General' }
                       ]}
-                      inputsDisponibles={[
-                        {
-                          id_input: 1,
-                          tipo_input: 'textocorto',
-                          etiqueta: 'Título de la solicitud',
-                          placeholder: 'Ingrese un título descriptivo',
-                          validacion: { required: true, max: 100 }
-                        }
-                      ]}
+                      inputsDisponibles={inputsDisponiblesCat.length ? inputsDisponiblesCat : INPUT_TEMPLATES}
                       gruposAprobacion={[
                         { id_grupo: 1, nombre: 'Gerencia General' },
                         { id_grupo: 2, nombre: 'Finanzas y Contabilidad' },

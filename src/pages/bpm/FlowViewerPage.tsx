@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/bpm/use-toast';
 import { fmtDate } from '@/lib/utils';
+import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType } from '@/types/bpm/inputs';
+import { fetchInputsCatalog } from '@/services/inputs';
 
 interface FlowViewerPageProps {
   flujo: FlujoActivo;
@@ -55,6 +57,7 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [editorWidth, setEditorWidth] = useState(480); // Width for resizable editor
   const [isResizing, setIsResizing] = useState(false);
+  const [inputsDisponiblesCat, setInputsDisponiblesCat] = useState<InputType[]>([]);
 
   const handleNodeSelect = (paso: PasoSolicitud | null) => {
     if (paso) {
@@ -91,6 +94,25 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
     // Los cambios normales (agregar/editar pasos) se manejan internamente en DiagramaFlujo
   }, []);
 
+  // Cargar catálogo del backend (fallback a templates si falla)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const items = await fetchInputsCatalog();
+        const mapped: InputType[] = items.map(it => ({
+          id_input: it.idInput,
+          tipo_input: normalizeTipoInput(it.tipoInput),
+          etiqueta: it.label || normalizeTipoInput(it.tipoInput),
+        }));
+        if (mounted) setInputsDisponiblesCat(mapped);
+      } catch {
+        if (mounted) setInputsDisponiblesCat([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   // Resize handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsResizing(true);
@@ -120,6 +142,16 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing]);
+
+  // Resincronizar el paso editando con la versión actualizada de la lista de pasos
+  useEffect(() => {
+    if (pasoEditando) {
+      const actualizado = pasos.find(p => p.id_paso_solicitud === pasoEditando.id_paso_solicitud);
+      if (actualizado && actualizado !== pasoEditando) {
+        setPasoEditando(actualizado);
+      }
+    }
+  }, [pasos, pasoEditando]);
 
   const getEstadoBadge = (estado: string) => {
     const variants = {
@@ -298,42 +330,7 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
                   { id: 4, nombre: 'Juan Pérez', rol: 'Director', departamento: 'General' }
                 ]}
                 isPanel={true}
-                inputsDisponibles={[
-                  {
-                    id_input: 1,
-                    tipo_input: 'textocorto',
-                    etiqueta: 'Título de la solicitud',
-                    placeholder: 'Ingrese un título descriptivo',
-                    validacion: { required: true, max: 100 }
-                  },
-                  {
-                    id_input: 2,
-                    tipo_input: 'textolargo',
-                    etiqueta: 'Justificación detallada',
-                    placeholder: 'Explique los motivos de la solicitud...',
-                    validacion: { required: true, max: 1000 }
-                  },
-                  {
-                    id_input: 3,
-                    tipo_input: 'combobox',
-                    etiqueta: 'Departamento solicitante',
-                    opciones: ['Recursos Humanos', 'Finanzas', 'Tecnología', 'Operaciones', 'Marketing'],
-                    validacion: { required: true }
-                  },
-                  {
-                    id_input: 4,
-                    tipo_input: 'date',
-                    etiqueta: 'Fecha requerida',
-                    validacion: { required: false }
-                  },
-                  {
-                    id_input: 5,
-                    tipo_input: 'number',
-                    etiqueta: 'Presupuesto estimado',
-                    placeholder: '0.00',
-                    validacion: { min: 0, max: 1000000 }
-                  }
-                ]}
+                inputsDisponibles={inputsDisponiblesCat.length ? inputsDisponiblesCat : INPUT_TEMPLATES}
                 gruposAprobacion={[
                   { id_grupo: 1, nombre: 'Gerencia General' },
                   { id_grupo: 2, nombre: 'Finanzas y Contabilidad' },

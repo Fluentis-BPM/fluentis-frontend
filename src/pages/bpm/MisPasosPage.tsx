@@ -664,6 +664,7 @@ const MisPasosPage: React.FC = () => {
         pasoNombre={execDrawer.nombre}
         usuarioId={selectedUserId}
         onClose={() => setExecDrawer({ open: false, pasoId: null })}
+        onExecuted={() => fetchPasos(selectedUserId, filtros)}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Input as InputType, TipoInput, normalizeTipoInput } from '@/types/bpm/inputs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,7 +29,7 @@ export const CampoDinamico: React.FC<Props> = ({
   input, 
   valor, 
   requerido, 
-  onChange, 
+  onChange,
   onRemove,
   showRequiredToggle = true 
 }) => {
@@ -49,6 +49,17 @@ export const CampoDinamico: React.FC<Props> = ({
       return [];
     }
   });
+
+  // Keep internal multiplecheckbox state in sync if parent updates valor externally
+  useEffect(() => {
+    if (tipo !== 'multiplecheckbox') return;
+    if (!valor) { setSelectedOptions([]); return; }
+    try {
+      const parsed = JSON.parse(valor);
+      if (Array.isArray(parsed)) setSelectedOptions(parsed as string[]);
+      else setSelectedOptions([]);
+    } catch { setSelectedOptions([]); }
+  }, [valor, tipo]);
 
   const handleValueChange = (newValue: string) => {
     onChange(newValue, requerido);
@@ -137,15 +148,19 @@ export const CampoDinamico: React.FC<Props> = ({
           </RadioGroup>
         );
 
-  case 'number':
+      case 'number':
         return (
           <Input
-            type="number"
+            inputMode="decimal"
             value={valor}
-            onChange={(e) => handleValueChange(e.target.value)}
+            onChange={(e) => {
+              // Accept comma decimals by transforming to dot; strip invalid chars except - . , digits
+              const raw = e.target.value;
+              const cleaned = raw.replace(/[^0-9,.-]/g, '');
+              const normalized = cleaned.replace(',', '.');
+              handleValueChange(normalized);
+            }}
             placeholder={input.placeholder}
-            min={input.validacion?.min}
-            max={input.validacion?.max}
             required={requerido}
             className="transition-smooth focus:ring-request-primary/50"
           />
