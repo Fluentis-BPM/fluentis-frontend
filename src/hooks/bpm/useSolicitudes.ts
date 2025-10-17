@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Solicitud, CrearSolicitudInput, EstadoSolicitud } from '@/types/bpm/request';
 import { RelacionInput } from '@/types/bpm/inputs';
-import { TipoDecision } from '@/types/bpm/approval';
+import { TipoDecision, GrupoAprobacionCompleto, DecisionConUsuario } from '@/types/bpm/approval';
 import { useAprobacion } from './useAprobacion';
 import { useFlujos } from './useFlujos';
 import { useDispatch, useSelector } from 'react-redux';
@@ -222,7 +222,7 @@ export const useSolicitudes = () => {
   }), [items]);
 
   // Obtener grupo con decisiones completas desde Redux store (sobrescribe el del hook de aprobación)
-  const obtenerGrupoPorSolicitudConDatos = useCallback((solicitud_id: number) => {
+  const obtenerGrupoPorSolicitudConDatos = useCallback((solicitud_id: number): GrupoAprobacionCompleto | undefined => {
     const solicitud = items.find(s => s.id_solicitud === solicitud_id);
     if (!solicitud || !solicitud.grupos_aprobacion || solicitud.grupos_aprobacion.length === 0) {
       return aprobacion.obtenerGrupoPorSolicitud(solicitud_id);
@@ -233,7 +233,7 @@ export const useSolicitudes = () => {
     const decisiones = (grupoRelacion as { decisiones?: unknown[] }).decisiones || [];
     
     // Mapear decisiones con la estructura correcta incluyendo el usuario
-    const decisionesConUsuario = decisiones.map((d: unknown) => {
+    const decisionesConUsuarioRaw = decisiones.map((d: unknown) => {
       const decision = d as { 
         id_relacion?: number; 
         id_usuario?: number; 
@@ -245,17 +245,24 @@ export const useSolicitudes = () => {
         id_usuario: decision.id_usuario || 0,
         relacion_grupo_aprobacion_id: grupoRelacion.id_relacion || 0,
         decision: decision.decision === true || decision.decision === 'si' ? 'si' as TipoDecision : decision.decision === false || decision.decision === 'no' ? 'no' as TipoDecision : null,
-        usuario: decision.usuario // Incluir el objeto usuario completo
+        usuario: decision.usuario, // Incluir el objeto usuario completo (campo adicional no tipado en DecisionConUsuario)
+        nombre_usuario: decision.usuario?.nombre
       };
-    });
-    
-    return {
+    }) as Array<DecisionConUsuario & { decision: TipoDecision | null }>;
+
+    // Filtrar decisiones nulas para cumplir con el tipo (pendientes se representan por falta de decisión)
+    const decisionesConUsuario: DecisionConUsuario[] = decisionesConUsuarioRaw
+      .filter(d => d.decision === 'si' || d.decision === 'no') as DecisionConUsuario[];
+
+    const grupoCompleto: GrupoAprobacionCompleto = {
       id_grupo: grupoRelacion.grupo_aprobacion_id || 0,
       nombre: 'Grupo de Aprobación',
       miembros: [],
       decisiones: decisionesConUsuario,
-      usuarios: [] // Se puede poblar desde otro lado si es necesario
+      usuarios: []
     };
+
+    return grupoCompleto;
   }, [items, aprobacion]);
 
   return {
