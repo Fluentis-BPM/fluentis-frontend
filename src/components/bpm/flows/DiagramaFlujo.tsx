@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
+import { toast } from '@/hooks/bpm/use-toast';
 
 // Tipo para los datos del nodo
 interface PasoNodeData {
@@ -420,8 +421,24 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
     (params: Connection) => {
       console.log('🔗 Intentando crear conexión:', params);
       if (params.source && params.target) {
-        // Permitir todas las conexiones sin restricciones
-        console.log('🔗 Creando conexión:', params.source, '→', params.target);
+        // Limitar ramas salientes por nodo (máximo 10)
+        const MAX_BRANCHES = 10;
+        const outgoingCount = edges.filter(e => e.source === params.source).length;
+        if (outgoingCount >= MAX_BRANCHES) {
+          // Buscar nombres de pasos para mejorar el mensaje
+          const origenPaso = pasos.find(p => p.id_paso_solicitud.toString() === params.source)?.nombre || params.source;
+          const destinoPaso = pasos.find(p => p.id_paso_solicitud.toString() === params.target)?.nombre || params.target;
+          toast({
+            title: `No se puede crear la conexión`,
+            description: `El paso "${origenPaso}" ya tiene ${outgoingCount} ramas (máx ${MAX_BRANCHES}). Intentaste conectar a "${destinoPaso}".`,
+            variant: 'destructive',
+            duration: 6000
+          });
+          console.warn(`⚠️ Nodo ${params.source} ya tiene ${outgoingCount} ramas (máx ${MAX_BRANCHES}).`);
+          return;
+        }
+
+        // Permitir todas las conexiones sin restricciones (dentro del límite)
         console.log('🔗 Creando conexión:', params.source, '→', params.target);
         const tempEdge: Edge = {
           id: `connecting-${params.source}-${params.target}`,

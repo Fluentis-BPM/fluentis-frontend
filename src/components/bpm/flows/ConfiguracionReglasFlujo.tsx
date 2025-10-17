@@ -1,5 +1,7 @@
 import React from 'react';
-import { PasoSolicitud } from '@/types/bpm/flow';
+import { PasoSolicitud, CaminoParalelo } from '@/types/bpm/flow';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -51,6 +53,21 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
       default: return <Users className="w-4 h-4" />;
     }
   };
+
+  // Obtener conexiones salientes y nombre de destino desde el store
+  const flujoId = paso.flujo_activo_id;
+  const outgoing = useSelector((state: RootState) => {
+    const caminosMap = state.bpm.caminosPorFlujo || {};
+    const pasosMap = state.bpm.pasosPorFlujo || {};
+    const caminos = (caminosMap[flujoId] || []) as CaminoParalelo[];
+    const pasos = (pasosMap[flujoId] || []) as PasoSolicitud[];
+    return caminos
+      .filter((c: CaminoParalelo) => c.paso_origen_id === paso.id_paso_solicitud)
+      .map(c => ({
+        ...c,
+        targetNombre: pasos.find((p: PasoSolicitud) => p.id_paso_solicitud === c.paso_destino_id)?.nombre || String(c.paso_destino_id)
+      }));
+  });
 
   return (
     <div className="space-y-6">
@@ -108,6 +125,36 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
                   </SelectItem>
                 </SelectContent>
               </Select>
+              {/* Contador de ramas salientes desde el store (máx 10) y lista de destinos */}
+              <div className="mt-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Ramas:</span>
+                    <span className="ml-2 font-medium">{outgoing.length} / 10</span>
+                  </div>
+                  {outgoing.length >= 10 ? (
+                    <div role="alert" aria-live="assertive" className="text-sm font-semibold text-white px-3 py-1 rounded bg-red-700 border-2 border-red-800 shadow-lg animate-pulse">
+                      Límite de 10 ramas alcanzado
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">Puedes agregar {10 - outgoing.length} rama(s)</div>
+                  )}
+                </div>
+
+                {/* Lista corta de conexiones salientes */}
+                {outgoing.length > 0 && (
+                  <div className="mt-2 text-sm">
+                    <div className="text-xs text-muted-foreground mb-1">Conexiones salientes:</div>
+                    <ul className="list-disc list-inside text-sm max-h-28 overflow-y-auto">
+                      {outgoing.map((c, idx) => (
+                        <li key={c.id_camino || idx} className="truncate">
+                          {paso.nombre || paso.id_paso_solicitud} → <span className="font-medium">{c.targetNombre}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Información del tipo de flujo */}

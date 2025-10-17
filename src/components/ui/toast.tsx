@@ -22,9 +22,10 @@ export function Toaster({ toasts }: { toasts: Array<ToastProps & { id: string }>
       {toasts.map((t) => (
         <div
           key={t.id}
+          {...(t.variant === 'destructive' ? { role: 'alert', 'aria-live': 'assertive' } : {})}
           className={cn(
             "rounded-md border p-3 shadow-lg bg-card text-card-foreground",
-            t.variant === "destructive" && "border-red-600/30 bg-red-600/10",
+            t.variant === "destructive" && "bg-red-700 text-white border-red-800",
             t.variant === "success" && "border-green-600/30 bg-green-600/10",
             t.variant === "info" && "border-blue-600/30 bg-blue-600/10",
             t.variant === "warning" && "border-yellow-600/30 bg-yellow-600/10"
