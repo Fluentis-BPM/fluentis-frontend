@@ -157,6 +157,9 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
               {paso.tipo_paso === 'fin' && (
                 <span className="text-xs bg-purple-600/10 text-purple-600 px-2 py-0.5 rounded-full font-semibold">Final</span>
               )}
+              {paso.tipo_paso === 'fin' && paso.estado === 'entregado' && (
+                <Badge variant="success" className="text-[10px]">Finalizado</Badge>
+              )}
             </div>
           </div>
           

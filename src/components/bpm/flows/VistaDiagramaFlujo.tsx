@@ -585,13 +585,17 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                             })()}
                           </div>
                         )}
-                        <Badge variant={
-                          paso.estado === 'aprobado' ? 'default' :
-                          paso.estado === 'rechazado' ? 'destructive' :
-                          paso.estado === 'excepcion' ? 'secondary' : 'outline'
-                        }>
-                          {paso.estado}
-                        </Badge>
+                        {paso.tipo_paso === 'fin' && paso.estado === 'entregado' ? (
+                          <Badge variant="success">Finalizado</Badge>
+                        ) : (
+                          <Badge variant={
+                            paso.estado === 'aprobado' ? 'default' :
+                            paso.estado === 'rechazado' ? 'destructive' :
+                            paso.estado === 'excepcion' ? 'secondary' : 'outline'
+                          }>
+                            {paso.estado}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   ));
