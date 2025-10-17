@@ -6,9 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, CheckCircle, XCircle, Clock, UserCheck } from 'lucide-react';
+import { Users, Clock } from 'lucide-react';
 import { useBpm } from '@/hooks/bpm/useBpm';
 import { useToast } from '@/hooks/bpm/use-toast';
 import { useSelector } from 'react-redux';
@@ -18,7 +17,7 @@ import { selectPasoDraft } from '@/store/bpm/bpmSlice';
 interface EditorPasoAprobacionProps {
   paso: PasoSolicitud;
   onUpdatePaso: (paso: PasoSolicitud) => void;
-  onRegistrarDecision: (decision: TipoDecision) => void;
+  onRegistrarDecision?: (decision: TipoDecision) => void; // opcional; no usado aquí
   gruposDisponibles?: GrupoAprobacion[];
   relacionGrupo?: RelacionGrupoAprobacion;
   decisiones?: RelacionDecisionUsuario[];
@@ -27,14 +26,13 @@ interface EditorPasoAprobacionProps {
 
 export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
   paso,
-  onRegistrarDecision,
+  onRegistrarDecision: _onRegistrarDecision, // mantenido para compatibilidad, no se usa
   gruposDisponibles = [],
   relacionGrupo,
   decisiones = [],
   usuarioActualId
 }) => {
   const [grupoSeleccionado, setGrupoSeleccionado] = useState<number | undefined>(relacionGrupo?.grupo_aprobacion_id);
-  const [miDecision, setMiDecision] = useState<TipoDecision | undefined>();
   const { stageGroupApproval } = useBpm();
   const { toast } = useToast();
   const draft = useSelector((state: RootState) => selectPasoDraft(state, paso.id_paso_solicitud));
@@ -42,12 +40,7 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
   // Cargar mi decisión si ya existe
   useEffect(() => {
     if (usuarioActualId && relacionGrupo) {
-      const miDecisionExistente = decisiones.find(
-        d => d.id_usuario === usuarioActualId && d.relacion_grupo_aprobacion_id === relacionGrupo.id_relacion
-      );
-      if (miDecisionExistente) {
-        setMiDecision(miDecisionExistente.decision);
-      }
+      // decisión del usuario ya registrada; solo lectura en este editor
     }
   }, [usuarioActualId, relacionGrupo, decisiones]);
 
@@ -63,10 +56,7 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
     toast({ title: 'Remoción preparada', description: 'Se quitará el grupo al guardar todos los cambios.' });
   };
 
-  const registrarDecision = (decision: TipoDecision) => {
-    setMiDecision(decision);
-    onRegistrarDecision(decision);
-  };
+  // registrarDecision se maneja en la vista de ejecución; aquí no se dispara
 
   // Usar relacion proporcionada o derivarla del paso (si viene cargada en pasosPorFlujo)
   const relacionActual: RelacionGrupoAprobacion | undefined = relacionGrupo || (paso.relacionesGrupoAprobacion && paso.relacionesGrupoAprobacion[0] as unknown as RelacionGrupoAprobacion);
@@ -95,7 +85,7 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
   const aprobaciones = decisiones.filter(d => d.decision === 'si').length;
   const rechazos = decisiones.filter(d => d.decision === 'no').length;
 
-  const puedeDecidor = usuarioActualId && miembrosGrupo.some(m => m.id === usuarioActualId);
+  // const puedeDecidor = usuarioActualId && miembrosGrupo.some(m => m.id === usuarioActualId);
 
   return (
     <div className="space-y-6">
@@ -182,52 +172,6 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
                 <div className="text-sm text-gray-700">Total</div>
               </div>
             </div>
-
-            <Separator />
-
-            {/* Mi decisión */}
-            {puedeDecidor && (
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2">
-                  <UserCheck className="w-4 h-4" />
-                  Mi Decisión
-                </Label>
-                {!miDecision ? (
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={() => registrarDecision('si')} 
-                      className="flex-1 bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Aprobar
-                    </Button>
-                    <Button 
-                      onClick={() => registrarDecision('no')} 
-                      variant="destructive" 
-                      className="flex-1"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Rechazar
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                    <div className="flex items-center gap-2">
-                      {miDecision === 'si' ? (
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <XCircle className="w-5 h-5 text-red-600" />
-                      )}
-                      <span className="font-medium">
-                        Has {miDecision === 'si' ? 'aprobado' : 'rechazado'} este paso
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <Separator />
 
             {/* Lista de miembros y sus decisiones */}
             <div className="space-y-3">

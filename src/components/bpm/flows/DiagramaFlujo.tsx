@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -14,7 +14,9 @@ import {
   MarkerType,
   NodeChange,
   OnNodeDrag,
-  Connection
+  Connection,
+  OnMoveEnd,
+  type ReactFlowInstance
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PasoSolicitud, CaminoParalelo } from '@/types/bpm/flow';
@@ -273,6 +275,10 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   onCreateConexion
 }) => {
   const { stagePosition } = useBpm();
+  // React Flow instance and viewport preservation
+  const rfInstanceRef = useRef<ReactFlowInstance | null>(null);
+  const hasFittedRef = useRef(false);
+  const lastViewportRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const draftsByPasoId = useSelector((state: RootState) => state.bpm?.draftsByPasoId || {});
   
   // Convertir pasos a nodos de React Flow
@@ -355,22 +361,24 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   }, [pasos, stagePosition]);
 
   // Personalizar onNodesChange para manejar el arrastre
+  // Only stage position on explicit drag stop to avoid noisy drafts on re-sync
   const customOnNodesChange = useCallback((changes: NodeChange[]) => {
     onNodesChange(changes);
-    changes.forEach(change => {
-      if (change.type === 'position' && change.dragging === false && change.position) {
-        const nodeId = change.id;
-        const newPosition = change.position;
-        const paso = pasos.find(p => p.id_paso_solicitud.toString() === nodeId);
-        if (paso) {
-          stagePosition(paso.id_paso_solicitud, Math.round(newPosition.x), Math.round(newPosition.y));
-        }
-      }
-    });
-  }, [onNodesChange, pasos, stagePosition]);
+    // Intentionally do NOT stage positions here.
+  }, [onNodesChange]);
 
   // Sincronizar nodos cuando cambien los pasos
   useEffect(() => {
+    // Preserve current viewport before mutating nodes
+    try {
+      const vp = rfInstanceRef.current?.getViewport?.();
+      if (vp && typeof vp.x === 'number') {
+        lastViewportRef.current = { x: vp.x, y: vp.y, zoom: vp.zoom };
+      }
+    } catch {
+      // ignore viewport retrieval errors
+    }
+
     setNodes(currentNodes => {
       if (currentNodes.length === 0) return initialNodes;
       const existingNodesMap = new Map(currentNodes.map(node => [node.id, node]));
@@ -389,6 +397,15 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         return newNode;
       });
       return updatedNodes;
+    });
+    // Restore viewport after nodes update (next tick)
+    queueMicrotask(() => {
+      if (lastViewportRef.current) {
+        const { x, y, zoom } = lastViewportRef.current;
+        try { rfInstanceRef.current?.setViewport?.({ x, y, zoom }); } catch {
+          // ignore viewport set errors
+        }
+      }
     });
   }, [
     // Re-sync when names, states, or POSITIONS change in backend
@@ -520,10 +537,26 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         onPaneClick={onPaneClick}
         onNodeDragStop={handleNodeDragEnd}
         nodeTypes={nodeTypes}
-        fitView={true}
+        // Only fitView on first mount; afterwards we maintain viewport
+        fitView={!hasFittedRef.current}
         connectOnClick={false} // Evitar conexiones accidentales al hacer click
         nodesConnectable={!readOnly} // Permitir conexiones solo si no es readOnly
         className="bg-gradient-to-br from-background to-muted/20"
+        onInit={(instance) => {
+          // initial fit and mark as done
+          if (!hasFittedRef.current) {
+            hasFittedRef.current = true;
+            rfInstanceRef.current = instance;
+            // capture initial viewport
+            try { lastViewportRef.current = instance.getViewport?.() || null; } catch {
+              // ignore viewport retrieval errors
+            }
+          }
+        }}
+        onMoveEnd={((_e, viewport) => {
+          // Track viewport to restore across data refreshes
+          lastViewportRef.current = viewport;
+        }) as OnMoveEnd}
       >
         <Controls className="bg-background border shadow-lg" />
         <MiniMap 

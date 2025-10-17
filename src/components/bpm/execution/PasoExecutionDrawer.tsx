@@ -3,8 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePasoExecution } from '@/hooks/bpm/usePasoExecution';
-import { usePasosSolicitud } from '@/hooks/bpm/usePasosSolicitud';
-import { flushPasoDrafts } from '@/store/bpm/executionInputsSlice';
+import { flushPasoDrafts, entregarPaso } from '@/store/bpm/executionInputsSlice';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '@/store';
 import { RefreshCw, Save, CheckCircle2, TriangleAlert } from 'lucide-react';
@@ -17,7 +16,8 @@ interface PasoExecutionDrawerProps {
   open: boolean;
   onClose: () => void;
   pasoNombre?: string;
-  usuarioId?: number; // id del usuario ejecutor (fallback 0)
+  usuarioId?: number; // backwards compat, not used here
+  onExecuted?: () => void; // notify parent to refresh list
 }
 
 // Simple fallback if Drawer not present
@@ -26,9 +26,8 @@ const FallbackContainer: React.FC<{ children: React.ReactNode; open: boolean }> 
   return <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex justify-end"><div className="w-full max-w-xl h-full bg-background shadow-xl border-l p-4 flex flex-col">{children}</div></div>;
 };
 
-export const PasoExecutionDrawer: React.FC<PasoExecutionDrawerProps> = ({ pasoId, open, onClose, pasoNombre, usuarioId = 0 }) => {
+export const PasoExecutionDrawer: React.FC<PasoExecutionDrawerProps> = ({ pasoId, open, onClose, pasoNombre, usuarioId: _usuarioId, onExecuted }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { ejecutarAccion } = usePasosSolicitud();
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,20 +58,18 @@ export const PasoExecutionDrawer: React.FC<PasoExecutionDrawerProps> = ({ pasoId
         setSubmitting(false);
         return;
       }
-  const resp = await ejecutarAccion(pasoId, { accion: 'ejecutar', usuarioId });
-      if (resp.exito) {
-        setMessage('Paso ejecutado correctamente');
-        // Close shortly after
-        setTimeout(() => { onClose(); }, 800);
-      } else {
-        setError(resp.mensaje || 'Error ejecutando paso');
-      }
+      // Deliver the step via API (estado: entregado). Backend will advance flow.
+  await dispatch(entregarPaso({ pasoId })).unwrap();
+  setMessage('Paso entregado correctamente');
+  // Notify parent to refresh list
+  try { onExecuted?.(); } catch { /* no-op */ }
+      setTimeout(() => { onClose(); }, 800);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error inesperado');
     } finally {
       setSubmitting(false);
     }
-  }, [pasoId, dispatch, ejecutarAccion, onClose, canExecute]);
+  }, [pasoId, dispatch, onClose, canExecute]);
 
   const content = (
     <div className="flex flex-col h-full" role="dialog" aria-labelledby="exec-title" aria-modal="true">
