@@ -121,6 +121,39 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
   async ({ pasoId }, { rejectWithValue }) => {
     try {
       const isDev = typeof import.meta !== 'undefined' && !!((import.meta as unknown as { env?: Record<string, unknown> }).env?.DEV);
+      // Helper: normalize various option shapes to string[]
+      const coerceOptionsToStrings = (opts: unknown): string[] | undefined => {
+        if (!opts) return undefined;
+        if (Array.isArray(opts)) {
+          if (opts.every(x => typeof x === 'string')) return (opts as unknown[] as string[]).slice();
+          // Try to pull labels from objects
+          const keys = ['label','value','nombre','texto','text','descripcion','description'];
+          const mapped = (opts as unknown[]).map(o => {
+            if (o && typeof o === 'object') {
+              const rec = o as Record<string, unknown>;
+              for (const k of keys) {
+                const v = rec[k];
+                if (typeof v === 'string' && v.trim()) return v.trim();
+              }
+            }
+            return undefined;
+          }).filter((s): s is string => typeof s === 'string');
+          return mapped.length ? mapped : undefined;
+        }
+        if (typeof opts === 'string') {
+          const s = opts as string;
+          // If JSON array
+          if (s.trim().startsWith('[')) {
+            try {
+              const parsed = JSON.parse(s);
+              return coerceOptionsToStrings(parsed);
+            } catch { /* noop */ }
+          }
+          const sep = s.includes(';') ? ';' : (s.includes('|') ? '|' : (s.includes(',') ? ',' : null));
+          if (sep) return s.split(sep).map(x => x.trim()).filter(Boolean);
+        }
+        return undefined;
+      };
       // We expect an endpoint that returns paso detail including relacionesInput.
       // Reuse existing endpoint from bpm flow if available; fallback to generic /api/PasoSolicitud/{id}
       const { data } = await api.get(`/api/PasoSolicitud/${pasoId}`);
@@ -156,18 +189,7 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
           const id = Number(o['idInput'] ?? o['IdInput'] ?? o['id_input'] ?? 0);
           let opts = o['opciones'] ?? o['Opciones'] ?? o['options'];
           if (!opts) opts = o['OpcionesJson'] ?? o['opcionesJson'] ?? o['OptionsJson'] ?? o['optionsJson'];
-          let list: string[] | undefined;
-          if (Array.isArray(opts)) {
-            list = (opts as unknown[]).filter(x => typeof x === 'string') as string[];
-          } else if (typeof opts === 'string') {
-            // try JSON first, then delimiters
-            const s = opts as string;
-            try { const parsed = JSON.parse(s); if (Array.isArray(parsed)) list = parsed.filter(x => typeof x === 'string'); } catch { /* noop */ }
-            if (!list) {
-              const sep = s.includes(';') ? ';' : (s.includes('|') ? '|' : (s.includes(',') ? ',' : null));
-              if (sep) list = s.split(sep).map(x => x.trim()).filter(Boolean);
-            }
-          }
+          const list: string[] | undefined = coerceOptionsToStrings(opts);
           if (id && list && list.length) acc[id] = list;
           return acc;
         }, {});
@@ -176,7 +198,7 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
       let mapped: PasoExecutionRelation[] = rawRelations.map((raw) => {
         const r = raw as Record<string, unknown>;
         const idCandidate = (r['idRelacion'] ?? r['IdRelacion'] ?? r['id_relacion'] ?? r['id_relacion'] ?? r['id'] ?? r['IdRelacionInput']);
-        const id = typeof idCandidate === 'number' ? idCandidate : 0;
+        const id = Number(idCandidate) || 0;
   const valorObj = r['valor'] ?? r['Valor'] ?? r['InputValue'];
   // Derivar valor plano (RawValue) y metadatos de tipo/opciones desde objeto anidado si existe
   let valor: string = '';
@@ -195,19 +217,12 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
           // Opciones puede venir como arreglo o string JSON
           let nestedOpts = vrec['Options'] ?? vrec['Opciones'];
           if (!nestedOpts) nestedOpts = vrec['options'];
-          if (Array.isArray(nestedOpts)) {
-            opciones = (nestedOpts as unknown[]).filter(o => typeof o === 'string') as string[];
-          } else if (typeof nestedOpts === 'string') {
-            try {
-              const parsed = JSON.parse(nestedOpts);
-              if (Array.isArray(parsed)) opciones = parsed.filter(o => typeof o === 'string');
-            } catch { /* ignore */ }
-          }
+          opciones = coerceOptionsToStrings(nestedOpts);
         } else {
           valor = String(valorObj ?? '');
         }
   // También intentar leer tipo/opciones desde r.input (metadata del catálogo)
-        const inputMeta = r['input'];
+        const inputMeta = (r['input'] ?? r['Input']);
         if (inputMeta && typeof inputMeta === 'object') {
           const im = inputMeta as Record<string, unknown>;
           // Preferir tipo desde input meta (normalizado en interceptor como tipo_input_front)
@@ -215,23 +230,14 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
           if (typeof metaTipo === 'string') tipoInputFromMeta = metaTipo;
           // Fallback opciones desde input meta
           if (!opciones) {
-            const imOpts = im['opciones'] ?? im['Opciones'] ?? im['options'];
-            if (Array.isArray(imOpts)) {
-              opciones = (imOpts as unknown[]).filter(o => typeof o === 'string') as string[];
-            } else if (typeof imOpts === 'string') {
-              try {
-                const parsed = JSON.parse(String(imOpts));
-                if (Array.isArray(parsed)) opciones = parsed.filter(o => typeof o === 'string');
-              } catch { /* ignore */ }
-            }
+            const imOpts = im['opciones'] ?? im['Opciones'] ?? im['options'] ?? im['Options'];
+            opciones = coerceOptionsToStrings(imOpts);
           }
         }
         // Leer opciones nivel relación si vienen como arreglo directo (algunos endpoints ya las devuelven así)
         if (!opciones) {
-          const topArr = (r['opciones'] ?? r['Opciones'] ?? r['options']) as unknown;
-          if (Array.isArray(topArr)) {
-            opciones = (topArr as unknown[]).filter(o => typeof o === 'string') as string[];
-          }
+          const topArr = (r['opciones'] ?? r['Opciones'] ?? r['options'] ?? r['Options']) as unknown;
+          opciones = coerceOptionsToStrings(topArr);
         }
         // Intentar leer JSON desde placeholder como último recurso legacy
         if (!opciones) {
@@ -302,25 +308,17 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
         if (!opciones && inputIdResolved && inputOptionsMap[inputIdResolved]) {
           opciones = inputOptionsMap[inputIdResolved];
         }
-        // Fallback para opciones en string JSON a nivel de relación (OpcionesJson/optionsJson)
+        // Fallback para opciones en string JSON a nivel de relación (OpcionesJson/optionsJson/json_options)
         if (!opciones) {
-          const j = (r['OpcionesJson'] ?? r['opcionesJson'] ?? r['OptionsJson'] ?? r['optionsJson']) as string | undefined;
+          const j = (r['OpcionesJson'] ?? r['opcionesJson'] ?? r['OptionsJson'] ?? r['optionsJson'] ?? r['json_options'] ?? r['jsonOptions']) as string | undefined;
           if (typeof j === 'string' && j.trim()) {
-            try {
-              const parsed = JSON.parse(j);
-              if (Array.isArray(parsed)) opciones = parsed.filter(o => typeof o === 'string');
-            } catch {/* ignore */}
+            opciones = coerceOptionsToStrings(j);
           }
         }
         // Fallback adicional: si hay 'opciones' como string con separadores comunes
         if (!opciones) {
           const s = (r['opciones'] ?? r['Opciones'] ?? r['options']) as string | undefined;
-          if (typeof s === 'string' && s.trim()) {
-            const sep = s.includes(';') ? ';' : (s.includes('|') ? '|' : (s.includes(',') ? ',' : null));
-            if (sep) {
-              opciones = s.split(sep).map(x => x.trim()).filter(Boolean);
-            }
-          }
+          if (typeof s === 'string' && s.trim()) opciones = coerceOptionsToStrings(s);
         }
 
         if (isDev) {
@@ -383,18 +381,9 @@ export const fetchPasoExecutionRelations = createAsyncThunk< { pasoId: number; r
           for (const f of fetched) {
             const d = f.data as Record<string, unknown> | null;
             if (!d) continue;
-            let opts = d['opciones'] ?? d['Opciones'] ?? d['Options'];
+            let opts = d['opciones'] ?? d['Opciones'] ?? d['Options'] ?? d['options'];
             if (!opts) opts = d['OpcionesJson'] ?? d['opcionesJson'] ?? d['OptionsJson'] ?? d['optionsJson'];
-            let list: string[] | undefined;
-            if (Array.isArray(opts)) list = (opts as unknown[]).filter(x => typeof x === 'string') as string[];
-            else if (typeof opts === 'string') {
-              const s = opts as string;
-              try { const parsed = JSON.parse(s); if (Array.isArray(parsed)) list = parsed.filter(x => typeof x === 'string'); } catch { /* noop */ }
-              if (!list) {
-                const sep = s.includes(';') ? ';' : (s.includes('|') ? '|' : (s.includes(',') ? ',' : null));
-                if (sep) list = s.split(sep).map(x => x.trim()).filter(Boolean);
-              }
-            }
+            const list: string[] | undefined = coerceOptionsToStrings(opts);
             if (list && list.length) optsMap[f.iid] = list;
           }
           if (Object.keys(optsMap).length) {
@@ -429,12 +418,71 @@ export const flushPasoDrafts = createAsyncThunk< { pasoId: number; updated: numb
     if (!st) return { pasoId, updated: [] };
     const relationIds = st.pendingFlush.slice();
     const updated: number[] = [];
+
+    // Helper: map our normalized tipo to backend expected string
+    const toBackendTipo = (t?: string): string => {
+      const n = t ? normalizeTipoInput(t) : 'textocorto';
+      switch (n) {
+        case 'textocorto': return 'texto_corto';
+        case 'textolargo': return 'texto_largo';
+        case 'multiplecheckbox': return 'multiple_checkbox';
+        case 'radiogroup': return 'radiogroup';
+        case 'combobox': return 'combobox';
+        case 'date': return 'date';
+        case 'number': return 'number';
+        case 'archivo': return 'archivo';
+        default: return 'texto_corto';
+      }
+    };
+
+    const putInputValue = async (rid: number, body: unknown): Promise<boolean> => {
+      try {
+        // Preferred route (lowercase plural). Let axios throw on non-2xx.
+        await api.put(`/api/pasosolicitudes/${pasoId}/inputs/${rid}`, body);
+        return true;
+      } catch (e) {
+        // Fallback route (PascalCase singular used elsewhere)
+        try {
+          await api.put(`/api/PasoSolicitud/${pasoId}/inputs/${rid}`, body);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    };
+
     for (const rid of relationIds) {
       const rel = st.relations[rid];
       const draft = st.drafts[rid];
       if (!rel || !draft || !draft.dirty) continue;
       try {
-        await api.put(`/api/PasoSolicitud/${pasoId}/inputs/${rid}`, { Valor: { RawValue: draft.rawValue } });
+        const tipo = rel.tipo_input ? normalizeTipoInput(rel.tipo_input) : 'textocorto';
+        let value: unknown = draft.rawValue;
+        if (tipo === 'multiplecheckbox') {
+          try { value = JSON.parse(draft.rawValue || '[]'); if (!Array.isArray(value)) value = []; } catch { value = []; }
+        } else if (tipo === 'archivo') {
+          // Attempt to pass JSON object if present; otherwise empty object
+          try { value = draft.rawValue ? JSON.parse(draft.rawValue) : {}; } catch { value = {}; }
+        } else {
+          // Plain string for text/number/date/combobox/radiogroup
+          value = (draft.rawValue ?? '').toString();
+        }
+
+        const payload: Record<string, unknown> = {
+          valor: {
+            tipoInput: toBackendTipo(tipo),
+            value,
+          }
+        };
+        // Include opciones if present in relation (optional, only if available)
+        if (rel.opciones && Array.isArray(rel.opciones) && rel.opciones.length > 0) {
+          payload['opciones'] = rel.opciones.slice();
+        }
+
+        const ok = await putInputValue(rid, payload);
+        if (!ok) {
+          return rejectWithValue('Error guardando cambios de campos');
+        }
         updated.push(rid);
       } catch (e: unknown) {
         // Attach error onto draft (handled in reducer via rejected case)
@@ -442,6 +490,24 @@ export const flushPasoDrafts = createAsyncThunk< { pasoId: number; updated: numb
       }
     }
     return { pasoId, updated };
+  }
+);
+
+export const entregarPaso = createAsyncThunk< { pasoId: number }, { pasoId: number }, { rejectValue: string }>(
+  'executionInputs/entregarPaso',
+  async ({ pasoId }, { rejectWithValue }) => {
+    try {
+      // Prefer lowercase plural route
+      try {
+        await api.put(`/api/pasosolicitudes/${pasoId}`, { estado: 'entregado' });
+      } catch {
+        // Fallback PascalCase route
+        await api.put(`/api/PasoSolicitud/${pasoId}`, { Estado: 'entregado' });
+      }
+      return { pasoId };
+    } catch (e) {
+      return rejectWithValue('Error entregando el paso');
+    }
   }
 );
 

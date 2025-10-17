@@ -59,7 +59,8 @@ export const useBpm = () => {
     stageInputDelete: (pasoId: number, relationId?: number, tmpId?: string) => dispatch(stageInputDelete({ pasoId, relationId, tmpId })),
     clearPasoDraft: (pasoId: number) => dispatch(clearPasoDraft({ pasoId })),
     clearAllDrafts: () => dispatch(clearAllDrafts()),
-    commitAllPasoDrafts: () => dispatch(commitAllPasoDrafts()),
+  // Return a promise that rejects on failure so UI can show accurate status
+  commitAllPasoDrafts: () => dispatch(commitAllPasoDrafts()).unwrap(),
   deletePasoSolicitud: (id: number) => dispatch(deletePasoSolicitud({ id })),
   createPasoSolicitud: (data: unknown) => dispatch(createPasoSolicitud({ data })),
   updatePasoSolicitud: (id: number, data: unknown) => dispatch(updatePasoSolicitud({ id, data })),
