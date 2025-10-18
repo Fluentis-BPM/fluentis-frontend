@@ -3,6 +3,7 @@ import { createSlice, createAsyncThunk, PayloadAction, createSelector } from '@r
 import { FlujoActivo, PasoSolicitud, CaminoParalelo, FlujoActivoResponse } from '@/types/bpm/flow';
 import api from '@/services/api';
 import type { RootState } from '@/store';
+import { calcularReadinessPaso, ReadinessResult } from '@/lib/bpm/readiness';
 
 // Draft staging types
 type MetadataPatch = Record<string, unknown>;
@@ -394,6 +395,16 @@ export const selectDraftByPasoId = createSelector(
 export const selectHasDraftForPaso = createSelector(
   [selectBpmState, (_: RootState, pasoId: number) => pasoId],
   (bpmState, pasoId) => Boolean(bpmState.draftsByPasoId?.[pasoId])
+);
+
+// Selector para calcular readiness de un paso dentro de un flujo
+export const selectPasoReadiness = createSelector(
+  [selectBpmState, (_: RootState, flujoId: number) => flujoId, (_: RootState, _f: number, pasoId: number) => pasoId],
+  (bpmState, flujoId, pasoId): ReadinessResult => {
+    const pasos = bpmState.pasosPorFlujo?.[flujoId] || [];
+    const caminos = bpmState.caminosPorFlujo?.[flujoId] || [];
+    return calcularReadinessPaso(pasoId, pasos, caminos);
+  }
 );
 
 // Save All: commit all staged paso drafts
