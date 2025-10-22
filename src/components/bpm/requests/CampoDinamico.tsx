@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Input as InputType, TipoInput } from '@/types/bpm/inputs';
+import React, { useEffect, useState } from 'react';
+import { Input as InputType, TipoInput, normalizeTipoInput } from '@/types/bpm/inputs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,57 +29,37 @@ export const CampoDinamico: React.FC<Props> = ({
   input, 
   valor, 
   requerido, 
-  onChange, 
+  onChange,
   onRemove,
   showRequiredToggle = true 
 }) => {
-  // Normaliza valores de tipo_input provenientes de distintas fuentes (API, estáticos, etc.)
-  const normalizeTipoInput = (t: string): TipoInput => {
-    const s = (t || '').toString().trim().toLowerCase().replace(/[\s_-]/g, '');
-    switch (s) {
-      case 'textocorto':
-      case 'shorttext':
-      case 'texto':
-      case 'inputtext':
-        return 'textocorto';
-      case 'textolargo':
-      case 'textarea':
-      case 'longtext':
-        return 'textolargo';
-      case 'combobox':
-      case 'select':
-      case 'dropdown':
-        return 'combobox';
-      case 'multiplecheckbox':
-      case 'checkboxes':
-      case 'multicheckbox':
-      case 'multiopcion':
-        return 'multiplecheckbox';
-      case 'date':
-      case 'fecha':
-      case 'datetime':
-        return 'date';
-      case 'number':
-      case 'numeric':
-      case 'numero':
-        return 'number';
-      case 'archivo':
-      case 'file':
-      case 'upload':
-        return 'archivo';
-      default:
-        return 'textocorto';
-    }
-  };
-
   const tipo = normalizeTipoInput(input.tipo_input as unknown as string);
 
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    valor && tipo === 'date' ? new Date(valor) : undefined
-  );
-  const [selectedOptions, setSelectedOptions] = useState<string[]>(
-    valor && tipo === 'multiplecheckbox' ? JSON.parse(valor || '[]') : []
-  );
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
+    if (tipo !== 'date' || !valor) return undefined;
+    const d = new Date(valor);
+    return isNaN(d.getTime()) ? undefined : d;
+  });
+  const [selectedOptions, setSelectedOptions] = useState<string[]>(() => {
+    if (!valor || tipo !== 'multiplecheckbox') return [];
+    try {
+      const parsed = JSON.parse(valor);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Keep internal multiplecheckbox state in sync if parent updates valor externally
+  useEffect(() => {
+    if (tipo !== 'multiplecheckbox') return;
+    if (!valor) { setSelectedOptions([]); return; }
+    try {
+      const parsed = JSON.parse(valor);
+      if (Array.isArray(parsed)) setSelectedOptions(parsed as string[]);
+      else setSelectedOptions([]);
+    } catch { setSelectedOptions([]); }
+  }, [valor, tipo]);
 
   const handleValueChange = (newValue: string) => {
     onChange(newValue, requerido);
@@ -168,15 +148,19 @@ export const CampoDinamico: React.FC<Props> = ({
           </RadioGroup>
         );
 
-  case 'number':
+      case 'number':
         return (
           <Input
-            type="number"
+            inputMode="decimal"
             value={valor}
-            onChange={(e) => handleValueChange(e.target.value)}
+            onChange={(e) => {
+              // Accept comma decimals by transforming to dot; strip invalid chars except - . , digits
+              const raw = e.target.value;
+              const cleaned = raw.replace(/[^0-9,.-]/g, '');
+              const normalized = cleaned.replace(',', '.');
+              handleValueChange(normalized);
+            }}
             placeholder={input.placeholder}
-            min={input.validacion?.min}
-            max={input.validacion?.max}
             required={requerido}
             className="transition-smooth focus:ring-request-primary/50"
           />
@@ -194,7 +178,7 @@ export const CampoDinamico: React.FC<Props> = ({
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? format(selectedDate, "PPP", { locale: es }) : "Seleccione una fecha"}
+                {selectedDate && !isNaN(selectedDate.getTime()) ? format(selectedDate, "PPP", { locale: es }) : "Seleccione una fecha"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">

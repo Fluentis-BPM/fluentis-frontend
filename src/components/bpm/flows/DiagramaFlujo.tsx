@@ -35,6 +35,8 @@ import {
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
+import { toast } from '@/hooks/bpm/use-toast';
+import { selectPasoReadiness } from '@/store/bpm/bpmSlice';
 
 // Tipo para los datos del nodo
 interface PasoNodeData {
@@ -66,6 +68,8 @@ interface DiagramaFlujoProps {
 // Componente personalizado para nodos de paso
 const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   const { paso, camposDinamicosIniciales, esInicial, isSelected, onNodeClick, onDeletePaso } = data;
+  const flujoId = paso.flujo_activo_id;
+  const readiness = useSelector((state: RootState) => selectPasoReadiness(state, flujoId, paso.id_paso_solicitud));
   
   const getIconByTipo = () => {
     // Special icon for initial step
@@ -116,9 +120,12 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
     return paso.tipo_paso === 'aprobacion' ? 'text-orange-600' : 'text-blue-600';
   };
 
+  // Determinar si el paso está listo según readiness (inicio siempre listo)
+  const isReady = paso.tipo_paso === 'inicio' ? true : Boolean(readiness?.ready ?? true);
+
   return (
     <Card 
-      className={`p-4 min-w-[220px] transition-all b-2 border-2 border-blue-500 duration-300 cursor-pointer ${getColorByEstado()} ${
+      className={`relative p-4 min-w-[220px] transition-all b-2 border-2 border-blue-500 duration-300 ${getColorByEstado()} ${
       isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'
       }`}
 
@@ -141,6 +148,14 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
               )}
             </div>
           </div>
+
+          {/* Si el paso es tipo 'union', mostrar contador X/Y */}
+          {paso.tipo_flujo === 'union' && readiness && (
+            <div className="mt-1">
+              <span className="text-xs text-muted-foreground">Esperando:</span>
+              <span className="ml-2 text-sm font-medium">{readiness.completedParents} / {readiness.totalParents} ramas</span>
+            </div>
+          )}
           
 
           {/* Indicador de tipo de paso */}
@@ -192,7 +207,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
                         size="sm"
                         variant="outline"
                         className="h-6 px-2 text-xs border-success text-success hover:bg-success hover:text-white hover:scale-105 transition-all duration-300"
-                        disabled
+                        disabled={!isReady}
+                        title={!isReady ? `Faltan ${readiness?.pendingParentIds?.length ?? 0} de ${readiness?.totalParents ?? 0} ramas` : ''}
                       >
                         ✓ Aprobar
                       </Button>
@@ -200,7 +216,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
                         size="sm"
                         variant="outline"
                         className="h-6 px-2 text-xs border-destructive text-destructive hover:bg-destructive hover:text-white hover:scale-105 transition-all duration-300"
-                        disabled
+                        disabled={!isReady}
+                        title={!isReady ? `Faltan ${readiness?.pendingParentIds?.length ?? 0} de ${readiness?.totalParents ?? 0} ramas` : ''}
                       >
                         ✗ Rechazar
                       </Button>
@@ -210,7 +227,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
                       size="sm"
                       variant="outline"
                       className="h-6 px-2 text-xs border-success text-success hover:bg-success hover:text-white hover:scale-105 transition-all duration-300"
-                      disabled
+                      disabled={!isReady}
+                      title={!isReady ? `Faltan ${readiness?.pendingParentIds?.length ?? 0} de ${readiness?.totalParents ?? 0} ramas` : ''}
                     >
                       ✓ Completar
                     </Button>
@@ -234,6 +252,10 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
           )}
         </div>
       </div>
+      {/* Overlay visual para nodos no listos: no afecta el canvas/SVG de react-flow */}
+      {!isReady && paso.tipo_paso !== 'inicio' && (
+        <div className="absolute inset-0 bg-white/60 rounded pointer-events-none" />
+      )}
       
       {/* Handles para conexiones */}
       {paso.id_paso_solicitud !== 0 && (
@@ -420,8 +442,24 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
     (params: Connection) => {
       console.log('🔗 Intentando crear conexión:', params);
       if (params.source && params.target) {
-        // Permitir todas las conexiones sin restricciones
-        console.log('🔗 Creando conexión:', params.source, '→', params.target);
+        // Limitar ramas salientes por nodo (máximo 10)
+        const MAX_BRANCHES = 10;
+        const outgoingCount = edges.filter(e => e.source === params.source).length;
+        if (outgoingCount >= MAX_BRANCHES) {
+          // Buscar nombres de pasos para mejorar el mensaje
+          const origenPaso = pasos.find(p => p.id_paso_solicitud.toString() === params.source)?.nombre || params.source;
+          const destinoPaso = pasos.find(p => p.id_paso_solicitud.toString() === params.target)?.nombre || params.target;
+          toast({
+            title: `No se puede crear la conexión`,
+            description: `El paso "${origenPaso}" ya tiene ${outgoingCount} ramas (máx ${MAX_BRANCHES}). Intentaste conectar a "${destinoPaso}".`,
+            variant: 'destructive',
+            duration: 6000
+          });
+          console.warn(`⚠️ Nodo ${params.source} ya tiene ${outgoingCount} ramas (máx ${MAX_BRANCHES}).`);
+          return;
+        }
+
+        // Permitir todas las conexiones sin restricciones (dentro del límite)
         console.log('🔗 Creando conexión:', params.source, '→', params.target);
         const tempEdge: Edge = {
           id: `connecting-${params.source}-${params.target}`,

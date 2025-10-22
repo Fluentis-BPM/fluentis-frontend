@@ -3,6 +3,8 @@ import { motion } from 'motion/react';
 import { DiagramaFlujo } from './DiagramaFlujo';
 import { EditorPaso } from './EditorPaso';
 import FlowViewerPage from '@/pages/bpm/FlowViewerPage';
+import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType } from '@/types/bpm/inputs';
+import { fetchInputsCatalog } from '@/services/inputs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +38,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   flujo,
   onVolverALista,
 }) => {
+  const [inputsDisponiblesCat, setInputsDisponiblesCat] = useState<InputType[]>([]);
   const { 
     pasosPorFlujo, 
     caminosPorFlujo, 
@@ -89,6 +92,25 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     excepciones: pasos.filter(p => p.estado === 'excepcion').length,
   };
 
+  // Cargar catálogo del backend para inputs disponibles; fallback a templates si falla
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const items = await fetchInputsCatalog();
+        const mapped: InputType[] = items.map(it => ({
+          id_input: it.idInput,
+          tipo_input: normalizeTipoInput(it.tipoInput),
+          etiqueta: it.label || normalizeTipoInput(it.tipoInput),
+        }));
+        if (mounted) setInputsDisponiblesCat(mapped);
+      } catch {
+        if (mounted) setInputsDisponiblesCat([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   // Cargar pasos y caminos al montar el componente
   useEffect(() => {
     toast({
@@ -98,6 +120,16 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     });
     loadPasosYConexiones(flujo.id_flujo_activo);
   }, [loadPasosYConexiones, flujo.id_flujo_activo, toast]);
+
+  // Resincronizar el paso editando cuando lleguen nuevos pasos desde el store
+  useEffect(() => {
+    if (pasoEditando) {
+      const actualizado = pasos.find(p => p.id_paso_solicitud === pasoEditando.id_paso_solicitud);
+      if (actualizado && actualizado !== pasoEditando) {
+        setPasoEditando(actualizado);
+      }
+    }
+  }, [pasos, pasoEditando]);
 
   // Mostrar notificaciones basadas en el estado
   useEffect(() => {
@@ -396,55 +428,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                         departamento: u.departamentoNombre || u.departamento || '—'
                       }))}
                     isPanel={true}
-                    inputsDisponibles={[
-                      {
-                        id_input: 1,
-                        tipo_input: 'textocorto',
-                        etiqueta: 'Título de la solicitud',
-                        placeholder: 'Ingrese un título descriptivo',
-                        validacion: { required: true, max: 100 }
-                      },
-                      {
-                        id_input: 2,
-                        tipo_input: 'textolargo',
-                        etiqueta: 'Justificación detallada',
-                        placeholder: 'Explique los motivos de la solicitud...',
-                        validacion: { required: true, max: 1000 }
-                      },
-                      {
-                        id_input: 3,
-                        tipo_input: 'combobox',
-                        etiqueta: 'Departamento solicitante',
-                        opciones: ['Recursos Humanos', 'Finanzas', 'Tecnología', 'Operaciones', 'Marketing'],
-                        validacion: { required: true }
-                      },
-                      {
-                        id_input: 4,
-                        tipo_input: 'date',
-                        etiqueta: 'Fecha requerida',
-                        validacion: { required: false }
-                      },
-                      {
-                        id_input: 5,
-                        tipo_input: 'number',
-                        etiqueta: 'Presupuesto estimado',
-                        placeholder: '0.00',
-                        validacion: { min: 0, max: 1000000 }
-                      },
-                      {
-                        id_input: 6,
-                        tipo_input: 'multiplecheckbox',
-                        etiqueta: 'Opciones múltiples',
-                        opciones: ['Opción A', 'Opción B', 'Opción C'],
-                        validacion: { required: false }
-                      },
-                      {
-                        id_input: 7,
-                        tipo_input: 'archivo',
-                        etiqueta: 'Adjuntar archivo',
-                        validacion: { required: false }
-                      }
-                    ]}
+                    inputsDisponibles={inputsDisponiblesCat.length ? inputsDisponiblesCat : INPUT_TEMPLATES}
                     gruposAprobacion={gruposAprobacion}
 
                     usuarioActualId={1}
@@ -601,13 +585,17 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                             })()}
                           </div>
                         )}
-                        <Badge variant={
-                          paso.estado === 'aprobado' ? 'default' :
-                          paso.estado === 'rechazado' ? 'destructive' :
-                          paso.estado === 'excepcion' ? 'secondary' : 'outline'
-                        }>
-                          {paso.estado}
-                        </Badge>
+                        {paso.tipo_paso === 'fin' && paso.estado === 'entregado' ? (
+                          <Badge variant="success">Finalizado</Badge>
+                        ) : (
+                          <Badge variant={
+                            paso.estado === 'aprobado' ? 'default' :
+                            paso.estado === 'rechazado' ? 'destructive' :
+                            paso.estado === 'excepcion' ? 'secondary' : 'outline'
+                          }>
+                            {paso.estado}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   ));

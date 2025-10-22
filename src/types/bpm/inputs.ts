@@ -97,46 +97,53 @@ export const INPUT_TEMPLATES: Input[] = [
   {
     id_input: 1,
     tipo_input: 'textocorto',
-    etiqueta: 'Título de la solicitud',
+    etiqueta: 'Texto Corto',
     placeholder: 'Ingrese un título descriptivo',
     validacion: { required: true, max: 100 }
   },
   {
     id_input: 2,
     tipo_input: 'textolargo',
-    etiqueta: 'Justificación detallada',
+    etiqueta: 'Texto Largo',
     placeholder: 'Explique los motivos de la solicitud...',
     validacion: { required: true, max: 1000 }
   },
   {
     id_input: 3,
     tipo_input: 'combobox',
-    etiqueta: 'Departamento solicitante',
+    etiqueta: 'Opciones',
     opciones: ['Recursos Humanos', 'Finanzas', 'Tecnología', 'Operaciones', 'Marketing'],
     validacion: { required: true }
   },
   {
     id_input: 4,
-    tipo_input: 'date',
-    etiqueta: 'Fecha requerida',
-    validacion: { required: false }
-  },
-  {
-    id_input: 5,
-    tipo_input: 'number',
-    etiqueta: 'Presupuesto estimado',
-    placeholder: '0.00',
-    validacion: { min: 0, max: 1000000 }
-  },
-  {
-    id_input: 6,
     tipo_input: 'multiplecheckbox',
-    etiqueta: 'Servicios requeridos',
+    etiqueta: 'Opciones Múltiples',
     opciones: ['Consultoría', 'Desarrollo', 'Soporte', 'Capacitación', 'Documentación'],
     validacion: { required: false }
   },
   {
+    id_input: 5,
+    tipo_input: 'radiogroup',
+    etiqueta: 'Radio Buttons',
+    opciones: ['Opción 1', 'Opción 2', 'Opción 3'],
+    validacion: { required: false }
+  },
+  {
+    id_input: 6,
+    tipo_input: 'date',
+    etiqueta: 'Fecha',
+    validacion: { required: false }
+  },
+  {
     id_input: 7,
+    tipo_input: 'number',
+    etiqueta: 'Número',
+    placeholder: '0.00',
+    validacion: { min: 0, max: 1000000 }
+  },
+  {
+    id_input: 8,
     tipo_input: 'archivo',
     etiqueta: 'Documentos adjuntos',
     validacion: { required: false }

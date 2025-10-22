@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PasoSolicitud } from '@/types/bpm/flow';
-import { Input, RelacionInput } from '@/types/bpm/inputs';
+import { Input, RelacionInput, normalizeTipoInput } from '@/types/bpm/inputs';
+import { fetchInputsCatalog } from '@/services/inputs';
 import { useBpm } from '@/hooks/bpm/useBpm';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,8 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
   const [addSelectValue, setAddSelectValue] = useState<string>('');
   const [editOpciones, setEditOpciones] = useState<Record<number, boolean>>({});
   const [opcionesDraft, setOpcionesDraft] = useState<Record<number, string[]>>({});
+  // Mapa de tipo normalizado -> ID canónico del backend para InputId
+  const [backendIdByTipo, setBackendIdByTipo] = useState<Record<string, number>>({});
   const { stageInputAdd, stageInputUpdate, stageInputCreateUpdate, stageInputDelete, pasosPorFlujo, flujoSeleccionado } = useBpm();
   const draft = useSelector((state: RootState) => selectPasoDraft(state, paso.id_paso_solicitud));
 
@@ -78,19 +81,43 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
     setInputsPaso([...base, ...created]);
   }, [flujoSeleccionado, pasosPorFlujo, relacionesInput, paso.id_paso_solicitud, paso.relacionesInput, draft]);
 
+  // Cargar catálogo de inputs del backend una vez para mapear tipo -> InputId correcto
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const items = await fetchInputsCatalog();
+        const map: Record<string, number> = {};
+        for (const it of items) {
+          map[normalizeTipoInput(it.tipoInput)] = it.idInput;
+        }
+        if (mounted) setBackendIdByTipo(map);
+      } catch {
+        // Silencioso: si falla, usaremos el id_input local como fallback
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   const agregarInput = async (inputId: number) => {
     const input = inputsDisponibles.find(i => i.id_input === inputId);
     if (!input) return;
     const countSame = inputsPaso.filter(r => r.input_id === inputId).length;
     const tmpId = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const isOptionsBased = ['combobox','multiplecheckbox','radiogroup'].includes((input.tipo_input || '').toLowerCase());
+    // Determinar el ID canónico del backend a partir del tipo; fallback al id local si no disponible
+    const tipoNorm = normalizeTipoInput(input.tipo_input);
+    const backendId = backendIdByTipo[tipoNorm];
+    const inputIdForApi = typeof backendId === 'number' ? backendId : inputId;
     stageInputAdd(
       paso.id_paso_solicitud,
       {
-        InputId: inputId,
+        InputId: inputIdForApi,
         Nombre: (input.etiqueta || `Campo ${inputId}`) + (countSame > 0 ? ` ${countSame + 1}` : ''),
         PlaceHolder: input.placeholder,
         Requerido: Boolean(input.validacion?.required),
-        Valor: { RawValue: '' }
+        // No enviar Valor en diseño; se completará en ejecución
+        ...(isOptionsBased && Array.isArray(input.opciones) && input.opciones.length > 0 ? { Opciones: input.opciones } : {})
       },
       tmpId
     );
@@ -144,6 +171,8 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
         return <Hash className="w-4 h-4" />;
       case 'date':
         return <Calendar className="w-4 h-4" />;
+      case 'radiogroup':
+        return <Hash className="w-4 h-4" />;
       case 'multiplecheckbox':
         return <Hash className="w-4 h-4" />;
       case 'archivo':
@@ -155,17 +184,49 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
 
   // Render uses inputsPaso directly
 
-  const getOpcionesPara = (relacion: RelacionInput, input: Input | undefined): string[] => {
+  const getOpcionesPara = (relacion: VisibleRelacion, input: Input | undefined): string[] => {
     if (!input) return [];
-    // If backend stores options per relation in placeholder as JSON array, prefer that
+    // 1) If there is a staged patch in the draft for this relation, prefer it
+    if (draft?.inputs) {
+      if (relacion.tmpId) {
+        const created = draft.inputs.created.find(c => (c as { _tmpId?: string })._tmpId === relacion.tmpId);
+        if (created && Array.isArray(created.Opciones)) return created.Opciones;
+      } else if (relacion.id_relacion) {
+        const upd = draft.inputs.updated.find(u => u.id === relacion.id_relacion);
+        if (upd && Array.isArray(upd.patch.Opciones)) return upd.patch.Opciones as string[];
+      }
+    }
+    // 2) If we are currently editing opciones, show the live draft editor value
+    if (editOpciones[relacion.id_relacion] && Array.isArray(opcionesDraft[relacion.id_relacion])) {
+      return opcionesDraft[relacion.id_relacion];
+    }
+    // 3) Prefer options coming from backend relation's InputValue (normalized by api interceptor)
+    const anyRel = relacion as unknown as Record<string, unknown>;
+    const iv = (anyRel?.InputValue as unknown) || (anyRel?.inputValue as unknown) || (anyRel?.Valor as unknown); // tolerate various casings
+    if (iv && typeof iv === 'object') {
+      const ivRec = iv as Record<string, unknown>;
+      const opts = (ivRec['Options'] as unknown) || (ivRec['opciones'] as unknown) || (ivRec['options'] as unknown);
+      if (Array.isArray(opts)) return (opts as unknown[]).filter((s: unknown) => typeof s === 'string') as string[];
+      const optsJson = (ivRec['OptionsJson'] as unknown) || (ivRec['optionsJson'] as unknown) || (ivRec['OpcionesJson'] as unknown);
+      if (typeof optsJson === 'string') {
+        try {
+          const parsed = JSON.parse(optsJson);
+          if (Array.isArray(parsed)) return parsed.filter((s: unknown) => typeof s === 'string');
+        } catch {
+          // ignore parse error
+        }
+      }
+    }
+    // 4) Fallback: some older data stored options in placeholder as JSON array
     if (relacion.placeholder) {
       try {
         const parsed = JSON.parse(relacion.placeholder);
         if (Array.isArray(parsed)) return parsed.filter((s) => typeof s === 'string');
       } catch {
-        // ignore malformed placeholder
+        // ignore parse error
       }
     }
+    // 5) Finally, fallback to catalog input opciones
     return input.opciones || [];
   };
 
@@ -223,6 +284,8 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
 
           {inputsPaso.map((relacion, idx) => {
             const input = inputsDisponibles.find((i) => i.id_input === relacion.input_id);
+            const tipoNorm = (input?.tipo_input || '').toLowerCase();
+            const isOptionsBased = ['combobox','multiplecheckbox','radiogroup'].includes(tipoNorm);
             return (
               <div key={relacion.id_relacion} className="space-y-3 p-3 border rounded-md">
                 <div className="flex items-center justify-between">
@@ -232,7 +295,10 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                     {relacion.requerido && <span className="text-red-500">*</span>}
                   </Label>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">{input?.tipo_input || 'texto'}</Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {input?.tipo_input || 'texto'}
+                      {isOptionsBased ? ` · ${(getOpcionesPara(relacion as VisibleRelacion, input) || []).length} opc.` : ''}
+                    </Badge>
                     {/* Reordenar */}
                     <Button size="icon" variant="outline" className="h-8 w-8" disabled={idx === 0} onClick={() => moverArriba(idx)} title="Mover arriba">
                       <ArrowUp className="w-4 h-4" />
@@ -240,7 +306,7 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                     <Button size="icon" variant="outline" className="h-8 w-8" disabled={idx === inputsPaso.length - 1} onClick={() => moverAbajo(idx)} title="Mover abajo">
                       <ArrowDown className="w-4 h-4" />
                     </Button>
-                    {(input?.tipo_input === 'combobox' || input?.tipo_input === 'multiplecheckbox') && (
+                    {isOptionsBased && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -288,7 +354,7 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                       onBlur={(e) => actualizarNombre(relacion as VisibleRelacion, e.target.value.trim())}
                     />
                   </div>
-                  {!(input?.tipo_input === 'combobox' || input?.tipo_input === 'multiplecheckbox') && (
+                  {!isOptionsBased && (
                     <div>
                       <Label className="text-xs text-muted-foreground">Placeholder</Label>
                       <InputUI
@@ -315,7 +381,7 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                   </div>
                 </div>
 
-                {(input?.tipo_input === 'combobox' || input?.tipo_input === 'multiplecheckbox') && editOpciones[relacion.id_relacion] && (
+                    {(input?.tipo_input === 'combobox' || input?.tipo_input === 'multiplecheckbox' || input?.tipo_input === 'radiogroup') && editOpciones[relacion.id_relacion] && (
                   <div className="p-3 border rounded-md space-y-2 bg-muted/30">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Opciones</span>
@@ -371,12 +437,15 @@ export const EditorPasoEjecucion: React.FC<EditorPasoEjecucionProps> = ({
                           const cleaned = (opcionesDraft[relacion.id_relacion] || [])
                             .map((s) => s.trim())
                             .filter(Boolean);
-                          const patch = { PlaceHolder: JSON.stringify(cleaned) } as const;
+                          // Stage proper Opciones field so backend persists to OptionsJson
+                          const patch = { Opciones: cleaned } as const;
                           if ((relacion as VisibleRelacion).tmpId) {
                             stageInputCreateUpdate(paso.id_paso_solicitud, (relacion as VisibleRelacion).tmpId!, patch);
                           } else {
                             stageInputUpdate(paso.id_paso_solicitud, relacion.id_relacion, patch);
                           }
+                          // Keep the latest opciones in local state too so the badge count reflects immediately
+                          setOpcionesDraft((prev) => ({ ...prev, [relacion.id_relacion]: cleaned }));
                           setEditOpciones((prev) => ({ ...prev, [relacion.id_relacion]: false }));
                         }}
                       >

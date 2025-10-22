@@ -4,12 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-  "build": "tsc -b && vite build",
-  "build:docker": "vite build",
+    "dev": "vite --mode development",
+    "prod": "vite --mode production",
+    "build": "tsc -b && vite build --mode production",
+    "build:dev": "tsc -b && vite build --mode development",
+    "build:docker": "vite build --mode production",
     "lint": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,scss}\"",
     "preview": "vite preview",
+    "preview:prod": "vite preview --mode production",
     "prepare": "husky install"
   },
   "dependencies": {
