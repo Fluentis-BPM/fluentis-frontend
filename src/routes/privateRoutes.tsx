@@ -50,7 +50,6 @@ export const privateRoutes = [
   { path: '/flujos/plantillas', element: <PrivateRoute><PlantillasPage /></PrivateRoute> },
   { path: '/flujos/plantillas/:id/usar', element: <PrivateRoute><UsarPlantillaPage /></PrivateRoute> },
       { path: '/flujos/solicitudes', element: <PrivateRoute><SolicitudesPage /></PrivateRoute> },
-      { path: '/flujos/activos', element: <PrivateRoute><ActiveFlows /></PrivateRoute> },
       { path: '/flujos/mis-pasos', element: <PrivateRoute><MisPasosPage /></PrivateRoute> },
       { path: '/flujos/propuestas-votaciones', element: <PrivateRoute><PropuestasVotacionesPage /></PrivateRoute> },
 

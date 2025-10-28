@@ -81,8 +81,7 @@ export default function Sidebar({ user }: SidebarProps) {
         { path: '/bpm', label: 'Resumen' },
         { path: '/bpm/solicitudes', label: 'Solicitudes' },
         { path: '/bpm/flujos', label: 'Flujos' },
-        { path: '/flujos/plantillas', label: 'Plantillas' },
-        { path: '/flujos/activos', label: 'Flujos Activos' },
+        { path: '/flujos/plantillas', label: 'Plantillas Solicitud' },
         { path: '/flujos/mis-pasos', label: 'Mis Pasos' },
         { path: '/flujos/propuestas-votaciones', label: 'Propuestas y Votaciones' },
       ]

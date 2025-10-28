@@ -121,6 +121,7 @@ export interface FlujoActivo {
   fecha_finalizacion?: Date;
   estado: EstadoFlujo;
   datos_solicitud?: Record<string, string> | undefined;
+  roles_usuario?: string[]; // Array de roles del usuario: "visualizador", "creador", "ejecutor", "aprobador"
 }
 
 // Entidad PasoSolicitud

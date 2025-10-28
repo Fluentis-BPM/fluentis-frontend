@@ -13,11 +13,14 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 export const BPMDashboard: React.FC = () => {
   const solicitudesData = useSolicitudes();
   const { flujosActivos, loadFlujosActivos } = useBpm();
   const navigate = useNavigate();
+  const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario || 0);
 
   useEffect(() => {
     // Best-effort fetch; hook also auto-loads when authenticated
@@ -26,10 +29,10 @@ export const BPMDashboard: React.FC = () => {
       try { solicitudesData.cargarSolicitudes(); } catch { /* noop */ }
     }
     // Load active flows using the same source as the Flujos module to keep counters consistent
-    if (flujosActivos.length === 0) {
-      try { loadFlujosActivos(); } catch { /* noop */ }
+    if (flujosActivos.length === 0 && currentUserId) {
+      try { loadFlujosActivos(currentUserId); } catch { /* noop */ }
     }
-  }, [loadFlujosActivos, solicitudesData?.cargarSolicitudes, solicitudesData?.solicitudes?.length, flujosActivos.length]);
+  }, [loadFlujosActivos, solicitudesData?.cargarSolicitudes, solicitudesData?.solicitudes?.length, flujosActivos.length, currentUserId]);
 
   // Derive counts; active flows should match what the Flujos section displays (length of flujosActivos array)
   const stats = {
