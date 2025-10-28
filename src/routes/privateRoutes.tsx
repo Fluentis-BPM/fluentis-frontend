@@ -10,7 +10,6 @@ import ConfigPage from "@/pages/user/ConfigPage";
 import { BPMDashboard } from "@/pages/bpm/BPMDashboard";
 import SolicitudesPage from "@/pages/bpm/SolicitudesPage";
 import FlujosPage from "@/pages/bpm/FlujosPage";
-import ActiveFlows from "@/pages/bpm/ActiveFlows";
 import MisPasosPage from '@/pages/bpm/MisPasosPage';
 import PlantillasPage from '@/pages/plantillas/PlantillasPage';
 import UsarPlantillaPage from '@/pages/plantillas/UsarPlantillaPage';

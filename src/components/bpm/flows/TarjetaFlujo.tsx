@@ -36,7 +36,7 @@ interface Props {
 export const TarjetaFlujo: React.FC<Props> = ({ 
   flujo, 
   pasos = [], 
-  onActualizarEstado,
+  // onActualizarEstado,
   onVerDetalles,
   onVerDiagrama,
   vista = 'grid'
