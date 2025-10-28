@@ -529,28 +529,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
             <CardContent>
               <div className="space-y-3">
                 {(() => {
-                  const inicioPaso: PasoSolicitud = {
-                    id_paso_solicitud: 0,
-                    flujo_activo_id: flujo.id_flujo_activo,
-                    paso_id: undefined,
-                    camino_id: undefined,
-                    responsable_id: undefined,
-                    fecha_inicio: new Date(),
-                    tipo_paso: 'ejecucion',
-                    estado: 'pendiente',
-                    nombre: flujo.datos_solicitud && Object.keys(flujo.datos_solicitud).length > 0 ? 'Paso inicial (Solicitud)' : 'Paso inicial',
-                    tipo_flujo: 'normal',
-                    regla_aprobacion: undefined,
-                    posicion_x: 20,
-                    posicion_y: 20,
-                    relacionesInput: [],
-                    relacionesGrupoAprobacion: [],
-                    comentarios: [],
-                    excepciones: []
-                  } as PasoSolicitud;
-
-                  const combined = [inicioPaso, ...pasos];
-                  return combined.map((paso, index) => (
+                  return pasos.map((paso, index) => (
                     <div
                       key={paso.id_paso_solicitud}
                       className="flex items-center justify-between p-3 border rounded-lg"

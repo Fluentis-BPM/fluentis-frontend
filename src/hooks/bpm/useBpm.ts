@@ -14,8 +14,8 @@ export const useBpm = () => {
 
   const { deleting, lastActionError } = useSelector((state: RootState) => state.bpm);
 
-  const loadFlujosActivos = useCallback(() => {
-    dispatch(fetchFlujosActivos());
+  const loadFlujosActivos = useCallback((usuarioId: number, fechaInicio?: string, fechaFin?: string, estado?: number) => {
+    dispatch(fetchFlujosActivos({ usuarioId, fechaInicio, fechaFin, estado }));
   }, [dispatch]);
 
   const loadPasosYConexiones = useCallback(

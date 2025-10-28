@@ -57,9 +57,17 @@ const initialState: BpmState = {
 
 export const fetchFlujosActivos = createAsyncThunk(
   'bpm/fetchFlujosActivos',
-  async (_, { rejectWithValue }) => {
+  async (params: { usuarioId: number; fechaInicio?: string; fechaFin?: string; estado?: number }, { rejectWithValue }) => {
     try {
-  const response = await api.get<FlujoActivo[]>('/api/FlujosActivos');
+      const queryParams = new URLSearchParams();
+      if (params.fechaInicio) queryParams.append('fechaInicio', params.fechaInicio);
+      if (params.fechaFin) queryParams.append('fechaFin', params.fechaFin);
+      if (params.estado !== undefined) queryParams.append('estado', params.estado.toString());
+      
+      const queryString = queryParams.toString();
+      const url = `/api/FlujosActivos/usuario/${params.usuarioId}${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await api.get<FlujoActivo[]>(url);
       return response.data;
     } catch (error: unknown) {
       return rejectWithValue('Error al cargar los flujos activos: ' + (error as Error).message);
