@@ -72,7 +72,6 @@ export default function PlantillasPage() {
     setForm({
       Nombre: tpl.nombre,
       Descripcion: tpl.descripcion ?? '',
-      FlujoBaseId: tpl.flujoBaseId ?? null,
       GrupoAprobacionId: tpl.grupoAprobacionId ?? null,
       Inputs: (tpl.inputs || []).map((i) => ({ InputId: i.inputId, Nombre: i.nombre, PlaceHolder: i.placeHolder ?? null, Requerido: i.requerido, ValorPorDefecto: i.valorPorDefecto ?? null })),
     });
@@ -134,7 +133,6 @@ export default function PlantillasPage() {
       const payloadApi: PlantillaSolicitudCreateDto = {
         Nombre: form.Nombre.trim(),
         Descripcion: form.Descripcion?.trim() || null,
-        FlujoBaseId: form.FlujoBaseId ?? null,
         GrupoAprobacionId: form.GrupoAprobacionId ?? null,
         Inputs: inputs
       };
@@ -292,9 +290,6 @@ export default function PlantillasPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       {tpl.grupoAprobacionId ? (
                         <Badge variant="outline">Grupo: {gruposById[tpl.grupoAprobacionId] || `#${tpl.grupoAprobacionId}`}</Badge>
-                      ) : null}
-                      {tpl.flujoBaseId ? (
-                        <Badge variant="outline">Flujo: #{tpl.flujoBaseId}</Badge>
                       ) : null}
                     </div>
                     <div className="flex justify-between pt-1">
@@ -513,10 +508,6 @@ export default function PlantillasPage() {
               </TabsContent>
               <TabsContent value="opciones">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Flujo base (opcional)</Label>
-                    <Input type="number" value={form.FlujoBaseId ?? ''} onChange={(e) => setForm((f) => ({ ...f, FlujoBaseId: e.target.value ? Number(e.target.value) : null }))} placeholder="ID de flujo" />
-                  </div>
                   <div>
                     <Label>Grupo aprobador (opcional)</Label>
                     <Select value={form.GrupoAprobacionId ? String(form.GrupoAprobacionId) : ''} onValueChange={(v) => setForm((f) => ({ ...f, GrupoAprobacionId: v ? Number(v) : null }))}>

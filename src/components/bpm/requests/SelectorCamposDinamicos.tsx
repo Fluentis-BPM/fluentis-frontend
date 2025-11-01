@@ -21,7 +21,7 @@ export const SelectorCamposDinamicos: React.FC<Props> = ({ camposDinamicos, onCh
     const inputId = parseInt(inputSeleccionado);
     const nuevaRelacion = {
       valor: '',
-      requerido: false
+      requerido: true
     };
 
     onChange({
@@ -32,10 +32,10 @@ export const SelectorCamposDinamicos: React.FC<Props> = ({ camposDinamicos, onCh
     setInputSeleccionado('');
   };
 
-  const actualizarCampo = (inputId: number, valor: string, requerido: boolean) => {
+  const actualizarCampo = (inputId: number, valor: string, _requerido: boolean) => {
     onChange({
       ...camposDinamicos,
-      [inputId]: { valor, requerido }
+      [inputId]: { valor, requerido: true }
     });
   };
 
@@ -113,10 +113,10 @@ export const SelectorCamposDinamicos: React.FC<Props> = ({ camposDinamicos, onCh
                   key={inputId}
                   input={input}
                   valor={campo.valor}
-                  requerido={campo.requerido}
-                  onChange={(valor, requerido) => actualizarCampo(inputId, valor, requerido)}
+                  requerido={true}
+                  onChange={(valor) => actualizarCampo(inputId, valor, true)}
                   onRemove={() => eliminarCampo(inputId)}
-                  showRequiredToggle={true}
+                  showRequiredToggle={false}
                 />
               );
             })}
@@ -127,8 +127,7 @@ export const SelectorCamposDinamicos: React.FC<Props> = ({ camposDinamicos, onCh
         {camposActivos.length > 0 && (
           <div className="mt-4 p-3 bg-muted/50 rounded-lg">
             <p className="text-xs text-muted-foreground">
-              💡 Los campos marcados como &quot;Requerido&quot; serán obligatorios para completar la solicitud.
-              Puedes reordenar o eliminar campos usando los controles de cada campo.
+              💡 Los campos agregados son obligatorios por defecto. Puedes eliminar campos usando los controles de cada campo.
             </p>
           </div>
         )}
