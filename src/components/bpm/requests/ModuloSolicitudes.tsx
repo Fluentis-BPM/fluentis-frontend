@@ -22,11 +22,14 @@ import { RootState } from '@/store';
 import { Toggle } from '@/components/ui/toggle';
 import { useUsers } from '@/hooks/users/useUsers';
 import { setImpersonateUserId, clearImpersonation } from '@/services/api';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useNavigate } from 'react-router-dom';
 
 export const ModuloSolicitudes: React.FC<{
   solicitudesData: ReturnType<typeof useSolicitudes>;
   onNavigateToFlujos: () => void;
 }> = ({ solicitudesData, onNavigateToFlujos }) => {
+  const navigate = useNavigate();
   const { 
     solicitudes, 
     crearSolicitud, 
@@ -53,6 +56,7 @@ export const ModuloSolicitudes: React.FC<{
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [showCreateChoice, setShowCreateChoice] = useState(false);
   const { grupos: gruposBackend } = useAprobations();
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario || 0);
   const currentUserRole = useSelector((s: RootState) => s.auth.user?.rolNombre || '');
@@ -373,7 +377,13 @@ export const ModuloSolicitudes: React.FC<{
           </div>
           
           <Button 
-            onClick={() => setMostrarFormulario(!mostrarFormulario)}
+            onClick={() => {
+              if (mostrarFormulario) {
+                setMostrarFormulario(false);
+              } else {
+                setShowCreateChoice(true);
+              }
+            }}
             variant="gradient"
             size="sm"
             className="hover:scale-105 transition-smooth"
@@ -382,6 +392,49 @@ export const ModuloSolicitudes: React.FC<{
             {mostrarFormulario ? 'Ocultar' : 'Nueva Solicitud'}
           </Button>
         </div>
+
+        {/* Dialogo de elección: plantilla o en blanco */}
+        <Dialog open={showCreateChoice} onOpenChange={setShowCreateChoice}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Crear solicitud</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Button
+                className="w-full h-11"
+                variant="gradient"
+                onClick={() => {
+                  setShowCreateChoice(false);
+                  navigate('/flujos/plantillas');
+                }}
+              >
+                Usar una plantilla existente
+              </Button>
+              <Button
+                className="w-full h-11"
+                variant="outline"
+                onClick={() => {
+                  setShowCreateChoice(false);
+                  setMostrarFormulario(true);
+                  // opcional: desplazar al formulario
+                  setTimeout(() => {
+                    try {
+                      const el = document.getElementById('form-crear-solicitud');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } catch (e) {
+                      // noop
+                    }
+                  }, 50);
+                }}
+              >
+                Iniciar en blanco
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setShowCreateChoice(false)}>Cancelar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <EstadisticasSolicitudes estadisticas={estadisticas} />
 
@@ -438,6 +491,7 @@ export const ModuloSolicitudes: React.FC<{
             {/* Formulario de creación */}
     {mostrarFormulario && (
               <div className="max-w-4xl mx-auto">
+                <div id="form-crear-solicitud" />
                 <FormularioSolicitud 
                   onCrearSolicitud={handleCrearSolicitud}
       isLoading={solicitudesData.isLoading}

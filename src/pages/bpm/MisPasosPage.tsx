@@ -76,6 +76,8 @@ const MisPasosPage: React.FC = () => {
   // Estados de acciones
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  // Registro local de mi voto por paso (solo UI, no autoritativo)
+  const [myDecision, setMyDecision] = useState<Record<number, 'aprobar' | 'rechazar'>>({});
   
   // Estados del modal de confirmación
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -193,6 +195,9 @@ const MisPasosPage: React.FC = () => {
           IdUsuario: selectedUserId,
           Decision: decision
         });
+        // Optimista: guardar mi voto localmente para bloquear botones y mostrar estado
+        const decisionName: 'aprobar' | 'rechazar' = decision ? 'aprobar' : 'rechazar';
+        setMyDecision((prev) => ({ ...prev, [targetPasoId]: decisionName }));
         setActionMessage(`Paso ${decision ? 'aprobado' : 'rechazado'} correctamente`);
       } else {
         // Para otros tipos de pasos, mantener la lógica anterior
@@ -266,8 +271,8 @@ const MisPasosPage: React.FC = () => {
   
   // Renderizar botones de acción según el tipo
   const renderAccionButtons = (paso: PasoSolicitud) => {
-    const isLoading = actionLoading === paso.pasoId || decisionLoading;
     const resolvedId = resolvePasoSolicitudId(paso);
+    const isLoading = actionLoading === resolvedId || decisionLoading;
     const noId = resolvedId <= 0;
     
     // Estados finales - no se pueden modificar
@@ -304,6 +309,21 @@ const MisPasosPage: React.FC = () => {
         );
       }
       
+      // Si el usuario ya votó (optimista), mostrar badge y bloquear botones
+      if (resolvedId > 0 && myDecision[resolvedId] && paso.estado === 'pendiente') {
+        const voted = myDecision[resolvedId];
+        return (
+          <div className="flex items-center gap-2">
+            <Badge className={`border ${voted === 'aprobar' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
+              {voted === 'aprobar' ? 'Voto registrado: Aprobaste' : 'Voto registrado: Rechazaste'}
+            </Badge>
+            <Button size="sm" variant="outline" disabled>
+              En espera de otros miembros
+            </Button>
+          </div>
+        );
+      }
+
       // Solo si está pendiente, mostrar botones de acción
       return (
         <div className="flex gap-2">

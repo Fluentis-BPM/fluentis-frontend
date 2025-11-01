@@ -3,14 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CrearSolicitudInput, EstadoSolicitud } from '@/types/bpm/request';
+import { CrearSolicitudInput } from '@/types/bpm/request';
 import { CamposDinamicos } from '@/types/bpm/inputs';
 import { SelectorCamposDinamicos } from './SelectorCamposDinamicos';
 import { SelectorGrupoAprobacion } from './SelectorGrupoAprobacion';
-import { Plus, User, Workflow, Settings, Users } from 'lucide-react';
+import { Plus, User, Settings, Users } from 'lucide-react';
 import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
@@ -26,6 +25,8 @@ export const FormularioSolicitud: React.FC<Props> = ({
 }) => {
   const { grupos: gruposBackend } = useAprobations();
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario);
+  const currentUserRole = useSelector((s: RootState) => s.auth.user?.rolNombre || '');
+  const isAdmin = (currentUserRole || '').toLowerCase() === 'administrador';
   const initialSolicitante = useMemo(() => currentUserId || 0, [currentUserId]);
   const [formData, setFormData] = useState<CrearSolicitudInput>({
     solicitante_id: initialSolicitante,
@@ -126,25 +127,27 @@ export const FormularioSolicitud: React.FC<Props> = ({
 
           <form onSubmit={handleSubmit} className="mt-6">
             <TabsContent value="basico" className="space-y-6 animate-fade-in">
-              {/* ID del Solicitante */}
-              <div className="space-y-2">
-                <Label htmlFor="solicitante" className="flex items-center gap-2 font-medium">
-                  <User className="w-4 h-4 text-primary" />
-                  ID del Solicitante
-                </Label>
-                <Input
-                  id="solicitante"
-                  type="number"
-                  value={formData.solicitante_id || ''}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    solicitante_id: parseInt(e.target.value) || 0
-                  }))}
-                  placeholder="Ingrese el ID del solicitante"
-                  required
-                  className="transition-smooth focus:ring-request-primary/50"
-                />
-              </div>
+              {/* ID del Solicitante (solo visible para admins) */}
+              {isAdmin && (
+                <div className="space-y-2">
+                  <Label htmlFor="solicitante" className="flex items-center gap-2 font-medium">
+                    <User className="w-4 h-4 text-primary" />
+                    ID del Solicitante
+                  </Label>
+                  <Input
+                    id="solicitante"
+                    type="number"
+                    value={formData.solicitante_id || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      solicitante_id: parseInt(e.target.value) || 0
+                    }))}
+                    placeholder="Ingrese el ID del solicitante"
+                    required
+                    className="transition-smooth focus:ring-request-primary/50"
+                  />
+                </div>
+              )}
 
               {/* Nombre de la Solicitud */}
               <div className="space-y-2">
@@ -166,43 +169,9 @@ export const FormularioSolicitud: React.FC<Props> = ({
                 />
               </div>
 
-              {/* Plantilla de Flujo (Opcional) */}
-              <div className="space-y-2">
-                <Label htmlFor="flujo" className="flex items-center gap-2 font-medium">
-                  <Workflow className="w-4 h-4 text-primary" />
-                  Plantilla de Flujo (Opcional)
-                </Label>
-                <Input
-                  id="flujo"
-                  type="number"
-                  value={formData.flujo_base_id || ''}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    flujo_base_id: e.target.value ? parseInt(e.target.value) : undefined
-                  }))}
-                  placeholder="ID de plantilla predefinida"
-                />
-              </div>
+              {/* Campo de Plantilla de Flujo eliminado: no se solicita en la creación */}
 
-              {/* Estado Inicial */}
-              <div className="space-y-2">
-                <Label className="font-medium">Estado Inicial</Label>
-                <Select
-                  value={formData.estado}
-                  onValueChange={(value: EstadoSolicitud) => 
-                    setFormData(prev => ({ ...prev, estado: value }))
-                  }
-                >
-                  <SelectTrigger className="transition-smooth focus:ring-request-primary/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="aprobado">Aprobado</SelectItem>
-                    <SelectItem value="rechazado">Rechazado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Estado inicial removido del formulario de creación (el backend siempre crea como 'Pendiente') */}
 
               {/* Descripción */}
               <div className="space-y-2">
