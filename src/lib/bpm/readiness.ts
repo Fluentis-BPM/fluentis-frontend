@@ -7,8 +7,10 @@ export type ReadinessResult = {
   pendingParentIds: number[];
 };
 
-// Estados que consideramos como "completados" temporalmente (opción C)
-const COMPLETED_STATES = new Set(['aprobado', 'entregado', 'rechazado']);
+// Estados que consideramos como "completados" para habilitar destinos.
+// Importante: 'rechazado' NO debe desbloquear siguientes pasos, pues al rechazar
+// se regresa al anterior y se bloquean los posteriores según la regla de FLUEN-384.
+const COMPLETED_STATES = new Set(['aprobado', 'entregado']);
 
 export function calcularReadinessPaso(
   pasoId: number,

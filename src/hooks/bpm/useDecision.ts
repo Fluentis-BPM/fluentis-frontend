@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { postPasoDecision, postSolicitudDecision, deletePasoDecision, DecisionCreateReq } from '@/services/api';
+import { toast } from '@/hooks/bpm/use-toast';
+import { markRejected } from '@/hooks/bpm/optimisticDecisions';
 
 type ExecuteResult = unknown;
 
@@ -20,6 +22,18 @@ export function useDecision() {
         // noop but log to help debugging
          
         console.warn('Failed to update local decisionHistory', err);
+      }
+      // Notificar según decisión (rechazo => soft reset a pendiente)
+  const decidedFalse = body?.Decision === false || body?.decision === false;
+      if (decidedFalse) {
+        // Marcar rechazo optimista para que el UI lo muestre como "rechazado" hasta un refresh manual
+        markRejected(pasoId);
+        toast({
+          title: 'Rechazo registrado',
+          description: 'El paso volvió a estado pendiente y sus decisiones fueron limpiadas.',
+          variant: 'destructive',
+          duration: 5000,
+        });
       }
       return paso;
     } catch (e) {

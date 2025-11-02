@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { PasoSolicitud, FiltrosPasoSolicitud, AccionPasoRequest, AccionPasoResponse } from '@/types/bpm/paso';
 import type { TipoPaso, EstadoPaso } from '@/types/bpm/flow';
-import api from '@/services/api';
+import api, { postPasoDecision } from '@/services/api';
 import { AxiosError } from 'axios';
 
 // Import mock data for development
@@ -56,6 +56,12 @@ interface PasoSolicitudApiResponse {
   flujo_nombre?: string;
   prioridad_paso?: string;
   solicitud_id?: number;
+  // Señales opcionales de readiness/bloqueo que puede enviar el backend
+  ready?: boolean;
+  isListo?: boolean;
+  listo?: boolean;
+  bloqueado?: boolean;
+  isBlocked?: boolean;
 }
 
 /**
@@ -95,18 +101,35 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
     const pasoId = apiPaso.pasoId ?? apiPaso.paso_id ?? id;
     const solicitudId = apiPaso.solicitudId ?? apiPaso.solicitud_id ?? 0;
     const usuarioAsignadoId = apiPaso.usuarioAsignadoId ?? apiPaso.usuario_asignado_id ?? 0;
-  const tipoPasoRaw = apiPaso.tipoPaso ?? apiPaso.tipo_paso ?? 'ejecucion';
-  const estadoRaw = apiPaso.estado ?? 'pendiente';
+    const tipoPasoRaw = apiPaso.tipoPaso ?? apiPaso.tipo_paso ?? 'ejecucion';
+    const estadoRaw = apiPaso.estado ?? 'pendiente';
     const nombre = apiPaso.nombre ?? `Paso ${pasoId || id}`;
     const fechaCreacion = apiPaso.fechaCreacion ?? apiPaso.fecha_creacion ?? new Date().toISOString();
     const prioridadRaw = apiPaso.prioridad ?? apiPaso.prioridad_paso ?? 'media';
-    return {
+
+    // Flags de readiness/bloqueo (si el backend los envía)
+    const apiRec = apiPaso as unknown as Record<string, unknown>;
+    const rawReady = apiRec?.ready as boolean | undefined;
+    const rawIsListo = apiRec?.isListo as boolean | undefined;
+    const rawListo = apiRec?.listo as boolean | undefined;
+    const rawBloqueado = apiRec?.bloqueado as boolean | undefined;
+    const rawIsBlocked = apiRec?.isBlocked as boolean | undefined;
+    const blocked = [rawBloqueado, rawIsBlocked].some(v => v === true);
+    const ready = typeof rawReady === 'boolean'
+      ? rawReady
+      : typeof rawIsListo === 'boolean'
+        ? rawIsListo
+        : typeof rawListo === 'boolean'
+          ? rawListo
+          : (blocked ? false : undefined);
+
+    const pasoMapped: PasoSolicitud = {
       id,
       pasoId,
       solicitudId,
       usuarioAsignadoId,
-  tipoPaso: normalizeTipoPaso(tipoPasoRaw),
-  estado: normalizeEstadoPaso(estadoRaw),
+      tipoPaso: normalizeTipoPaso(tipoPasoRaw),
+      estado: normalizeEstadoPaso(estadoRaw),
       nombre,
       descripcion: apiPaso.descripcion,
       fechaCreacion,
@@ -118,15 +141,20 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
       flujoId: apiPaso.flujoId ?? apiPaso.flujo_id,
       flujoNombre: apiPaso.flujoNombre ?? apiPaso.flujo_nombre,
       usuarioAsignado: apiPaso.usuarioAsignado,
-      metadatos: apiPaso.metadatos,
+      metadatos: {
+        ...(apiPaso.metadatos || {}),
+        ...(typeof ready === 'boolean' ? { ready } : {}),
+        ...(blocked ? { bloqueado: true } : {}),
+      },
       comentarios: apiPaso.comentarios,
     };
+
+    return pasoMapped;
   };
 
   // Construir query params para filtros
   const buildQueryParams = (filtros?: FiltrosPasoSolicitud): string => {
     if (!filtros) return '';
-    
     const params = new URLSearchParams();
     
     if (filtros.tipoPaso) params.append('tipoPaso', filtros.tipoPaso);
@@ -153,16 +181,27 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
     
     try {
       const queryParams = buildQueryParams(filtros);
-      const url = `/api/pasosolicitud/usuario/${usuarioId}${queryParams}`;
-      
-      console.log('Fetching pasos from:', url);
-      
-      const response = await api.get<PasoSolicitudApiResponse[]>(url);
-      
+      // Compatibilidad de rutas: intentar PascalCase y fallback a lowercase
+      const primaryUrl = `/api/PasoSolicitud/usuario/${usuarioId}${queryParams}`;
+      const fallbackUrl = `/api/pasosolicitudes/usuario/${usuarioId}${queryParams}`;
+
+      console.log('Fetching pasos from:', primaryUrl);
+      let response: { data: PasoSolicitudApiResponse[] };
+      try {
+        response = await api.get<PasoSolicitudApiResponse[]>(primaryUrl);
+      } catch (e: unknown) {
+        const status = (e as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+          console.warn('Primary URL 404, trying fallback:', fallbackUrl);
+          response = await api.get<PasoSolicitudApiResponse[]>(fallbackUrl);
+        } else {
+          throw e;
+        }
+      }
+
       const pasosMapeados = response.data.map(mapApiResponseToPaso);
       setPasos(pasosMapeados);
       setLastFetchParams({ usuarioId, filtros });
-      
       console.log('Pasos fetched successfully:', pasosMapeados);
     } catch (err: unknown) {
       const axiosError = err as AxiosError<{ message?: string; error?: string }>;
@@ -249,7 +288,7 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
 
   // Ejecutar acción sobre un paso (aprobar, rechazar, ejecutar)
   const ejecutarAccion = useCallback(async (
-    pasoId: number, 
+    pasoId: number,
     accion: AccionPasoRequest
   ): Promise<AccionPasoResponse> => {
     if (!pasoId || pasoId <= 0) {
@@ -260,14 +299,33 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
     setError(null);
 
     try {
+      // Para acciones de aprobación/rechazo usar el endpoint de decisiones del PasoSolicitud
+      if (accion.accion === 'aprobar' || accion.accion === 'rechazar') {
+        const decisionBool = accion.accion === 'aprobar';
+        const dto = await postPasoDecision(pasoId, {
+          IdUsuario: accion.usuarioId,
+          Decision: decisionBool,
+        });
+
+        // El backend devuelve el PasoSolicitud actualizado (FrontendDto)
+        const pasoActualizado = mapApiResponseToPaso(dto as unknown as PasoSolicitudApiResponse);
+        setPasos(prev => prev.map(p => (p.pasoId === pasoId || p.id === pasoId ? pasoActualizado : p)));
+
+        return {
+          exito: true,
+          mensaje: decisionBool ? 'Aprobado correctamente' : 'Rechazado (soft reset a pendiente)',
+          pasoActualizado,
+        };
+      }
+
+      // Para otras acciones, mantener compatibilidad con el endpoint anterior si existe
       const response = await api.post<AccionPasoResponse>(
-        `/api/pasosolicitud/${pasoId}/accion`,
+        `/api/PasoSolicitud/${pasoId}/accion`,
         accion
       );
 
-      // Actualizar el paso local si la acción fue exitosa
       if (response.data.exito && response.data.pasoActualizado) {
-        setPasos(prevPasos => 
+        setPasos(prevPasos =>
           prevPasos.map(paso => {
             const same = paso.pasoId === pasoId || paso.id === pasoId;
             return same
