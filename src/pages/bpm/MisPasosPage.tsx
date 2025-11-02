@@ -44,6 +44,10 @@ import {
   List
 } from 'lucide-react';
 import { fmtDateTime } from '@/lib/utils';
+import api from '@/services/api';
+import { calcularReadinessPaso } from '@/lib/bpm/readiness';
+import { isRejected as isOptimisticallyRejected, clearAllOptimistic } from '@/hooks/bpm/optimisticDecisions';
+import type { PasoSolicitud as PasoFlujoPaso, CaminoParalelo as PasoFlujoConexion } from '@/types/bpm/flow';
 
 const MisPasosPage: React.FC = () => {
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario ?? 0);
@@ -59,6 +63,8 @@ const MisPasosPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Readiness calculado por flujo (derivado del grafo real del backend)
+  const [readyByPasoId, setReadyByPasoId] = useState<Record<number, boolean>>({});
   
   // Actualizar selectedUserId cuando cambie currentUserId
   useEffect(() => {
@@ -109,14 +115,69 @@ const MisPasosPage: React.FC = () => {
       fetchPasos(selectedUserId, filtros);
     }
   }, [selectedUserId, filtros, fetchPasos]);
+
+  // Cargar grafos de flujos para calcular readiness real y ocultar pasos bloqueados
+  useEffect(() => {
+    const flujoIds = Array.from(new Set(pasos.map(p => p.flujoId).filter(Boolean))) as number[];
+    if (flujoIds.length === 0) {
+      setReadyByPasoId({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const newMap: Record<number, boolean> = {};
+      for (const fid of flujoIds) {
+        try {
+          const resp = await api.get<{ flujoActivoId: number; pasos: PasoFlujoPaso[]; caminos: PasoFlujoConexion[] }>(`/api/FlujosActivos/Pasos/${fid}`);
+          const { pasos: pasosFlujo, caminos } = resp.data || { pasos: [], caminos: [] };
+          // Para cada paso del feed que pertenezca a este flujo, calcular readiness
+          for (const p of pasos) {
+            if (p.flujoId !== fid) continue;
+            const pid = p.pasoId || p.id;
+            if (!pid) continue;
+            const res = calcularReadinessPaso(pid, pasosFlujo as unknown as PasoFlujoPaso[], caminos);
+            newMap[pid] = res.ready;
+          }
+        } catch (e) {
+          console.warn('[MisPasos] No se pudo cargar pasos/caminos del flujo', fid, e);
+        }
+      }
+      if (!cancelled) setReadyByPasoId(newMap);
+    })();
+    return () => { cancelled = true; };
+  }, [pasos]);
   
   // Filtrar pasos por término de búsqueda
   const pasosFiltrados = useMemo(() => {
+    const isBlocked = (p: PasoSolicitud): boolean => {
+      // 1) Back-end flags (si existieran en el DTO)
+      const md = (p as unknown as { metadatos?: Record<string, unknown> }).metadatos || {};
+      const mReady = md['ready'];
+      const mBloq = md['bloqueado'];
+      if (typeof mBloq === 'boolean') return mBloq;
+      if (typeof mReady === 'boolean') return mReady === false;
+      // 2) Readiness calculado desde el grafo del flujo
+      const pid = p.pasoId || p.id;
+      if (pid && Object.prototype.hasOwnProperty.call(readyByPasoId, pid)) {
+        return readyByPasoId[pid] === false;
+      }
+      return false;
+    };
     console.log('Filtering pasos:', pasos.length, 'with search term:', searchTerm);
-    if (!searchTerm.trim()) return pasos;
+    // Aplicar override optimista (mostrar rechazado hasta refresh)
+    const pasosConOverride = pasos.map((p) => {
+      const pid = (typeof p.pasoId === 'number' && p.pasoId > 0) ? p.pasoId : p.id;
+      if (pid && isOptimisticallyRejected(pid)) {
+        return { ...p, estado: 'rechazado' as EstadoPaso };
+      }
+      return p;
+    });
+    // Ocultar pasos bloqueados (por flags o por grafo)
+    const visibles = pasosConOverride.filter(p => !isBlocked(p));
+    if (!searchTerm.trim()) return visibles;
     
     const term = searchTerm.toLowerCase();
-    const filtered = pasos.filter(paso => 
+    const filtered = visibles.filter(paso => 
       paso.nombre.toLowerCase().includes(term) ||
       paso.solicitudNombre?.toLowerCase().includes(term) ||
       paso.descripcion?.toLowerCase().includes(term) ||
@@ -124,7 +185,7 @@ const MisPasosPage: React.FC = () => {
     );
     console.log('Filtered pasos:', filtered.length);
     return filtered;
-  }, [pasos, searchTerm]);
+  }, [pasos, searchTerm, readyByPasoId]);
   
   // Manejar cambio de filtros
   const handleFilterChange = (key: keyof FiltrosPasoSolicitud, value: string | undefined) => {
@@ -214,10 +275,7 @@ const MisPasosPage: React.FC = () => {
         }
       }
       
-      // Refrescar lista después de 1 segundo
-      setTimeout(() => {
-        fetchPasos(selectedUserId, filtros);
-      }, 1000);
+      // No auto-refrescar: mantener la vista como "rechazado" hasta que el usuario pulse el botón de refrescar
     } catch (err) {
         setActionMessage(`Error al ${confirmDialog.accion} el paso: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     } finally {
@@ -504,7 +562,10 @@ const MisPasosPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchPasos(selectedUserId, filtros)}
+            onClick={() => { 
+              clearAllOptimistic(); 
+              fetchPasos(selectedUserId, filtros); 
+            }}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />

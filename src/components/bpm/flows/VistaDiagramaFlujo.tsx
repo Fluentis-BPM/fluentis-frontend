@@ -25,6 +25,7 @@ import {
   Save
 } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
+import { isRejected as isOptimisticallyRejected, clearAllOptimistic } from '@/hooks/bpm/optimisticDecisions';
 import { useBpm } from '@/hooks/bpm/useBpm'; // Nuevo import para usar el estado global
 import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
 import { useUsers } from '@/hooks/users/useUsers';
@@ -81,15 +82,23 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
 
   // Obtener pasos y caminos del estado global
   const pasos = pasosPorFlujo[flujo.id_flujo_activo] || [];
+  // Aplicar override optimista (mostrar rechazado hasta que el usuario refresque explícitamente)
+  const pasosConOverride = React.useMemo(() => {
+    return pasos.map(p => (
+      isOptimisticallyRejected(Number(p.id_paso_solicitud))
+        ? { ...p, estado: 'rechazado' as typeof p.estado }
+        : p
+    ));
+  }, [pasos]);
   const caminos = caminosPorFlujo[flujo.id_flujo_activo] || [];
 
   // Estadísticas calculadas localmente
   const estadisticasPasos = {
-    total: pasos.length,
-    pendientes: pasos.filter(p => p.estado === 'pendiente').length,
-    aprobados: pasos.filter(p => p.estado === 'aprobado').length,
-    rechazados: pasos.filter(p => p.estado === 'rechazado').length,
-    excepciones: pasos.filter(p => p.estado === 'excepcion').length,
+    total: pasosConOverride.length,
+    pendientes: pasosConOverride.filter(p => p.estado === 'pendiente').length,
+    aprobados: pasosConOverride.filter(p => p.estado === 'aprobado').length,
+    rechazados: pasosConOverride.filter(p => p.estado === 'rechazado').length,
+    excepciones: pasosConOverride.filter(p => p.estado === 'excepcion').length,
   };
 
   // Cargar catálogo del backend para inputs disponibles; fallback a templates si falla
@@ -231,6 +240,41 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     return <Badge variant={variants[estado as keyof typeof variants] || 'outline'}>{estado}</Badge>;
   };
 
+  // Notificar al editor cuando algún paso cambie a "rechazado" (detección por dif)
+  const [prevEstadoByPaso, setPrevEstadoByPaso] = useState<Record<number, string>>({});
+  useEffect(() => {
+    if (!pasosConOverride || pasosConOverride.length === 0) return;
+    // construir mapa actual
+    const curr: Record<number, string> = {};
+    for (const p of pasosConOverride) {
+      curr[p.id_paso_solicitud] = String(p.estado || '').toLowerCase();
+    }
+    // detectar nuevas transiciones a rechazado
+    const newlyRejected: PasoSolicitud[] = [];
+    for (const p of pasosConOverride) {
+      const prev = prevEstadoByPaso[p.id_paso_solicitud];
+      const now = String(p.estado || '').toLowerCase();
+      if (now === 'rechazado' && prev !== 'rechazado') {
+        newlyRejected.push(p);
+      }
+    }
+    if (newlyRejected.length) {
+      for (const p of newlyRejected) {
+        // Intentar extraer un comentario breve si el backend lo aporta en p.comentarios
+        const comentario = Array.isArray(p.comentarios) && p.comentarios.length > 0
+          ? p.comentarios[p.comentarios.length - 1]?.contenido
+          : undefined;
+        toast({
+          title: `Paso rechazado: ${p.nombre}`,
+          description: comentario ? `Comentario: ${comentario}` : 'Este paso ha sido marcado como rechazado.',
+          duration: 6000,
+          variant: 'destructive'
+        });
+      }
+    }
+    setPrevEstadoByPaso(curr);
+  }, [pasosConOverride, toast]);
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header del flujo */}
@@ -293,7 +337,12 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setDiagramaKey(prev => prev + 1)}
+                onClick={() => { 
+                  toast({ title: 'Sincronizando…', description: 'Actualizando diagrama desde el servidor', duration: 1200 });
+                  clearAllOptimistic(); 
+                  loadPasosYConexiones(flujo.id_flujo_activo); 
+                  setDiagramaKey(prev => prev + 1); 
+                }}
                 className="mr-2 hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-300"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
@@ -366,7 +415,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
             >
               <DiagramaFlujo
                 key={diagramaKey}
-                pasos={pasos}
+                pasos={pasosConOverride}
                 caminos={caminos}
                 readOnly={!modoEdicion}
                 selectedNodeId={selectedNodeId || undefined}
