@@ -13,6 +13,7 @@ import FlujosPage from "@/pages/bpm/FlujosPage";
 import MisPasosPage from '@/pages/bpm/MisPasosPage';
 import PlantillasPage from '@/pages/plantillas/PlantillasPage';
 import UsarPlantillaPage from '@/pages/plantillas/UsarPlantillaPage';
+import MetricasPage from '@/pages/metricas/MetricasPage';
 
 
 // Placeholders para las páginas privadas (solo divs con nombres)
@@ -22,7 +23,6 @@ const PropuestasVotacionesPage = () => <div>Propuestas y Votaciones Page</div>;
 const BackupsPage = () => <div>Backups Page</div>;
 const IncidentesPage = () => <div>Incidentes Page</div>;
 
-const MetricasPage = () => <div>Métricas Page</div>;
 const InformesPage = () => <div>Informes Page</div>;
 
 export const privateRoutes = [
