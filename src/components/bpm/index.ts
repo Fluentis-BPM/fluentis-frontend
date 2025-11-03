@@ -10,6 +10,7 @@ export * from './flows/EstadisticasFlujos';
 export * from './flows/EditorPaso';
 export * from './flows/EditorPasoAprobacion';
 export * from './flows/EditorPasoEjecucion';
+export * from './flows/GestionVisualizadores';
 
 // Export all request components  
 export * from './requests/FormularioSolicitud';
