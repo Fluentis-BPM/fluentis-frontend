@@ -340,6 +340,7 @@ export default function AprobationsPage() {
                 draggedUser={draggedUser}
                 onUserDragStart={handleDragStart}
                 onUserDragEnd={handleDragEnd}
+                onUserDragStartFromGroup={(user, fromGroupId) => { setDraggedUser(user); setDraggedFromGroupId(fromGroupId) }}
               />
             </div>
             <div className="border-t border-[#eaf3fa] px-4">
