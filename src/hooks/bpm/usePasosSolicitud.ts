@@ -123,6 +123,9 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
           ? rawListo
           : (blocked ? false : undefined);
 
+    // Preservar relacionesGrupoAprobacion si viene del backend
+    const relacionesGrupoAprobacion = apiRec?.relacionesGrupoAprobacion as PasoSolicitud['relacionesGrupoAprobacion'];
+
     const pasoMapped: PasoSolicitud = {
       id,
       pasoId,
@@ -147,6 +150,7 @@ export const usePasosSolicitud = (): UsePasosSolicitudReturn => {
         ...(blocked ? { bloqueado: true } : {}),
       },
       comentarios: apiPaso.comentarios,
+      relacionesGrupoAprobacion,
     };
 
     return pasoMapped;

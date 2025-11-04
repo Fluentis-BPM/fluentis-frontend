@@ -674,6 +674,62 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                               <p className="mt-1 text-sm capitalize">{pasoEditando.regla_aprobacion}</p>
                             </div>
                           )}
+
+                          {/* Información del grupo de aprobación */}
+                          {pasoEditando.tipo_paso === 'aprobacion' && pasoEditando.relacionesGrupoAprobacion && pasoEditando.relacionesGrupoAprobacion.length > 0 && (() => {
+                            const relacionGrupo = pasoEditando.relacionesGrupoAprobacion![0];
+                            const miembros = relacionGrupo.usuarios_grupo || [];
+                            const decisiones = relacionGrupo.decisiones || [];
+                            const aprobaciones = decisiones.filter((d: { decision: boolean }) => d.decision === true).length;
+                            const rechazos = decisiones.filter((d: { decision: boolean }) => d.decision === false).length;
+                            const pendientes = miembros.length - decisiones.length;
+                            
+                            return (
+                              <div className="border rounded-lg p-4 space-y-3">
+                                <Label className="text-sm font-medium flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  Estado del Grupo de Aprobación
+                                </Label>
+                                
+                                {/* Estadísticas */}
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div className="text-center p-2 bg-green-50 rounded">
+                                    <div className="text-lg font-bold text-green-600">{aprobaciones}</div>
+                                    <div className="text-xs text-green-700">Aprobados</div>
+                                  </div>
+                                  <div className="text-center p-2 bg-red-50 rounded">
+                                    <div className="text-lg font-bold text-red-600">{rechazos}</div>
+                                    <div className="text-xs text-red-700">Rechazados</div>
+                                  </div>
+                                  <div className="text-center p-2 bg-amber-50 rounded">
+                                    <div className="text-lg font-bold text-amber-600">{pendientes}</div>
+                                    <div className="text-xs text-amber-700">Pendientes</div>
+                                  </div>
+                                </div>
+
+                                {/* Lista de miembros */}
+                                <div className="space-y-2">
+                                  {miembros.map((miembro: { id_usuario: number; nombre: string }) => {
+                                    const decision = decisiones.find((d: { id_usuario: number; decision: boolean }) => d.id_usuario === miembro.id_usuario);
+                                    return (
+                                      <div key={miembro.id_usuario} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded">
+                                        <span>{miembro.nombre}</span>
+                                        {decision ? (
+                                          <Badge variant={decision.decision ? 'default' : 'destructive'} className="text-xs">
+                                            {decision.decision ? '✓ Aprobó' : '✗ Rechazó'}
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="text-xs">
+                                            ⏳ Pendiente
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
 

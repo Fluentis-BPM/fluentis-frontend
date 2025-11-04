@@ -66,13 +66,14 @@ const MisPasosPage: React.FC = () => {
   // Readiness calculado por flujo (derivado del grafo real del backend)
   const [readyByPasoId, setReadyByPasoId] = useState<Record<number, boolean>>({});
   
-  // Actualizar selectedUserId cuando cambie currentUserId
+  // Actualizar selectedUserId cuando cambie currentUserId (solo si NO es admin)
+  // Los admins deben poder seleccionar libremente cualquier usuario
   useEffect(() => {
-    if (currentUserId > 0 && selectedUserId !== currentUserId) {
-      console.log('Updating selectedUserId from', selectedUserId, 'to', currentUserId);
+    if (!isAdmin && currentUserId > 0 && selectedUserId !== currentUserId) {
+      console.log('[MisPasos] Usuario NO admin - forzando selectedUserId a currentUserId:', currentUserId);
       setSelectedUserId(currentUserId);
     }
-  }, [currentUserId, selectedUserId]);
+  }, [currentUserId, selectedUserId, isAdmin]);
   
   // Estados de filtros
   const [filtros, setFiltros] = useState<FiltrosPasoSolicitud>({});
@@ -367,22 +368,57 @@ const MisPasosPage: React.FC = () => {
         );
       }
       
-      // Si el usuario ya votó (optimista), mostrar badge y bloquear botones
-      if (resolvedId > 0 && myDecision[resolvedId] && paso.estado === 'pendiente') {
-        const voted = myDecision[resolvedId];
+      // Verificar si el usuario ya votó según los datos reales del backend
+      const relacionGrupo = paso.relacionesGrupoAprobacion?.[0];
+      
+      // Debug logs
+      console.log('[MisPasos] Verificando voto para paso:', paso.nombre);
+      console.log('[MisPasos] selectedUserId:', selectedUserId);
+      console.log('[MisPasos] currentUserId:', currentUserId);
+      console.log('[MisPasos] relacionGrupo:', relacionGrupo);
+      console.log('[MisPasos] decisiones:', relacionGrupo?.decisiones);
+      
+      const miDecisionBackend = relacionGrupo?.decisiones?.find((d) => {
+        console.log('[MisPasos] Comparando:', d.id_usuario, '===', selectedUserId, '?', d.id_usuario === selectedUserId);
+        return d.id_usuario === selectedUserId;
+      });
+      
+      console.log('[MisPasos] miDecisionBackend:', miDecisionBackend);
+      
+      const yaVoteOptimista = resolvedId > 0 && myDecision[resolvedId];
+      
+      if ((miDecisionBackend || yaVoteOptimista) && paso.estado === 'pendiente') {
+        const voted = miDecisionBackend 
+          ? (miDecisionBackend.decision ? 'aprobar' : 'rechazar')
+          : myDecision[resolvedId];
+        
+        // Calcular estadísticas del grupo
+        const totalMiembros = relacionGrupo?.usuarios_grupo?.length || 0;
+        const totalDecisiones = relacionGrupo?.decisiones?.length || 0;
+        const aprobaciones = relacionGrupo?.decisiones?.filter((d) => d.decision === true).length || 0;
+        const rechazos = relacionGrupo?.decisiones?.filter((d) => d.decision === false).length || 0;
+        const pendientes = totalMiembros - totalDecisiones;
+        
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2">
             <Badge className={`border ${voted === 'aprobar' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
               {voted === 'aprobar' ? 'Voto registrado: Aprobaste' : 'Voto registrado: Rechazaste'}
             </Badge>
-            <Button size="sm" variant="outline" disabled>
-              En espera de otros miembros
-            </Button>
+            {miDecisionBackend?.fecha_decision && (
+              <span className="text-xs text-muted-foreground">
+                {new Date(miDecisionBackend.fecha_decision).toLocaleString('es-ES')}
+              </span>
+            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="text-green-600">✓ {aprobaciones}</span>
+              <span className="text-red-600">✗ {rechazos}</span>
+              <span className="text-amber-600">⏳ {pendientes}</span>
+            </div>
           </div>
         );
       }
 
-      // Solo si está pendiente, mostrar botones de acción
+      // Solo si está pendiente y no ha votado, mostrar botones de acción
       return (
         <div className="flex gap-2">
           <Button

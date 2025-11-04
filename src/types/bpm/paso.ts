@@ -35,6 +35,23 @@ export interface PasoSolicitud {
   // Metadatos adicionales
   metadatos?: Record<string, unknown>;
   comentarios?: string;
+  
+  // Información de grupo de aprobación (solo para pasos de tipo aprobacion)
+  relacionesGrupoAprobacion?: Array<{
+    id_relacion: number;
+    grupo_aprobacion_id: number;
+    paso_solicitud_id: number;
+    usuarios_grupo?: Array<{
+      id_usuario: number;
+      nombre: string;
+    }>;
+    decisiones?: Array<{
+      id_usuario: number;
+      nombre_usuario: string;
+      decision: boolean;
+      fecha_decision?: string;
+    }>;
+  }>;
 }
 
 // Filtros para la consulta de pasos

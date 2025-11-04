@@ -18,6 +18,17 @@ export interface RelacionGrupoAprobacion {
   grupo_aprobacion_id: number;
   solicitud_id?: number; // Opcional para mantener compatibilidad
   paso_solicitud_id?: number; // Nuevo - para pasos de aprobación
+  // Información adicional que viene del backend
+  usuarios_grupo?: Array<{
+    id_usuario: number;
+    nombre: string;
+  }>;
+  decisiones?: Array<{
+    id_usuario: number;
+    nombre_usuario: string;
+    decision: boolean; // true = aprobado, false = rechazado
+    fecha_decision?: string;
+  }>;
 }
 
 export type TipoDecision = 'si' | 'no';

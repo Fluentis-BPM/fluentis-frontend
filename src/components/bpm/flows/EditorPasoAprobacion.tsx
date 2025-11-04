@@ -69,21 +69,21 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
     setGrupoSeleccionado(grupoIdEfectivo);
   }, [grupoIdEfectivo]);
   
-  // Simular miembros del grupo (en una implementación real vendría de la base de datos)
-  const miembrosGrupo = [
-    { id: 1, nombre: 'Juan Pérez', rol: 'Supervisor' },
-    { id: 2, nombre: 'María García', rol: 'Gerente' },
-    { id: 3, nombre: 'Carlos López', rol: 'Director' }
-  ];
+  // Obtener miembros del grupo desde la relación (datos reales del backend)
+  const miembrosGrupo = relacionActual?.usuarios_grupo || [];
+  
+  // Obtener decisiones desde la relación (datos reales del backend)
+  const decisionesReales = relacionActual?.decisiones || [];
 
-  const decisionesPorUsuario = decisiones.reduce((acc, decision) => {
-    acc[decision.id_usuario] = decision.decision;
+  const decisionesPorUsuario = decisionesReales.reduce((acc, decision) => {
+    acc[decision.id_usuario] = decision.decision ? 'si' : 'no';
     return acc;
-  }, {} as Record<number, TipoDecision>);
+  }, {} as Record<number, 'si' | 'no'>);
 
-  const totalDecisiones = decisiones.length;
-  const aprobaciones = decisiones.filter(d => d.decision === 'si').length;
-  const rechazos = decisiones.filter(d => d.decision === 'no').length;
+  const totalDecisiones = decisionesReales.length;
+  const aprobaciones = decisionesReales.filter((d) => d.decision === true).length;
+  const rechazos = decisionesReales.filter((d) => d.decision === false).length;
+  const pendientes = miembrosGrupo.length - totalDecisiones;
 
   // const puedeDecidor = usuarioActualId && miembrosGrupo.some(m => m.id === usuarioActualId);
 
@@ -167,9 +167,9 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
                 <div className="text-2xl font-bold text-red-600">{rechazos}</div>
                 <div className="text-sm text-red-700">Rechazos</div>
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-600">{totalDecisiones}</div>
-                <div className="text-sm text-gray-700">Total</div>
+              <div className="text-center p-3 bg-amber-50 rounded-lg">
+                <div className="text-2xl font-bold text-amber-600">{pendientes}</div>
+                <div className="text-sm text-amber-700">Pendientes</div>
               </div>
             </div>
 
@@ -181,18 +181,23 @@ export const EditorPasoAprobacion: React.FC<EditorPasoAprobacionProps> = ({
               </Label>
               <div className="space-y-2">
                 {miembrosGrupo.map((miembro) => {
-                  const decision = decisionesPorUsuario[miembro.id];
+                  const decision = decisionesPorUsuario[miembro.id_usuario];
+                  const decisionInfo = decisionesReales.find(d => d.id_usuario === miembro.id_usuario);
                   return (
-                    <div key={miembro.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div key={miembro.id_usuario} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback>
-                            {miembro.nombre.split(' ').map(n => n[0]).join('')}
+                            {miembro.nombre.split(' ').map((n: string) => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium text-sm">{miembro.nombre}</p>
-                          <p className="text-xs text-muted-foreground">{miembro.rol}</p>
+                          {decisionInfo?.fecha_decision && (
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(decisionInfo.fecha_decision).toLocaleString('es-ES')}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div>
