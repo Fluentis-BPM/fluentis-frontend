@@ -1,4 +1,4 @@
-// Types for KPI DTOs returned by backend KpisController
+
 
 export type AvgFlowCloseTimeDto = {
   overallAvgHours: number;

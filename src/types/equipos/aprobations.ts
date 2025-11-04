@@ -25,6 +25,8 @@ export interface AprobationsListProps {
   draggedUser: User | null
   onUserDragStart?: (user: User) => void
   onUserDragEnd?: () => void
+  // When dragging a user from inside a group, this provides the source group id
+  onUserDragStartFromGroup?: (user: User, fromGroupId: number) => void
 }
 
 export interface AprobationGroupCardProps {
@@ -34,6 +36,7 @@ export interface AprobationGroupCardProps {
   draggedUser: User | null
   onUserDragStart?: (user: User) => void
   onUserDragEnd?: () => void
+  onUserDragStartFromGroup?: (user: User, fromGroupId: number) => void
 }
 
 export interface CreateGrupoAprobacionInput {
