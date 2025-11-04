@@ -83,25 +83,6 @@ export default function Sidebar({ user }: SidebarProps) {
         { path: '/bpm/flujos', label: 'Flujos' },
         { path: '/flujos/plantillas', label: 'Plantillas Solicitud' },
         { path: '/flujos/mis-pasos', label: 'Mis Pasos' },
-        { path: '/flujos/propuestas-votaciones', label: 'Propuestas y Votaciones' },
-      ]
-    },
-    {
-      id: 'backupSeguridad',
-      label: 'Backup y Seguridad',
-      icon: <Shield className="h-5 w-5" />,
-      items: [
-        { path: '/backup/backups', label: 'Backups' },
-        { path: '/backup/incidentes', label: 'Incidentes' }
-      ]
-    },
-    {
-      id: 'metricasInformes',
-      label: 'Métricas e Informes',
-      icon: <BarChart3 className="h-5 w-5" />,
-      items: [
-        { path: '/metricas/metricas', label: 'Métricas' },
-        { path: '/metricas/informes', label: 'Informes' }
       ]
     },
   ];

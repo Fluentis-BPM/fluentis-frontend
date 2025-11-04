@@ -30,7 +30,7 @@ export const privateRoutes = [
     element: <MainLayout />,
     children: [
       // Dashboard
-      { path: '/dashboard', element: <PrivateRoute><div>Dashboard Coming Soon...</div></PrivateRoute> },
+      { path: '/dashboard', element: <PrivateRoute><MetricasPage /></PrivateRoute> },
       
       // Módulo: Gestión de Equipos y Permisos
       { path: '/equipos/usuarios', element: <PrivateRoute><UsersPage /></PrivateRoute> },
@@ -52,14 +52,7 @@ export const privateRoutes = [
       { path: '/flujos/mis-pasos', element: <PrivateRoute><MisPasosPage /></PrivateRoute> },
       { path: '/flujos/propuestas-votaciones', element: <PrivateRoute><PropuestasVotacionesPage /></PrivateRoute> },
 
-      // Módulo: Backup y Seguridad
-      { path: '/backup/backups', element: <PrivateRoute><BackupsPage /></PrivateRoute> },
-      { path: '/backup/incidentes', element: <PrivateRoute><IncidentesPage /></PrivateRoute> },
-
-      // Módulo: Métricas e Informes
-      { path: '/metricas/metricas', element: <PrivateRoute><MetricasPage /></PrivateRoute> },
-      { path: '/metricas/informes', element: <PrivateRoute><InformesPage /></PrivateRoute> },
-    
+  
       // Módulo: Perfil y Configuración
       { path: '/profile', element: <PrivateRoute><UserPage /></PrivateRoute>},
       { path: '/configuracion/cuenta', element: <PrivateRoute><ConfigPage /></PrivateRoute>},
