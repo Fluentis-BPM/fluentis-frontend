@@ -10,6 +10,7 @@ import UsersList from "@/components/equipos/common/UsersList"
 import AprobationsList from "@/components/equipos/aprobations/AprobationsList"
 import { useUsers } from "@/hooks/users/useUsers"
 import { useAprobations } from "@/hooks/equipos/aprobations/useAprobations"
+import { confirmRemoveFromGroups } from "@/lib/confirm"
 import Paginator from "@/components/equipos/common/Paginator"
 
 export default function AprobationsPage() {
@@ -81,9 +82,9 @@ export default function AprobationsPage() {
     try {
       const userId = draggedUser.idUsuario ?? (typeof draggedUser.oid === 'number' ? draggedUser.oid : parseInt(String(draggedUser.oid)))
       if (!userId || isNaN(Number(userId))) return
-      const containing = grupos.filter(g => (g.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === userId))
-      if (containing.length === 0) { setDraggedUser(null); return }
-      const confirmed = window.confirm(`¿Quitar a ${draggedUser.nombre} de ${containing.length} grupo(s) de aprobación?`)
+  const containing = grupos.filter(g => (g.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === userId))
+  if (containing.length === 0) { setDraggedUser(null); return }
+  const confirmed = await confirmRemoveFromGroups({ userName: draggedUser.nombre, count: containing.length })
       if (!confirmed) { setDraggedUser(null); return }
       for (const g of containing) {
         await removeUsuario(g.id_grupo, userId)

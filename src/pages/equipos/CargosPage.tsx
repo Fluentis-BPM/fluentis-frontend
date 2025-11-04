@@ -8,6 +8,7 @@ import { useUsers } from "@/hooks/users/useUsers"
 import { useCargos } from "@/hooks/equipos/useCargos"
 import Paginator from "@/components/equipos/common/Paginator"
 import { setUsuarioCargo } from "@/services/api"
+import { confirmMove, confirmUnassign } from "@/lib/confirm"
 
 export default function CargosPage() {
   const { users, loading: usersLoading, refetch: usersRefetch } = useUsers()
@@ -49,7 +50,12 @@ export default function CargosPage() {
       const currentCargo = cargos.find(c => (Array.isArray(c.usuarios) ? c.usuarios : []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === Number(userId)))
       if (currentCargo && currentCargo.idCargo === cargoId) { setDraggedUser(null); return }
       if (currentCargo && currentCargo.idCargo !== cargoId) {
-        const confirmed = window.confirm(`¿Mover a ${draggedUser.nombre} del cargo "${currentCargo.nombre}" al cargo "${targetCargo.nombre}"?`)
+        const confirmed = await confirmMove({
+          entityLabel: 'cargo',
+          userName: draggedUser.nombre,
+          fromName: currentCargo.nombre,
+          toName: targetCargo.nombre,
+        })
         if (!confirmed) { setDraggedUser(null); return }
       }
       await setUsuarioCargo(Number(userId), cargoId)
@@ -69,7 +75,11 @@ export default function CargosPage() {
       if (!userId || isNaN(Number(userId))) return
       const currentCargo = cargos.find(c => (Array.isArray(c.usuarios) ? c.usuarios : []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === Number(userId)))
       if (!currentCargo) { setDraggedUser(null); return }
-      const confirmed = window.confirm(`¿Quitar a ${draggedUser.nombre} del cargo "${currentCargo.nombre}"?`)
+      const confirmed = await confirmUnassign({
+        entityLabel: 'cargo',
+        userName: draggedUser.nombre,
+        fromName: currentCargo.nombre,
+      })
       if (!confirmed) { setDraggedUser(null); return }
       await setUsuarioCargo(Number(userId), null)
       await Promise.all([refetch(), usersRefetch()])

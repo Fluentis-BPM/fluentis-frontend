@@ -9,6 +9,7 @@ import { useUsers } from "@/hooks/users/useUsers"
 import { useDepartments } from "@/hooks/equipos/useDepartments"
 import Paginator from "@/components/equipos/common/Paginator"
 import { setUsuarioDepartamento } from "@/services/api"
+import { confirmMove, confirmUnassign } from "@/lib/confirm"
 
 export default function DepartmentsPage() {
   const { users, loading: usersLoading, refetch: usersRefetch } = useUsers()
@@ -51,7 +52,12 @@ export default function DepartmentsPage() {
         return
       }
       if (currentDept && currentDept.idDepartamento !== departmentId) {
-        const confirmed = window.confirm(`¿Mover a ${draggedUser.nombre} del departamento "${currentDept.nombre}" al departamento "${targetDepartment.nombre}"?`)
+        const confirmed = await confirmMove({
+          entityLabel: 'departamento',
+          userName: draggedUser.nombre,
+          fromName: currentDept.nombre,
+          toName: targetDepartment.nombre,
+        })
         if (!confirmed) { setDraggedUser(null); return }
       }
       await setUsuarioDepartamento(Number(userId), departmentId)
@@ -70,7 +76,11 @@ export default function DepartmentsPage() {
       if (!userId || isNaN(Number(userId))) return
       const currentDept = departments.find(d => (d.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === Number(userId)))
       if (!currentDept) { setDraggedUser(null); return }
-      const confirmed = window.confirm(`¿Quitar a ${draggedUser.nombre} del departamento "${currentDept.nombre}"?`)
+      const confirmed = await confirmUnassign({
+        entityLabel: 'departamento',
+        userName: draggedUser.nombre,
+        fromName: currentDept.nombre,
+      })
       if (!confirmed) { setDraggedUser(null); return }
       await setUsuarioDepartamento(Number(userId), null)
       await Promise.all([refetch(), usersRefetch()])

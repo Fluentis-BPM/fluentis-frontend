@@ -9,6 +9,7 @@ import { useUsers } from "@/hooks/users/useUsers"
 import { useRoles } from "@/hooks/equipos/useRoles"
 import Paginator from "@/components/equipos/common/Paginator"
 import { setUsuarioRol } from "@/services/api"
+import { confirmMove, confirmUnassign } from "@/lib/confirm"
 
 export default function RolesPage() {
   const { users, loading: usersLoading, refetch: usersRefetch } = useUsers()
@@ -54,7 +55,12 @@ export default function RolesPage() {
       }
       // If moving from one role to another, confirm
       if (currentRole && currentRole.idRol !== roleId) {
-        const confirmed = window.confirm(`¿Mover a ${draggedUser.nombre} del rol "${currentRole.nombre}" al rol "${targetRole.nombre}"?`)
+        const confirmed = await confirmMove({
+          entityLabel: 'rol',
+          userName: draggedUser.nombre,
+          fromName: currentRole.nombre,
+          toName: targetRole.nombre,
+        })
         if (!confirmed) {
           setDraggedUser(null)
           return
@@ -80,7 +86,11 @@ export default function RolesPage() {
         setDraggedUser(null)
         return
       }
-      const confirmed = window.confirm(`¿Quitar a ${draggedUser.nombre} del rol "${currentRole.nombre}"?`)
+      const confirmed = await confirmUnassign({
+        entityLabel: 'rol',
+        userName: draggedUser.nombre,
+        fromName: currentRole.nombre,
+      })
       if (!confirmed) { setDraggedUser(null); return }
       await setUsuarioRol(Number(userId), null)
       await Promise.all([refetch(), usersRefetch()])
