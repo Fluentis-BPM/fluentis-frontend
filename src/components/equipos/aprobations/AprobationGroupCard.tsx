@@ -3,7 +3,7 @@ import { Shield, Users, Globe } from 'lucide-react'
 import UserCard from "../common/UserCard"
 import { AprobationGroupCardProps } from "@/types/equipos/aprobations"
 
-export default function AprobationGroupCard({ grupo, users, onDrop, draggedUser }: AprobationGroupCardProps) {
+export default function AprobationGroupCard({ grupo, users, onDrop, draggedUser, onUserDragStart, onUserDragEnd }: AprobationGroupCardProps) {
   const [isDragOver, setIsDragOver] = useState(false)
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -83,8 +83,8 @@ export default function AprobationGroupCard({ grupo, users, onDrop, draggedUser 
             <UserCard
               key={user.oid}
               user={user}
-              onDragStart={() => {}}
-              onDragEnd={() => {}}
+              onDragStart={onUserDragStart || (() => {})}
+              onDragEnd={onUserDragEnd || (() => {})}
               isDragging={draggedUser?.oid === user.oid}
             />
           ))

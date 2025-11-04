@@ -82,6 +82,9 @@ export default function AprobationsPage() {
       const userId = draggedUser.idUsuario ?? (typeof draggedUser.oid === 'number' ? draggedUser.oid : parseInt(String(draggedUser.oid)))
       if (!userId || isNaN(Number(userId))) return
       const containing = grupos.filter(g => (g.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === userId))
+      if (containing.length === 0) { setDraggedUser(null); return }
+      const confirmed = window.confirm(`¿Quitar a ${draggedUser.nombre} de ${containing.length} grupo(s) de aprobación?`)
+      if (!confirmed) { setDraggedUser(null); return }
       for (const g of containing) {
         await removeUsuario(g.id_grupo, userId)
       }
@@ -321,6 +324,8 @@ export default function AprobationsPage() {
                 getUsersByGroup={getUsersByGroup}
                 onDrop={handleDrop}
                 draggedUser={draggedUser}
+                onUserDragStart={handleDragStart}
+                onUserDragEnd={handleDragEnd}
               />
             </div>
             <div className="border-t border-[#eaf3fa] px-4">

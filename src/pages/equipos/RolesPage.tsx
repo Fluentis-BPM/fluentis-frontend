@@ -45,6 +45,21 @@ export default function RolesPage() {
       if (!targetRole) return
       const userId = draggedUser.idUsuario ?? (typeof draggedUser.oid === 'number' ? draggedUser.oid : parseInt(String(draggedUser.oid)))
       if (!userId || isNaN(Number(userId))) return
+      // Determine current role assignment
+      const currentRole = roles.find(r => (r.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === Number(userId)))
+      if (currentRole && currentRole.idRol === roleId) {
+        // Dropped on the same role, no-op
+        setDraggedUser(null)
+        return
+      }
+      // If moving from one role to another, confirm
+      if (currentRole && currentRole.idRol !== roleId) {
+        const confirmed = window.confirm(`¿Mover a ${draggedUser.nombre} del rol "${currentRole.nombre}" al rol "${targetRole.nombre}"?`)
+        if (!confirmed) {
+          setDraggedUser(null)
+          return
+        }
+      }
       await setUsuarioRol(Number(userId), roleId)
       await Promise.all([refetch(), usersRefetch()])
       setDraggedUser(null)
@@ -59,6 +74,14 @@ export default function RolesPage() {
     try {
       const userId = draggedUser.idUsuario ?? (typeof draggedUser.oid === 'number' ? draggedUser.oid : parseInt(String(draggedUser.oid)))
       if (!userId || isNaN(Number(userId))) return
+      const currentRole = roles.find(r => (r.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === Number(userId)))
+      if (!currentRole) {
+        // Nothing to unassign
+        setDraggedUser(null)
+        return
+      }
+      const confirmed = window.confirm(`¿Quitar a ${draggedUser.nombre} del rol "${currentRole.nombre}"?`)
+      if (!confirmed) { setDraggedUser(null); return }
       await setUsuarioRol(Number(userId), null)
       await Promise.all([refetch(), usersRefetch()])
     } catch (e) {
@@ -193,6 +216,8 @@ export default function RolesPage() {
                 getUsersByRole={getUsersByRole}
                 onDrop={handleDrop}
                 draggedUser={draggedUser}
+                onUserDragStart={handleDragStart}
+                onUserDragEnd={handleDragEnd}
               />
             </div>
             <div className="border-t border-[#eaf3fa] px-4">

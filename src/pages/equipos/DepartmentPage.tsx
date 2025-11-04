@@ -45,6 +45,15 @@ export default function DepartmentsPage() {
       if (!targetDepartment) return
       const userId = draggedUser.idUsuario ?? (typeof draggedUser.oid === 'number' ? draggedUser.oid : parseInt(String(draggedUser.oid)))
       if (!userId || isNaN(Number(userId))) return
+      const currentDept = departments.find(d => (d.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === Number(userId)))
+      if (currentDept && currentDept.idDepartamento === departmentId) {
+        setDraggedUser(null)
+        return
+      }
+      if (currentDept && currentDept.idDepartamento !== departmentId) {
+        const confirmed = window.confirm(`¿Mover a ${draggedUser.nombre} del departamento "${currentDept.nombre}" al departamento "${targetDepartment.nombre}"?`)
+        if (!confirmed) { setDraggedUser(null); return }
+      }
       await setUsuarioDepartamento(Number(userId), departmentId)
       await Promise.all([refetch(), usersRefetch()])
       setDraggedUser(null)
@@ -59,6 +68,10 @@ export default function DepartmentsPage() {
     try {
       const userId = draggedUser.idUsuario ?? (typeof draggedUser.oid === 'number' ? draggedUser.oid : parseInt(String(draggedUser.oid)))
       if (!userId || isNaN(Number(userId))) return
+      const currentDept = departments.find(d => (d.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === Number(userId)))
+      if (!currentDept) { setDraggedUser(null); return }
+      const confirmed = window.confirm(`¿Quitar a ${draggedUser.nombre} del departamento "${currentDept.nombre}"?`)
+      if (!confirmed) { setDraggedUser(null); return }
       await setUsuarioDepartamento(Number(userId), null)
       await Promise.all([refetch(), usersRefetch()])
     } catch (e) {
@@ -194,6 +207,8 @@ export default function DepartmentsPage() {
                 getUsersByDepartment={getUsersByDepartment}
                 onDrop={handleDrop}
                 draggedUser={draggedUser}
+                onUserDragStart={handleDragStart}
+                onUserDragEnd={handleDragEnd}
               />
             </div>
             <div className="border-t border-[#eaf3fa] px-4">
