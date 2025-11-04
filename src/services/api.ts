@@ -184,3 +184,19 @@ export const postSolicitudDecision = async (solicitudId: number, body: DecisionC
   const res = await api.post(`/api/solicitudes/${solicitudId}/decision`, body);
   return res.data;
 };
+
+// --- User assignment endpoints (Equipos) ---
+export const setUsuarioDepartamento = async (usuarioId: number, departamentoId: number | null) => {
+  const res = await api.put(`/api/Usuarios/${usuarioId}/departamento`, { departamentoId });
+  return res.data;
+};
+
+export const setUsuarioRol = async (usuarioId: number, rolId: number | null) => {
+  const res = await api.put(`/api/Usuarios/${usuarioId}/rol`, { rolId });
+  return res.data;
+};
+
+export const setUsuarioCargo = async (usuarioId: number, cargoId: number | null) => {
+  const res = await api.put(`/api/Usuarios/${usuarioId}/cargo`, { cargoId });
+  return res.data;
+};

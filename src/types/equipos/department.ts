@@ -21,6 +21,7 @@ export interface UsersListProps {
   users: User[]
   onDragStart: (user: User) => void
   onDragEnd: () => void
+  onDropToUnassign?: () => void
 }
 
 export interface UserCardProps {
