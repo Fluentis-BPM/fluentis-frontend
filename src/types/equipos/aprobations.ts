@@ -23,6 +23,8 @@ export interface AprobationsListProps {
   getUsersByGroup: (groupId: number) => User[]
   onDrop: (groupId: number) => void
   draggedUser: User | null
+  onUserDragStart?: (user: User) => void
+  onUserDragEnd?: () => void
 }
 
 export interface AprobationGroupCardProps {
@@ -30,6 +32,8 @@ export interface AprobationGroupCardProps {
   users: User[]
   onDrop: (groupId: number) => void
   draggedUser: User | null
+  onUserDragStart?: (user: User) => void
+  onUserDragEnd?: () => void
 }
 
 export interface CreateGrupoAprobacionInput {

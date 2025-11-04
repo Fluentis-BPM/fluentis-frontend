@@ -4,7 +4,7 @@ import { Briefcase, Users } from 'lucide-react'
 import UserCard from "../common/UserCard"
 import { CargoCardProps } from "@/types/equipos/cargo"
 
-export default function CargoCard({ cargo, users, onDrop, draggedUser }: CargoCardProps) {
+export default function CargoCard({ cargo, users, onDrop, draggedUser, onUserDragStart, onUserDragEnd }: CargoCardProps) {
   const [isDragOver, setIsDragOver] = useState(false)
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -88,8 +88,8 @@ export default function CargoCard({ cargo, users, onDrop, draggedUser }: CargoCa
             <UserCard
               key={user.oid}
               user={user}
-              onDragStart={() => {}}
-              onDragEnd={() => {}}
+              onDragStart={onUserDragStart || (() => {})}
+              onDragEnd={onUserDragEnd || (() => {})}
               isDragging={draggedUser?.oid === user.oid}
             />
           ))

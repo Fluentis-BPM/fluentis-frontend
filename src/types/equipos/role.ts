@@ -34,6 +34,8 @@ export interface RolesListProps {
   getUsersByRole: (roleId: number) => User[]
   onDrop: (roleId: number) => void
   draggedUser: User | null
+  onUserDragStart?: (user: User) => void
+  onUserDragEnd?: () => void
 }
 
 export interface RoleCardProps {
@@ -41,6 +43,8 @@ export interface RoleCardProps {
   users: User[]
   onDrop: (roleId: number) => void
   draggedUser: User | null
+  onUserDragStart?: (user: User) => void
+  onUserDragEnd?: () => void
 }
 
 export interface UseRolesReturn {
