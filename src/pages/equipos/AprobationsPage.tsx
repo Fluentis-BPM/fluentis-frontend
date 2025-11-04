@@ -30,6 +30,7 @@ export default function AprobationsPage() {
   const [esGlobal, setEsGlobal] = useState(false)
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([])
   const [draggedUser, setDraggedUser] = useState<User | null>(null)
+  const [draggedFromGroupId, setDraggedFromGroupId] = useState<number | null>(null)
   const [openUsersPicker, setOpenUsersPicker] = useState(false)
   const [searchMiembros, setSearchMiembros] = useState('')
   const [groupSearch, setGroupSearch] = useState('')
@@ -47,6 +48,7 @@ export default function AprobationsPage() {
 
   const handleDragEnd = () => {
     setDraggedUser(null)
+    setDraggedFromGroupId(null)
   }
 
   const handleDrop = async (groupId: number) => {
@@ -60,9 +62,11 @@ export default function AprobationsPage() {
       // Add to target group (users can belong to multiple groups)
       await addUsuarios(groupId, [userId])
       setDraggedUser(null)
+      setDraggedFromGroupId(null)
     } catch (error) {
       console.error('Error updating user group:', error)
       setDraggedUser(null)
+      setDraggedFromGroupId(null)
     }
   }
 
@@ -82,12 +86,21 @@ export default function AprobationsPage() {
     try {
       const userId = draggedUser.idUsuario ?? (typeof draggedUser.oid === 'number' ? draggedUser.oid : parseInt(String(draggedUser.oid)))
       if (!userId || isNaN(Number(userId))) return
-  const containing = grupos.filter(g => (g.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === userId))
-  if (containing.length === 0) { setDraggedUser(null); return }
-  const confirmed = await confirmRemoveFromGroups({ userName: draggedUser.nombre, count: containing.length })
-      if (!confirmed) { setDraggedUser(null); return }
-      for (const g of containing) {
-        await removeUsuario(g.id_grupo, userId)
+      // If we started drag from a specific group, remove only from that group
+      if (draggedFromGroupId) {
+        const g = grupos.find(x => x.id_grupo === draggedFromGroupId)
+        if (!g) { setDraggedUser(null); setDraggedFromGroupId(null); return }
+        const confirmed = await confirmRemoveFromGroups({ userName: draggedUser.nombre, count: 1 })
+        if (!confirmed) { setDraggedUser(null); setDraggedFromGroupId(null); return }
+        await removeUsuario(draggedFromGroupId, userId)
+      } else {
+        const containing = grupos.filter(g => (g.usuarios || []).some(u => (u.idUsuario ?? (typeof u.oid === 'number' ? u.oid : parseInt(String(u.oid)))) === userId))
+        if (containing.length === 0) { setDraggedUser(null); return }
+        const confirmed = await confirmRemoveFromGroups({ userName: draggedUser.nombre, count: containing.length })
+        if (!confirmed) { setDraggedUser(null); return }
+        for (const g of containing) {
+          await removeUsuario(g.id_grupo, userId)
+        }
       }
     } catch (e) {
       console.error('Error unassigning user from group:', e)
