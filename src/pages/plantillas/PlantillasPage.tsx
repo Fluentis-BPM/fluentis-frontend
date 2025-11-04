@@ -314,11 +314,13 @@ export default function PlantillasPage() {
       </Card>
 
       <Dialog open={openEditor} onOpenChange={setOpenEditor}>
-        <DialogContent className="max-w-6xl rounded-xl border shadow-xl">
-          <DialogHeader>
+        <DialogContent className="max-w-6xl max-h-[85vh] rounded-xl border shadow-xl flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{editTarget ? 'Editar plantilla' : 'Nueva plantilla'}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Scrollable body */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="space-y-4 lg:col-span-7">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -573,8 +575,9 @@ export default function PlantillasPage() {
                 </CardContent>
               </Card>
             </div>
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="ghost" onClick={() => setOpenEditor(false)}>
               Cancelar
             </Button>
