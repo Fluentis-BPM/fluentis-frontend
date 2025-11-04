@@ -140,8 +140,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       } ${getColorByEstado()} ${isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'}`}
 
       onClick={() => {
-        // Don't open editor for initial or final step
-        if (paso.tipo_paso === 'inicio' || paso.tipo_paso === 'fin') return;
+        // Allow opening editor for initial step to view initial campos; still block final step
+        if (paso.tipo_paso === 'fin') return;
         onNodeClick?.(paso);
       }}
     >

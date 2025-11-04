@@ -5,8 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CrearSolicitudInput } from '@/types/bpm/request';
-import { CamposDinamicos } from '@/types/bpm/inputs';
+import { CrearSolicitudInput, CampoDinamicoCrear } from '@/types/bpm/request';
 import { SelectorCamposDinamicos } from './SelectorCamposDinamicos';
 import { SelectorGrupoAprobacion } from './SelectorGrupoAprobacion';
 import { Plus, User, Settings, Users } from 'lucide-react';
@@ -34,7 +33,7 @@ export const FormularioSolicitud: React.FC<Props> = ({
     flujo_base_id: undefined,
     estado: 'pendiente',
     datos_adicionales: {},
-    campos_dinamicos: {}
+    campos_dinamicos: [] as CampoDinamicoCrear[],
   });
 
   const [descripcion, setDescripcion] = useState('');
@@ -51,12 +50,17 @@ export const FormularioSolicitud: React.FC<Props> = ({
       return;
     }
 
-    // Validar campos dinámicos requeridos
-    const camposRequeridos = Object.entries(formData.campos_dinamicos || {}).filter(
-      ([_, campo]) => campo.requerido && !campo.valor.trim()
-    );
+    // Validar campos dinámicos requeridos (soporta arreglo nuevo y objeto legado)
+    let faltaRequeridos = false;
+    const cd = formData.campos_dinamicos as unknown;
+    if (Array.isArray(cd)) {
+      faltaRequeridos = cd.some((c: CampoDinamicoCrear) => c.requerido && !String(c.valor || '').trim());
+    } else if (cd && typeof cd === 'object') {
+      const entries = Object.entries(cd as Record<string, { valor: string; requerido: boolean }>) || [];
+      faltaRequeridos = entries.some(([_, campo]) => campo.requerido && !String(campo.valor || '').trim());
+    }
 
-    if (camposRequeridos.length > 0) {
+    if (faltaRequeridos) {
       alert('Por favor completa todos los campos requeridos');
       return;
     }
@@ -78,13 +82,13 @@ export const FormularioSolicitud: React.FC<Props> = ({
       flujo_base_id: undefined,
       estado: 'pendiente',
       datos_adicionales: {},
-      campos_dinamicos: {}
+      campos_dinamicos: [] as CampoDinamicoCrear[]
     });
     setDescripcion('');
     setGrupoAprobacionSeleccionado(undefined);
   };
 
-  const handleCamposDinamicosChange = (campos: CamposDinamicos) => {
+  const handleCamposDinamicosChange = (campos: CampoDinamicoCrear[]) => {
     setFormData(prev => ({
       ...prev,
       campos_dinamicos: campos
@@ -198,7 +202,7 @@ export const FormularioSolicitud: React.FC<Props> = ({
 
             <TabsContent value="dinamicos" className="space-y-6 animate-fade-in">
               <SelectorCamposDinamicos
-                camposDinamicos={formData.campos_dinamicos || {}}
+                camposDinamicos={(formData.campos_dinamicos as CampoDinamicoCrear[]) || []}
                 onChange={handleCamposDinamicosChange}
               />
             </TabsContent>

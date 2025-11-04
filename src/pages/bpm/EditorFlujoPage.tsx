@@ -16,7 +16,7 @@ import {
   Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
-import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType } from '@/types/bpm/inputs';
+import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType, type RelacionInput } from '@/types/bpm/inputs';
 import { fetchInputsCatalog } from '@/services/inputs';
 
 interface EditorFlujoPageProps {
@@ -38,6 +38,26 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
   const [modoVista, setModoVista] = useState<'diagrama' | 'editor' | 'split'>('split');
   const [modoEdicion, setModoEdicion] = useState(true);
   const [inputsDisponiblesCat, setInputsDisponiblesCat] = useState<InputType[]>([]);
+
+  const mapRelacionesFromPaso = React.useCallback((p: PasoSolicitud | null): RelacionInput[] => {
+    if (!p) return [];
+    const cd = (p as unknown as { campos_dinamicos?: unknown }).campos_dinamicos;
+    if (Array.isArray(cd)) return cd as RelacionInput[];
+    if (cd && typeof cd === 'object') {
+      const entries = Object.entries(cd as Record<string, { valor?: string; requerido?: boolean; nombre?: string; placeholder?: string | null }>);
+      return entries.map(([key, campo]) => ({
+        id_relacion: Number(key),
+        input_id: Number(key),
+        nombre: campo.nombre,
+        valor: String(campo.valor ?? ''),
+        placeholder: campo.placeholder ?? null,
+        requerido: Boolean(campo.requerido),
+        paso_solicitud_id: p.id_paso_solicitud,
+      }));
+    }
+    const rel = (p as unknown as { relacionesInput?: RelacionInput[] }).relacionesInput;
+    return Array.isArray(rel) ? rel : [];
+  }, []);
 
   const handleVolverAtras = () => {
     if (onVolverALista) {
@@ -229,6 +249,7 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
                   onClose={handleCerrarEditor}
                   onGuardar={handleGuardarPaso}
                   isPanel={true}
+                  relacionesInput={mapRelacionesFromPaso(pasoEditando)}
                   responsablesDisponibles={[
                     { id: 1, nombre: 'Ana García', rol: 'Supervisor', departamento: 'Operaciones' },
                     { id: 2, nombre: 'Carlos López', rol: 'Gerente', departamento: 'Finanzas' },
@@ -295,6 +316,7 @@ export const EditorFlujoPage: React.FC<EditorFlujoPageProps> = ({
                       onClose={handleCerrarEditor}
                       onGuardar={handleGuardarPaso}
                       isPanel={true}
+                      relacionesInput={mapRelacionesFromPaso(pasoEditando)}
                       responsablesDisponibles={[
                         { id: 1, nombre: 'Ana García', rol: 'Supervisor', departamento: 'Operaciones' },
                         { id: 2, nombre: 'Carlos López', rol: 'Gerente', departamento: 'Finanzas' },

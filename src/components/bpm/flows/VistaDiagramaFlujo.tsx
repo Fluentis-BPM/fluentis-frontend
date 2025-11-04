@@ -4,7 +4,7 @@ import { DiagramaFlujo } from './DiagramaFlujo';
 import { EditorPaso } from './EditorPaso';
 import FlowViewerPage from '@/pages/bpm/FlowViewerPage';
 import { GestionVisualizadores } from './GestionVisualizadores';
-import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType } from '@/types/bpm/inputs';
+import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType, type RelacionInput } from '@/types/bpm/inputs';
 import { fetchInputsCatalog } from '@/services/inputs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -86,6 +86,42 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const [mostrarPantallaCompleta, setMostrarPantallaCompleta] = useState(false);
   const [mostrarGestionVisualizadores, setMostrarGestionVisualizadores] = useState(false);
+  
+  // Helper to map campos_dinamicos/relaciones into RelacionInput[] for EditorPaso
+  const mapRelacionesFromPaso = React.useCallback((p: PasoSolicitud | null): RelacionInput[] => {
+    if (!p) return [];
+    const anyPaso = p as unknown as { campos_dinamicos?: unknown; relacionesInput?: unknown };
+    const cd = anyPaso.campos_dinamicos;
+    if (Array.isArray(cd)) return cd as RelacionInput[];
+    if (cd && typeof cd === 'object') {
+      const entries = Object.entries(cd as Record<string, { valor?: string; requerido?: boolean; nombre?: string; placeholder?: string | null }>);
+      return entries.map(([key, campo]) => ({
+        id_relacion: Number(key),
+        input_id: Number(key),
+        nombre: campo.nombre,
+        valor: String(campo.valor ?? ''),
+        placeholder: campo.placeholder ?? null,
+        requerido: Boolean(campo.requerido),
+        paso_solicitud_id: p.id_paso_solicitud,
+      }));
+    }
+    const rel = anyPaso.relacionesInput;
+    let mapped = Array.isArray(rel) ? (rel as RelacionInput[]) : [];
+    // Fallback: if initial step has no relaciones nor campos_dinamicos, try to build from flujo.datos_solicitud
+    if ((!mapped || mapped.length === 0) && p.tipo_paso === 'inicio' && flujo?.datos_solicitud && typeof flujo.datos_solicitud === 'object') {
+      const entries = Object.entries(flujo.datos_solicitud as Record<string, unknown>);
+      mapped = entries.map(([key, value], idx) => ({
+        id_relacion: -1000 - idx,
+        input_id: 0,
+        nombre: key,
+        valor: String(value ?? ''),
+        placeholder: null,
+        requerido: false,
+        paso_solicitud_id: p.id_paso_solicitud,
+      }));
+    }
+    return mapped;
+  }, []);
 
   // Helper to safely parse different date shapes coming from API
   const parseDate = (value: unknown): Date | null => {
@@ -598,6 +634,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                           departamento: u.departamentoNombre || u.departamento || '—'
                         }))}
                       isPanel={true}
+                      relacionesInput={mapRelacionesFromPaso(pasoEditando)}
                       inputsDisponibles={inputsDisponiblesCat.length ? inputsDisponiblesCat : INPUT_TEMPLATES}
                       gruposAprobacion={gruposAprobacion}
                       usuarioActualId={1}
