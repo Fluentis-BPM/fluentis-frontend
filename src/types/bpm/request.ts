@@ -49,7 +49,25 @@ export interface CrearSolicitudInput {
   flujo_base_id?: number;
   estado?: EstadoSolicitud;
   datos_adicionales?: DatosAdicionales;
-  campos_dinamicos?: CamposDinamicos;
+  /**
+   * Campos dinámicos a crear junto con la solicitud.
+   *
+   * Compatibilidad retro: originalmente era un objeto { [input_id]: { valor, requerido } }.
+   * Para soportar múltiples instancias por tipo y overrides de metadatos como en EditorPaso,
+   * ahora también aceptamos un arreglo de items con input_id + overrides + valor.
+   */
+  campos_dinamicos?: CamposDinamicos | CampoDinamicoCrear[];
+}
+
+// Nuevo tipo para creación con múltiples instancias y overrides (similar a RelacionInputCreateDto)
+export interface CampoDinamicoCrear {
+  input_id: number; // Id canónico del backend para el tipo de input
+  nombre?: string;
+  placeholder?: string | null;
+  opciones?: string[]; // Solo para UI; el backend de creación no soporta persistir opciones aún
+  valor: string; // Valor directamente como string (el backend espera RawValue)
+  requerido: boolean;
+  orden?: number; // Solo para UI
 }
 
 // Plantillas predefinidas para flujos de trabajo

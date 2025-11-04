@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Solicitud, CrearSolicitudInput, EstadoSolicitud } from '@/types/bpm/request';
+import { Solicitud, CrearSolicitudInput, EstadoSolicitud, CampoDinamicoCrear } from '@/types/bpm/request';
 import { RelacionInput } from '@/types/bpm/inputs';
 import { TipoDecision, GrupoAprobacionCompleto, DecisionConUsuario } from '@/types/bpm/approval';
 import { useAprobacion } from './useAprobacion';
@@ -107,13 +107,28 @@ export const useSolicitudes = () => {
       Descripcion: (input.datos_adicionales && typeof input.datos_adicionales['descripcion'] === 'string')
         ? String(input.datos_adicionales['descripcion'])
         : undefined,
-      Inputs: input.campos_dinamicos
-        ? Object.entries(input.campos_dinamicos).map(([key, campo]) => ({
-            InputId: Number(key),
-            Valor: { RawValue: campo.valor },
-            Requerido: campo.requerido,
-          }))
-        : undefined,
+      Inputs: (() => {
+        const cd = input.campos_dinamicos as unknown;
+        if (!cd) return undefined;
+        // Nuevo formato: array de items con overrides
+        if (Array.isArray(cd)) {
+          const arr = cd as CampoDinamicoCrear[];
+          return arr.map((it) => ({
+            InputId: it.input_id,
+            Nombre: it.nombre,
+            PlaceHolder: it.placeholder ?? undefined,
+            Valor: { RawValue: it.valor },
+            Requerido: it.requerido,
+          }));
+        }
+        // Formato legado: objeto { [input_id]: { valor, requerido } }
+        const obj = cd as Record<string, { valor: string; requerido: boolean }>;
+        return Object.entries(obj).map(([key, campo]) => ({
+          InputId: Number(key),
+          Valor: { RawValue: campo.valor },
+          Requerido: campo.requerido,
+        }));
+      })(),
     };
     const created = await dispatch(createSolicitudThunk(dto)).unwrap();
     return created as Solicitud;
