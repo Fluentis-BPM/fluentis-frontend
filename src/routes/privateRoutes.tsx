@@ -20,10 +20,7 @@ import MetricasPage from '@/pages/metricas/MetricasPage';
 const DelegacionesPage = () => <div>Delegaciones Page</div>;
 const PropuestasVotacionesPage = () => <div>Propuestas y Votaciones Page</div>;
 
-const BackupsPage = () => <div>Backups Page</div>;
-const IncidentesPage = () => <div>Incidentes Page</div>;
-
-const InformesPage = () => <div>Informes Page</div>;
+// (Placeholders removidos no utilizados: BackupsPage, IncidentesPage, InformesPage)
 
 export const privateRoutes = [
   {
