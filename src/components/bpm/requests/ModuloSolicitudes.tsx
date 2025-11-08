@@ -13,7 +13,7 @@ import type { CrearSolicitudInput, Solicitud } from '@/types/bpm/request';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EstadoSolicitud } from '@/types/bpm/request';
-import { Search, Filter, SortDesc, FileX, Layers, Users, Plus, ArrowRight, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, SortDesc, FileX, Layers, Users, Plus, ArrowRight, Workflow, ChevronLeft, ChevronRight, RefreshCcw } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
 import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
 import type { GrupoAprobacion } from '@/types/equipos/aprobations';
@@ -361,6 +361,19 @@ export const ModuloSolicitudes: React.FC<{
     if (page > totalPages) setPage(totalPages);
   }, [totalPages, page]);
 
+  // Refrescar solicitudes para el usuario actual/impersonado
+  const handleRefreshSolicitudes = () => {
+    const uid = viewerUserId || currentUserId;
+    if (uid) {
+      try {
+        solicitudesData.cargarSolicitudes(uid);
+        toast({ title: 'Solicitudes actualizadas', description: 'Se recargó la lista de solicitudes.' });
+      } catch (e) {
+        toast({ title: 'Error al refrescar', description: e instanceof Error ? e.message : 'No se pudo recargar', variant: 'destructive' });
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Container principal con ancho máximo y centrado */}
@@ -473,7 +486,8 @@ export const ModuloSolicitudes: React.FC<{
 
         {/* Pestañas principales */}
         <Tabs defaultValue="solicitudes" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto bg-gray-100 border-0">
+          <div className="relative max-w-5xl mx-auto">
+            <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto bg-gray-100 border-0">
             <TabsTrigger 
               value="solicitudes" 
               className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-smooth"
@@ -485,7 +499,18 @@ export const ModuloSolicitudes: React.FC<{
               <Users className="w-4 h-4" />
               Grupos de Aprobación
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
+            <Button
+              onClick={handleRefreshSolicitudes}
+              variant="outline"
+              size="sm"
+              disabled={Boolean(solicitudesData.isLoading)}
+              className="h-8 absolute right-0 top-1/2 -translate-y-1/2"
+            >
+              <RefreshCcw className={`w-4 h-4 mr-2 ${solicitudesData.isLoading ? 'animate-spin' : ''}`} />
+              {solicitudesData.isLoading ? 'Actualizando...' : 'Refrescar'}
+            </Button>
+          </div>
 
           <TabsContent value="solicitudes" className="space-y-4">
             {/* Formulario de creación */}

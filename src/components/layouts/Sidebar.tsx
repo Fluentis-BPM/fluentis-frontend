@@ -2,11 +2,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Users, Shield, GitPullRequest, BarChart3, 
+  Users, GitPullRequest,
   LogOut, ChevronRight, ChevronDown, HomeIcon,
   Menu, User, Settings
 } from 'lucide-react';
 import { cn } from '@/utils/utils';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { User as UserType } from '@/types/auth';
 
@@ -183,19 +184,26 @@ export default function Sidebar({ user }: SidebarProps) {
             )}>
               {user?.nombre?.charAt(0).toUpperCase() || 'U'}
             </div>
-            {!isCollapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-sm truncate">{user?.nombre || 'Usuario'}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.cargoNombre || 'Cargo no definido'}</p>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-xs text-primary font-medium truncate">{user?.rolNombre || 'Sin rol'}</span>
-                  {user?.departamentoNombre && (
-                    <>
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-xs text-muted-foreground truncate">{user.departamentoNombre}</span>
-                    </>
-                  )}
+            {isCollapsed ? (
+              // Compact bell over avatar area
+              <NotificationBell userId={user?.idUsuario} compact />
+            ) : (
+              <div className="min-w-0 flex-1 flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{user?.nombre || 'Usuario'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.cargoNombre || 'Cargo no definido'}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-xs text-primary font-medium truncate">{user?.rolNombre || 'Sin rol'}</span>
+                    {user?.departamentoNombre && (
+                      <>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground truncate">{user.departamentoNombre}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
+                {/* Bell aligned to the right of user info */}
+                <NotificationBell userId={user?.idUsuario} />
               </div>
             )}
           </div>
