@@ -32,12 +32,19 @@ import {
   User,
   Settings,
   Users,
-  FileText
+  FileText,
+  Info
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { toast } from '@/hooks/bpm/use-toast';
 import { selectPasoReadiness } from '@/store/bpm/bpmSlice';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // Tipo para los datos del nodo
 interface PasoNodeData {
@@ -275,7 +282,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       )}
       
       {/* Handles para conexiones */}
-      {paso.id_paso_solicitud !== 0 && (
+      {paso.id_paso_solicitud !== 0 && paso.tipo_paso !== 'inicio' && (
         <Handle
           type="target"
           position={Position.Left}
@@ -284,13 +291,28 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
           id="target"
         />
       )}
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-4 !h-4 border-2 border-white rounded-full"
-        style={{ backgroundColor: '#10b981' }}
-        id="source"
-      />
+      
+      {/* Handle normal (salida estándar) - todos los pasos excepto Fin */}
+      {paso.tipo_paso !== 'fin' && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="!w-4 !h-4 border-2 border-white rounded-full"
+          style={{ backgroundColor: '#10b981', top: '40%' }}
+          id="source-normal"
+        />
+      )}
+      
+      {/* Handle de excepción (salida roja) - solo para pasos de Aprobación */}
+      {paso.tipo_paso === 'aprobacion' && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="!w-4 !h-4 border-2 border-white rounded-full"
+          style={{ backgroundColor: '#ef4444', top: '60%' }}
+          id="source-excepcion"
+        />
+      )}
     </Card>
   );
 };
@@ -358,31 +380,42 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
       id: camino.id_camino.toString(),
       source: camino.paso_origen_id.toString(),
       target: camino.paso_destino_id.toString(),
+      sourceHandle: camino.es_excepcion ? 'source-excepcion' : 'source-normal', // Especificar el handle correcto
+      targetHandle: 'target',
       type: 'default',
       animated: !camino.es_excepcion,
       style: { 
-        stroke: camino.es_excepcion ? '#f59e0b' : '#3b82f6',
+        stroke: camino.es_excepcion ? '#ef4444' : '#3b82f6',
         strokeWidth: 3,
-        strokeDasharray: 'none',
+        strokeDasharray: camino.es_excepcion ? '5,5' : 'none',
         strokeLinecap: 'round',
         strokeLinejoin: 'round'
       },
+      zIndex: 1000, // Elevar las conexiones por encima de los nodos
       markerEnd: {
         type: MarkerType.ArrowClosed,
         width: 12,
         height: 12,
-        color: camino.es_excepcion ? '#f59e0b' : '#3b82f6'
+        color: camino.es_excepcion ? '#ef4444' : '#3b82f6'
       },
-      label: camino.nombre,
-      labelStyle: { 
+      label: camino.nombre || (camino.es_excepcion ? '⚠️ Excepción' : undefined),
+      labelStyle: camino.es_excepcion ? {
+        fontSize: 11,
+        fontWeight: 600,
+        color: '#ef4444',
+        backgroundColor: '#fee2e2',
+        padding: '2px 6px',
+        borderRadius: '4px',
+        border: '1px solid #ef4444',
+      } : (camino.nombre ? {
         fontSize: 11, 
         fontWeight: 500,
-        color: camino.es_excepcion ? '#f59e0b' : '#3b82f6',
+        color: '#3b82f6',
         backgroundColor: '#ffffff',
         padding: '2px 6px',
         borderRadius: '4px',
-        border: `1px solid ${camino.es_excepcion ? '#f59e0b' : '#3b82f6'}`,
-      },
+        border: '1px solid #3b82f6',
+      } : undefined),
     })), [caminos]
   );
 
@@ -472,16 +505,47 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
     (params: Connection) => {
       console.log('🔗 Intentando crear conexión:', params);
       if (params.source && params.target) {
+        // Obtener información de los pasos origen y destino
+        const pasoOrigen = pasos.find(p => p.id_paso_solicitud.toString() === params.source);
+        const pasoDestino = pasos.find(p => p.id_paso_solicitud.toString() === params.target);
+        
+        if (!pasoOrigen || !pasoDestino) {
+          console.error('❌ No se encontró el paso origen o destino');
+          return;
+        }
+
+        // Validación 1: No se puede conectar a pasos de tipo Inicio
+        if (pasoDestino.tipo_paso === 'inicio') {
+          toast({
+            title: 'Conexión no permitida',
+            description: 'No puedes conectar a un paso de tipo Inicio.',
+            variant: 'destructive',
+            duration: 4000
+          });
+          return;
+        }
+
+        // Validación 2: Determinar si es una conexión de excepción basada en el handle
+        const esConexionExcepcion = params.sourceHandle === 'source-excepcion';
+        
+        // Validación 3: Solo pasos de Aprobación pueden crear conexiones de excepción
+        if (esConexionExcepcion && pasoOrigen.tipo_paso !== 'aprobacion') {
+          toast({
+            title: 'Conexión de excepción no permitida',
+            description: 'Solo los pasos de tipo Aprobación pueden tener caminos de excepción.',
+            variant: 'destructive',
+            duration: 4000
+          });
+          return;
+        }
+
         // Limitar ramas salientes por nodo (máximo 10)
         const MAX_BRANCHES = 10;
         const outgoingCount = edges.filter(e => e.source === params.source).length;
         if (outgoingCount >= MAX_BRANCHES) {
-          // Buscar nombres de pasos para mejorar el mensaje
-          const origenPaso = pasos.find(p => p.id_paso_solicitud.toString() === params.source)?.nombre || params.source;
-          const destinoPaso = pasos.find(p => p.id_paso_solicitud.toString() === params.target)?.nombre || params.target;
           toast({
             title: `No se puede crear la conexión`,
-            description: `El paso "${origenPaso}" ya tiene ${outgoingCount} ramas (máx ${MAX_BRANCHES}). Intentaste conectar a "${destinoPaso}".`,
+            description: `El paso "${pasoOrigen.nombre}" ya tiene ${outgoingCount} ramas (máx ${MAX_BRANCHES}). Intentaste conectar a "${pasoDestino.nombre}".`,
             variant: 'destructive',
             duration: 6000
           });
@@ -489,44 +553,67 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
           return;
         }
 
-        // Permitir todas las conexiones sin restricciones (dentro del límite)
-        console.log('🔗 Creando conexión:', params.source, '→', params.target);
+        // Mostrar advertencia si se conecta a un paso Final
+        if (pasoDestino.tipo_paso === 'fin') {
+          const confirmar = window.confirm(
+            `⚠️ Estás conectando a un paso Final.\n\nEsto cerrará el flujo inmediatamente cuando se llegue a este punto.\n\n¿Deseas continuar?`
+          );
+          if (!confirmar) return;
+        }
+
+        // Crear la conexión
+        console.log('🔗 Creando conexión:', params.source, '→', params.target, 'esExcepcion:', esConexionExcepcion);
+        
         const tempEdge: Edge = {
-          id: `connecting-${params.source}-${params.target}`,
+          id: `connecting-${params.source}-${params.target}-${esConexionExcepcion ? 'exc' : 'norm'}`,
           source: params.source,
           target: params.target,
+          sourceHandle: esConexionExcepcion ? 'source-excepcion' : 'source-normal',
+          targetHandle: 'target',
           type: 'default',
-          animated: true,
+          animated: !esConexionExcepcion,
           style: { 
-            stroke: '#3b82f6',
+            stroke: esConexionExcepcion ? '#ef4444' : '#3b82f6',
             strokeWidth: 3,
-            strokeDasharray: 'none',
+            strokeDasharray: esConexionExcepcion ? '5,5' : 'none',
             strokeLinecap: 'round',
             strokeLinejoin: 'round'
           },
+          zIndex: 1000, // Elevar las conexiones por encima de los nodos
           markerEnd: {
             type: MarkerType.ArrowClosed,
             width: 12,
             height: 12,
-            color: '#3b82f6'
-          }
+            color: esConexionExcepcion ? '#ef4444' : '#3b82f6'
+          },
+          label: esConexionExcepcion ? '⚠️ Excepción' : undefined,
+          labelStyle: esConexionExcepcion ? {
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#ef4444',
+            backgroundColor: '#fee2e2',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            border: '1px solid #ef4444',
+          } : undefined,
         };
         setEdges(currentEdges => addEdge(tempEdge, currentEdges));
         
         console.log('📞 Llamando onCreateConexion con:', {
           source: parseInt(params.source),
           target: parseInt(params.target),
+          esExcepcion: esConexionExcepcion,
           onCreateConexion: !!onCreateConexion
         });
         
         if (onCreateConexion) {
-          onCreateConexion(parseInt(params.source), parseInt(params.target), false);
+          onCreateConexion(parseInt(params.source), parseInt(params.target), esConexionExcepcion);
         } else {
           console.warn('⚠️ onCreateConexion no está definido');
         }
       }
     },
-    [setEdges, pasos, onCreateConexion]
+    [setEdges, pasos, edges, onCreateConexion]
   );
 
   const onPaneClick = useCallback(
@@ -592,6 +679,7 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         fitView={!hasFittedRef.current}
         connectOnClick={false} // Evitar conexiones accidentales al hacer click
         nodesConnectable={!readOnly} // Permitir conexiones solo si no es readOnly
+        elevateEdgesOnSelect={true} // Elevar las conexiones seleccionadas
         className="bg-gradient-to-br from-background to-muted/20"
         onInit={(instance) => {
           // initial fit and mark as done
@@ -627,6 +715,40 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         />
         <Background gap={20} size={1} className="opacity-30" />
       </ReactFlow>
+
+      {/* Icono de ayuda con tooltip - SUPERIOR IZQUIERDA (más a la derecha) */}
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="absolute top-6 left-24 z-50">
+              <button className="h-12 w-12 rounded-full bg-white border border-input shadow-lg hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-300 flex items-center justify-center">
+                <Info className="w-5 h-5 text-primary" />
+              </button>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs p-3">
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm mb-2">Tipos de Conexión</h4>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm flex-shrink-0" />
+                  <span>Conexión Normal</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-sm flex-shrink-0" />
+                  <span>Conexión de Excepción</span>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-border">
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <strong>Arrastre</strong> desde el punto verde para conexiones normales, 
+                  o desde el punto rojo (solo en pasos de Aprobación) para excepciones.
+                </p>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       {/* Floating Add Button - only show if not read-only */}
       {!readOnly && (
