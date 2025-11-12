@@ -3,21 +3,35 @@ import { Building2, Users } from 'lucide-react'
 import UserCard from "../common/UserCard"
 import { RoleCardProps } from "@/types/equipos/role"
 
+import { useRef } from "react"
+
 export default function RoleCard({ role, users, onDrop, draggedUser, onUserDragStart, onUserDragEnd }: RoleCardProps) {
   const [isDragOver, setIsDragOver] = useState(false)
+  const dragEnterCounter = useRef(0)
 
   const handleDragOver = (e: React.DragEvent) => {
+    // Necesario para permitir drop
     e.preventDefault()
-    setIsDragOver(true)
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragEnterCounter.current += 1
+    if (!isDragOver) setIsDragOver(true)
   }
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault()
-    setIsDragOver(false)
+    dragEnterCounter.current -= 1
+    if (dragEnterCounter.current <= 0) {
+      dragEnterCounter.current = 0
+      setIsDragOver(false)
+    }
   }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
+    dragEnterCounter.current = 0
     setIsDragOver(false)
     onDrop(role.idRol)
   }
@@ -34,11 +48,12 @@ export default function RoleCard({ role, users, onDrop, draggedUser, onUserDragS
   return (
     <div
       onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`border-2 border-dashed rounded-lg p-4 transition-all duration-200 ${
+      className={`border-2 border-dashed rounded-lg p-4 transition-colors duration-150 ${
         isDragOver
-          ? "border-primary bg-primary/5 scale-105"
+          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
           : draggedUser
             ? "border-gray-300 bg-gray-50"
             : "border-gray-200 bg-white"

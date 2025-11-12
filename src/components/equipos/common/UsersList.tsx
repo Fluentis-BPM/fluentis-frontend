@@ -1,6 +1,6 @@
 
 import { Search } from 'lucide-react'
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import UserCard from "./UserCard"
 import { UsersListProps } from '@/types/equipos/department'
 import Paginator from './Paginator'
@@ -32,21 +32,34 @@ export default function UsersList({ users, onDragStart, onDragEnd, onDropToUnass
     setPage(1)
   }
 
+  const dragEnterCounter = useRef(0)
+
   const handleDragOver = (e: React.DragEvent) => {
     if (!onDropToUnassign) return
     e.preventDefault()
-    setIsDragOver(true)
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!onDropToUnassign) return
+    e.preventDefault()
+    dragEnterCounter.current += 1
+    if (!isDragOver) setIsDragOver(true)
   }
 
   const handleDragLeave = (e: React.DragEvent) => {
     if (!onDropToUnassign) return
     e.preventDefault()
-    setIsDragOver(false)
+    dragEnterCounter.current -= 1
+    if (dragEnterCounter.current <= 0) {
+      dragEnterCounter.current = 0
+      setIsDragOver(false)
+    }
   }
 
   const handleDrop = (e: React.DragEvent) => {
     if (!onDropToUnassign) return
     e.preventDefault()
+  dragEnterCounter.current = 0
     setIsDragOver(false)
     onDropToUnassign()
   }
@@ -54,8 +67,9 @@ export default function UsersList({ users, onDragStart, onDragEnd, onDropToUnass
   return (
     <div
       className={`flex flex-col flex-1 min-h-0 ${isDragOver ? 'bg-primary/5' : ''}`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
+  onDragOver={handleDragOver}
+  onDragEnter={handleDragEnter}
+  onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {/* Search */}
