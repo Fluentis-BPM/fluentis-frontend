@@ -80,7 +80,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   
   const [modoEdicion, setModoEdicion] = useState(true); // Empezar en modo edición por defecto
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
-  const [diagramaKey, setDiagramaKey] = useState(0); // Para forzar re-render
+  // Eliminado diagramaKey para evitar remounts que resetean el zoom
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [editorWidth, setEditorWidth] = useState(480); // Width for resizable editor
   const [isResizing, setIsResizing] = useState(false);
@@ -296,10 +296,8 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     }
   };
 
-  // Efectos para refrescar diagrama solo cuando sea necesario
-  useEffect(() => {
-    setDiagramaKey(prev => prev + 1);
-  }, [pasos.length, caminos.length]); // No incluir pasos o caminos completos
+  // Evitar remounts innecesarios del diagrama para preservar el zoom/viewport
+  // ReactFlow y el componente DiagramaFlujo ya sincronizan nodos/edges internamente
 
   // Resize handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -491,8 +489,8 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 onClick={() => { 
                   toast({ title: 'Sincronizando…', description: 'Actualizando diagrama desde el servidor', duration: 1200 });
                   clearAllOptimistic(); 
-                  loadPasosYConexiones(flujo.id_flujo_activo); 
-                  setDiagramaKey(prev => prev + 1); 
+                  // Solo recargar datos; no forzar remount para preservar zoom
+                  loadPasosYConexiones(flujo.id_flujo_activo);
                 }}
                 className="mr-2 hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-300"
               >
@@ -565,7 +563,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
               style={{ marginRight: pasoEditando ? `${editorWidth}px` : '0' }}
             >
               <DiagramaFlujo
-                key={diagramaKey}
                 pasos={pasosConOverride}
                 caminos={caminos}
                 readOnly={!modoEdicion}

@@ -688,11 +688,28 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
             rfInstanceRef.current = instance;
             // capture initial viewport
             try { lastViewportRef.current = instance.getViewport?.() || null; } catch { /* ignore */ }
+            // Try to restore persisted viewport for this flujo
+            try {
+              const key = `rf-viewport-${String(flujoActivoId)}`;
+              const raw = sessionStorage.getItem(key);
+              if (raw) {
+                const vp = JSON.parse(raw) as { x: number; y: number; zoom: number };
+                if (vp && typeof vp.x === 'number' && typeof vp.y === 'number' && typeof vp.zoom === 'number') {
+                  instance.setViewport?.(vp);
+                  lastViewportRef.current = vp;
+                }
+              }
+            } catch { /* ignore storage errors */ }
           }
         }}
         onMoveEnd={((_e, viewport) => {
           // Track viewport to restore across data refreshes
           lastViewportRef.current = viewport;
+          // Persist viewport per flujo to survive remounts/navigations
+          try {
+            const key = `rf-viewport-${String(flujoActivoId)}`;
+            sessionStorage.setItem(key, JSON.stringify(viewport));
+          } catch { /* ignore storage errors */ }
         }) as OnMoveEnd}
       >
         <Controls className="bg-background border shadow-lg" />
