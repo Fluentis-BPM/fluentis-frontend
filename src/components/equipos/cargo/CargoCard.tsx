@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { motion } from "motion/react"
 import { Briefcase, Users } from 'lucide-react'
 import UserCard from "../common/UserCard"
@@ -6,30 +6,19 @@ import { CargoCardProps } from "@/types/equipos/cargo"
 
 export default function CargoCard({ cargo, users, onDrop, draggedUser, onUserDragStart, onUserDragEnd }: CargoCardProps) {
   const [isDragOver, setIsDragOver] = useState(false)
-  const dragEnterCounter = useRef(0)
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
-  }
-
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault()
-    dragEnterCounter.current += 1
-    if (!isDragOver) setIsDragOver(true)
+    setIsDragOver(true)
   }
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault()
-    dragEnterCounter.current -= 1
-    if (dragEnterCounter.current <= 0) {
-      dragEnterCounter.current = 0
-      setIsDragOver(false)
-    }
+    setIsDragOver(false)
   }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
-    dragEnterCounter.current = 0
     setIsDragOver(false)
     onDrop(cargo.idCargo)
   }
@@ -54,14 +43,13 @@ export default function CargoCard({ cargo, users, onDrop, draggedUser, onUserDra
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -2, scale: isDragOver ? 1.05 : 1.02 }}
       onDragOver={handleDragOver}
-      onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`border-2 border-dashed rounded-lg p-4 transition-colors duration-150 ${
+      className={`border-2 border-dashed rounded-lg p-4 transition-all duration-200 ${
         isDragOver
-          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+          ? "border-primary bg-primary/5 scale-105"
           : draggedUser
             ? "border-gray-300 bg-gray-50"
             : "border-gray-200 bg-white"

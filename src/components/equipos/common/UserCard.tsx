@@ -10,21 +10,10 @@ export default function UserCard({ user, onDragStart, onDragEnd, isDragging = fa
   return (
     <div
       draggable
-      onDragStart={(e) => {
-        // Mejora UX: usar imagen de arrastre transparente para evitar ghost flicker
-        try {
-          const img = new Image();
-          img.src =
-            'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxcHgnIGhlaWdodD0nMXB4Jz48L3N2Zz4=';
-          e.dataTransfer?.setDragImage(img, 0, 0);
-          e.dataTransfer!.effectAllowed = 'move';
-          e.dataTransfer!.dropEffect = 'move';
-  } catch { /* ignore drag image errors */ }
-        onDragStart(user);
-      }}
+      onDragStart={() => onDragStart(user)}
       onDragEnd={onDragEnd}
       className={`flex items-center p-3 bg-white border border-[#dbe7f3] rounded-xl cursor-move hover:shadow-lg transition-all duration-200 ${
-        isDragging ? "opacity-60" : "hover:border-[#1a4e8a]"
+        isDragging ? "opacity-50 scale-95" : "hover:border-[#1a4e8a]"
       }`}
     >
       <GripVertical className="h-4 w-4 text-[#6b7a90] mr-3 flex-shrink-0" />
