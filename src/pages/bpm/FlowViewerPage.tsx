@@ -53,7 +53,7 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
   // const { toast, fetchPasosYConexiones, updatePasoSolicitud, createPasoSolicitud, createCaminoParalelo } = useBpm();
   const [modoEdicion, setModoEdicion] = useState(true);
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
-  const [diagramaKey, setDiagramaKey] = useState(0);
+  // Eliminado diagramaKey para evitar remounts que resetean el zoom
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [editorWidth, setEditorWidth] = useState(480); // Width for resizable editor
   const [isResizing, setIsResizing] = useState(false);
@@ -239,7 +239,6 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
               variant="outline"
               size="sm"
               onClick={() => {
-                setDiagramaKey(prev => prev + 1);
                 toast({
                   title: "Diagrama actualizado",
                   description: "El diagrama se ha refrescado correctamente",
@@ -291,7 +290,6 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
           style={{ marginRight: pasoEditando ? `${editorWidth}px` : '0' }}
         >
           <DiagramaFlujo
-            key={diagramaKey}
             pasos={pasos}
             caminos={caminos}
             flujoActivoId={flujo.id_flujo_activo}
