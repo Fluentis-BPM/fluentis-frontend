@@ -1,6 +1,6 @@
 // src/hooks/bpm/useBpm.ts
 import { useDispatch, useSelector } from 'react-redux';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { AppDispatch, RootState } from '@/store';
 import { fetchPasosYConexiones, fetchFlujosActivos, setFlujoSeleccionado, deletePasoSolicitud, createPasoSolicitud, updatePasoSolicitud, putConexionesPaso, deleteConexionPaso, createConexionPaso, createRelacionGrupoAprobacionPaso, addPasoInput, updatePasoInput, deletePasoInput, stagePasoMetadata, stagePosition, stageGroupApproval, stageInputAdd, stageInputCreateUpdate, stageInputUpdate, stageInputDelete, clearPasoDraft, clearAllDrafts, commitAllPasoDrafts, selectDirtyPasoIds, selectIsAnyDirty } from '@/store/bpm/bpmSlice';
 
@@ -14,6 +14,9 @@ export const useBpm = () => {
 
   const { deleting, lastActionError } = useSelector((state: RootState) => state.bpm);
 
+  // Debounced refresh timer (buffered reloads of pasos+conexiones)
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const loadFlujosActivos = useCallback((usuarioId: number, fechaInicio?: string, fechaFin?: string, estado?: number) => {
     dispatch(fetchFlujosActivos({ usuarioId, fechaInicio, fechaFin, estado }));
   }, [dispatch]);
@@ -24,6 +27,18 @@ export const useBpm = () => {
     },
     [dispatch]
   );
+
+  // Buffered version: coalesce rapid calls into a single fetch
+  const bufferedLoadPasosYConexiones = useCallback((flujoActivoId: number, delayMs = 350) => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    refreshTimerRef.current = setTimeout(() => {
+      dispatch(fetchPasosYConexiones(flujoActivoId));
+      refreshTimerRef.current = null;
+    }, Math.max(0, delayMs));
+  }, [dispatch]);
 
   const selectFlujo = useCallback(
     (flujoId: number | null) => {
@@ -48,6 +63,7 @@ export const useBpm = () => {
     dirtyPasoIds,
     loadFlujosActivos,
     loadPasosYConexiones,
+    bufferedLoadPasosYConexiones,
     selectFlujo,
     // staging API
     stagePasoMetadata: (pasoId: number, patch: Record<string, unknown>) => dispatch(stagePasoMetadata({ pasoId, patch })),
