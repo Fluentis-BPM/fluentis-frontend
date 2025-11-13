@@ -714,7 +714,13 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                           {pasoEditando.regla_aprobacion && (
                             <div>
                               <Label className="text-sm font-medium text-muted-foreground">Regla de Aprobación</Label>
-                              <p className="mt-1 text-sm capitalize">{pasoEditando.regla_aprobacion}</p>
+                              <p className="mt-1 text-sm capitalize">{
+                                pasoEditando.regla_aprobacion === 'individual'
+                                  ? 'mayoría'
+                                  : pasoEditando.regla_aprobacion === 'unanime'
+                                    ? 'unánime'
+                                    : pasoEditando.regla_aprobacion
+                              }</p>
                             </div>
                           )}
 
