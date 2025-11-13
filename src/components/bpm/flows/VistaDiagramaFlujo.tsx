@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { DiagramaFlujo } from './DiagramaFlujo';
 import { EditorPaso } from './EditorPaso';
-import FlowViewerPage from '@/pages/bpm/FlowViewerPage';
+// (Fullscreen simplificado) Se eliminó FlowViewerPage para evitar doble montaje
 import { GestionVisualizadores } from './GestionVisualizadores';
 import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType, type RelacionInput } from '@/types/bpm/inputs';
 import { fetchInputsCatalog } from '@/services/inputs';
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+// Eliminado Dialog para fullscreen; ahora se usa sólo contenedor fixed
 import { FlujoActivo, PasoSolicitud } from '@/types/bpm/flow';
 import { 
   Workflow, 
@@ -179,6 +179,15 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
       }
     }
   }, [flujo.id_flujo_activo, flujo.roles_usuario, isSystemAdmin]);
+
+  // Bloquea scroll global mientras está activo el modo pantalla completa
+  useEffect(() => {
+    if (mostrarPantallaCompleta) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [mostrarPantallaCompleta]);
 
   // Obtener pasos y caminos del estado global
   const pasos = pasosPorFlujo[flujo.id_flujo_activo] || [];
@@ -953,23 +962,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
         </TabsContent>
       </Tabs>
 
-      <Dialog open={mostrarPantallaCompleta} onOpenChange={setMostrarPantallaCompleta}>
-        <DialogContent className="max-w-full w-screen h-screen max-h-screen p-0 gap-0 border-0 flex flex-col">
-          <FlowViewerPage
-            flujo={flujo}
-            pasos={pasos}
-            caminos={caminos}
-            onCreatePaso={createPasoSolicitud}
-            onDeletePaso={deletePasoSolicitud}
-            onCreateConexion={createConexionPaso}
-            onReplaceConexiones={putConexionesPaso}
-            onDeleteConexion={deleteConexionPaso}
-            isAnyDirty={isAnyDirty}
-            onCommitAllDrafts={commitAllPasoDrafts}
-            onClearDrafts={clearAllDrafts}
-           />
-        </DialogContent>
-      </Dialog>
+      {/* Eliminado segundo árbol fullscreen (Dialog + FlowViewerPage) para usar solo el contenedor expandido */}
 
       {/* Diálogo de Gestión de Visualizadores */}
       <GestionVisualizadores
