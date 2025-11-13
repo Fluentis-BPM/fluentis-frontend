@@ -11,9 +11,9 @@ import {
   GitBranch, 
   GitMerge, 
   ArrowRight, 
-  Users, 
-  UserCheck, 
-  Crown,
+  CheckCircle2,
+  CheckSquare,
+  Anchor,
   Info
 } from 'lucide-react';
 
@@ -47,10 +47,19 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
 
   const obtenerIconoReglaAprobacion = (regla: PasoSolicitud['regla_aprobacion']) => {
     switch (regla) {
-      case 'unanime': return <Users className="w-4 h-4" />;
-      case 'individual': return <UserCheck className="w-4 h-4" />;
-      case 'ancla': return <Crown className="w-4 h-4" />;
-      default: return <Users className="w-4 h-4" />;
+      case 'unanime': return <CheckCircle2 className="w-4 h-4" />;
+      case 'individual': return <CheckSquare className="w-4 h-4" />;
+      case 'ancla': return <Anchor className="w-4 h-4" />;
+      default: return <CheckCircle2 className="w-4 h-4" />;
+    }
+  };
+
+  const labelReglaAprobacion = (regla: PasoSolicitud['regla_aprobacion']) => {
+    switch (regla) {
+      case 'unanime': return 'Unánime';
+      case 'individual': return 'Mayoría';
+      case 'ancla': return 'Ancla';
+      default: return String(regla ?? '').toString();
     }
   };
 
@@ -201,7 +210,7 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
                 <SelectContent>
                   <SelectItem value="unanime">
                     <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
+                      <CheckCircle2 className="w-4 h-4" />
                       <div>
                         <div className="font-medium">Unánime</div>
                         <div className="text-xs text-muted-foreground">Todos deben aprobar</div>
@@ -210,18 +219,18 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
                   </SelectItem>
                   <SelectItem value="individual">
                     <div className="flex items-center gap-2">
-                      <UserCheck className="w-4 h-4" />
+                      <CheckSquare className="w-4 h-4" />
                       <div>
-                        <div className="font-medium">Individual</div>
-                        <div className="text-xs text-muted-foreground">Cualquier aprobación es suficiente</div>
+                        <div className="font-medium">Mayoría</div>
+                        <div className="text-xs text-muted-foreground">La mayoría debe aprobar</div>
                       </div>
                     </div>
                   </SelectItem>
                   <SelectItem value="ancla">
                     <div className="flex items-center gap-2">
-                      <Crown className="w-4 h-4" />
+                      <Anchor className="w-4 h-4" />
                       <div>
-                        <div className="font-medium">Usuario Ancla</div>
+                        <div className="font-medium">Ancla</div>
                         <div className="text-xs text-muted-foreground">Requiere al menos 2 aprobaciones</div>
                       </div>
                     </div>
@@ -237,12 +246,12 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
                 <div>
                   <p className="font-medium text-sm">
                     {paso.regla_aprobacion === 'unanime' && 'Aprobación Unánime'}
-                    {paso.regla_aprobacion === 'individual' && 'Aprobación Individual'}
+                    {paso.regla_aprobacion === 'individual' && 'Aprobación por Mayoría'}
                     {paso.regla_aprobacion === 'ancla' && 'Aprobación con Usuario Ancla'}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {paso.regla_aprobacion === 'unanime' && 'Todos los miembros del grupo deben aprobar para que el paso continúe. Un solo rechazo cancelará el paso.'}
-                    {paso.regla_aprobacion === 'individual' && 'Una sola aprobación de cualquier miembro del grupo es suficiente para continuar.'}
+                    {paso.regla_aprobacion === 'individual' && 'Se aprueba si la mayoría del grupo aprueba.'}
                     {paso.regla_aprobacion === 'ancla' && 'Se requieren al menos 2 aprobaciones, incluyendo la de un usuario clave o "ancla".'}
                   </p>
                 </div>
@@ -253,7 +262,7 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
             <div className="flex gap-2">
               <Badge variant="outline" className="flex items-center gap-1">
                 {obtenerIconoReglaAprobacion(paso.regla_aprobacion)}
-                <span className="capitalize">{paso.regla_aprobacion}</span>
+                <span className="capitalize">{labelReglaAprobacion(paso.regla_aprobacion)}</span>
               </Badge>
               {paso.tipo_flujo !== 'normal' && (
                 <Badge variant="secondary" className="flex items-center gap-1">
@@ -288,7 +297,7 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
               {paso.tipo_paso === 'aprobacion' && (
                 <div className="col-span-2">
                   <span className="text-muted-foreground">Regla de aprobación:</span>
-                  <span className="ml-2 font-medium capitalize">{paso.regla_aprobacion}</span>
+                  <span className="ml-2 font-medium capitalize">{labelReglaAprobacion(paso.regla_aprobacion)}</span>
                 </div>
               )}
             </div>
