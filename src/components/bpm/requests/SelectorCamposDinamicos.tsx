@@ -107,7 +107,8 @@ export const SelectorCamposDinamicos: React.FC<Props> = ({ camposDinamicos, onCh
       id_input: item.input_id,
       tipo_input: tipoInput,
       etiqueta: item.nombre,
-      opciones: item.opciones,
+      // Sanitize options for rendering components that can't accept empty values
+      opciones: (item.opciones || []).filter((op) => typeof op === 'string' && op.trim() !== ''),
     };
     return meta;
   };
@@ -212,7 +213,15 @@ export const SelectorCamposDinamicos: React.FC<Props> = ({ camposDinamicos, onCh
                           </div>
                         ))}
                         <div className="mt-2">
-                          <Button size="sm" variant="outline" onClick={() => setOpciones(index, [...(item.opciones || []), ''])}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const current = item.opciones || [];
+                              const nextLabel = `Opción ${current.length + 1}`;
+                              setOpciones(index, [...current, nextLabel]);
+                            }}
+                          >
                             <Plus className="w-4 h-4 mr-1" /> Agregar opción
                           </Button>
                         </div>
