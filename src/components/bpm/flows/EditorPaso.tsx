@@ -90,7 +90,8 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
       case 'responsable_id':
         patch['ResponsableId'] = valor; break;
       case 'regla_aprobacion':
-        patch['ReglaAprobacion'] = valor; break;
+        // Usar snake_case para alinearnos con backend DTO (regla_aprobacion)
+        patch['regla_aprobacion'] = valor; break;
       case 'tipo_flujo':
         patch['TipoFlujo'] = valor; break;
       default:
@@ -254,7 +255,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
                       TipoFlujo: p.tipo_flujo,
                     };
                     if (p.tipo_paso === 'aprobacion') {
-                      patch['ReglaAprobacion'] = p.regla_aprobacion;
+                      patch['regla_aprobacion'] = p.regla_aprobacion;
                     }
                     stagePasoMetadata(p.id_paso_solicitud, patch);
                   }}
@@ -441,7 +442,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
                       TipoFlujo: p.tipo_flujo,
                     };
                     if (p.tipo_paso === 'aprobacion') {
-                      patch['ReglaAprobacion'] = p.regla_aprobacion;
+                      patch['regla_aprobacion'] = p.regla_aprobacion;
                     }
                     stagePasoMetadata(p.id_paso_solicitud, patch);
                   }}
