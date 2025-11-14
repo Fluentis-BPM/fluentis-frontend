@@ -140,20 +140,63 @@ function normalizeRelacionInput(rel: unknown) {
 export default api;
 
 // --- Decision endpoints (BPM) ---
-export type DecisionCreateReq = { IdUsuario: number; Decision: boolean };
+export type DecisionCreateReq = { IdUsuario?: number; Decision?: boolean; idUsuario?: number; decision?: boolean };
 export type PasoResp = unknown; // backend returns the full PasoSolicitud object (treat as unknown)
 export type DecisionSolicitudResp = { DecisionId: number; EstadoActual: string; TodosVotaron: boolean };
 
 export const postPasoDecision = async (pasoId: number, body: DecisionCreateReq): Promise<PasoResp> => {
-  const res = await api.post(`/api/PasoSolicitud/${pasoId}/decisiones`, body);
-  return res.data;
+  // Enviar payload compatible con distintas convenciones del backend
+  const payload = {
+    IdUsuario: body.IdUsuario ?? body.idUsuario,
+    Decision: body.Decision ?? body.decision,
+    idUsuario: body.idUsuario ?? body.IdUsuario,
+    decision: body.decision ?? body.Decision,
+  };
+  // Primero intentamos con la convención PascalCase (compat histórica)
+  try {
+    const res = await api.post(`/api/PasoSolicitud/${pasoId}/decisiones`, payload);
+    return res.data;
+  } catch (e: unknown) {
+    // Si el backend usa lowercase en rutas, reintentar
+    const status = (e as { response?: { status?: number } })?.response?.status;
+    if (status === 404) {
+      const res2 = await api.post(`/api/pasosolicitudes/${pasoId}/decisiones`, payload);
+      return res2.data;
+    }
+    throw e;
+  }
 };
 
 export const deletePasoDecision = async (pasoId: number, decisionId: number): Promise<void> => {
-  await api.delete(`/api/PasoSolicitud/${pasoId}/decisiones/${decisionId}`);
+  try {
+    await api.delete(`/api/PasoSolicitud/${pasoId}/decisiones/${decisionId}`);
+  } catch (e: unknown) {
+    const status = (e as { response?: { status?: number } })?.response?.status;
+    if (status === 404) {
+      await api.delete(`/api/pasosolicitudes/${pasoId}/decisiones/${decisionId}`);
+      return;
+    }
+    throw e;
+  }
 };
 
 export const postSolicitudDecision = async (solicitudId: number, body: DecisionCreateReq): Promise<DecisionSolicitudResp> => {
   const res = await api.post(`/api/solicitudes/${solicitudId}/decision`, body);
+  return res.data;
+};
+
+// --- User assignment endpoints (Equipos) ---
+export const setUsuarioDepartamento = async (usuarioId: number, departamentoId: number | null) => {
+  const res = await api.put(`/api/Usuarios/${usuarioId}/departamento`, { departamentoId });
+  return res.data;
+};
+
+export const setUsuarioRol = async (usuarioId: number, rolId: number | null) => {
+  const res = await api.put(`/api/Usuarios/${usuarioId}/rol`, { rolId });
+  return res.data;
+};
+
+export const setUsuarioCargo = async (usuarioId: number, cargoId: number | null) => {
+  const res = await api.put(`/api/Usuarios/${usuarioId}/cargo`, { cargoId });
   return res.data;
 };

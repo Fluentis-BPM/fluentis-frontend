@@ -72,7 +72,6 @@ export default function PlantillasPage() {
     setForm({
       Nombre: tpl.nombre,
       Descripcion: tpl.descripcion ?? '',
-      FlujoBaseId: tpl.flujoBaseId ?? null,
       GrupoAprobacionId: tpl.grupoAprobacionId ?? null,
       Inputs: (tpl.inputs || []).map((i) => ({ InputId: i.inputId, Nombre: i.nombre, PlaceHolder: i.placeHolder ?? null, Requerido: i.requerido, ValorPorDefecto: i.valorPorDefecto ?? null })),
     });
@@ -134,7 +133,6 @@ export default function PlantillasPage() {
       const payloadApi: PlantillaSolicitudCreateDto = {
         Nombre: form.Nombre.trim(),
         Descripcion: form.Descripcion?.trim() || null,
-        FlujoBaseId: form.FlujoBaseId ?? null,
         GrupoAprobacionId: form.GrupoAprobacionId ?? null,
         Inputs: inputs
       };
@@ -293,9 +291,6 @@ export default function PlantillasPage() {
                       {tpl.grupoAprobacionId ? (
                         <Badge variant="outline">Grupo: {gruposById[tpl.grupoAprobacionId] || `#${tpl.grupoAprobacionId}`}</Badge>
                       ) : null}
-                      {tpl.flujoBaseId ? (
-                        <Badge variant="outline">Flujo: #{tpl.flujoBaseId}</Badge>
-                      ) : null}
                     </div>
                     <div className="flex justify-between pt-1">
                       <div className="space-x-2">
@@ -319,11 +314,13 @@ export default function PlantillasPage() {
       </Card>
 
       <Dialog open={openEditor} onOpenChange={setOpenEditor}>
-        <DialogContent className="max-w-6xl rounded-xl border shadow-xl">
-          <DialogHeader>
+        <DialogContent className="max-w-6xl max-h-[85vh] rounded-xl border shadow-xl flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{editTarget ? 'Editar plantilla' : 'Nueva plantilla'}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Scrollable body */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="space-y-4 lg:col-span-7">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -514,10 +511,6 @@ export default function PlantillasPage() {
               <TabsContent value="opciones">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Flujo base (opcional)</Label>
-                    <Input type="number" value={form.FlujoBaseId ?? ''} onChange={(e) => setForm((f) => ({ ...f, FlujoBaseId: e.target.value ? Number(e.target.value) : null }))} placeholder="ID de flujo" />
-                  </div>
-                  <div>
                     <Label>Grupo aprobador (opcional)</Label>
                     <Select value={form.GrupoAprobacionId ? String(form.GrupoAprobacionId) : ''} onValueChange={(v) => setForm((f) => ({ ...f, GrupoAprobacionId: v ? Number(v) : null }))}>
                       <SelectTrigger>
@@ -582,8 +575,9 @@ export default function PlantillasPage() {
                 </CardContent>
               </Card>
             </div>
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="ghost" onClick={() => setOpenEditor(false)}>
               Cancelar
             </Button>

@@ -30,14 +30,16 @@ interface Props {
   onActualizarEstado: (flujo_id: number, estado: EstadoFlujo) => void;
   onVerDetalles?: (flujo_id: number) => void;
   onVerDiagrama?: (flujo_id: number) => void;
+  vista?: 'lista' | 'grid'; // Nueva prop para controlar la vista
 }
 
 export const TarjetaFlujo: React.FC<Props> = ({ 
   flujo, 
   pasos = [], 
-  onActualizarEstado,
+  // onActualizarEstado,
   onVerDetalles,
-  onVerDiagrama
+  onVerDiagrama,
+  vista = 'grid'
 }) => {
   // Helper to safely parse different date shapes coming from API
   const parseDate = (value: unknown): Date | null => {
@@ -90,6 +92,104 @@ export const TarjetaFlujo: React.FC<Props> = ({
   const pasosCompletados = pasos.filter(p => p.estado === 'aprobado' || p.estado === 'entregado').length;
   const progreso = pasos.length > 0 ? (pasosCompletados / pasos.length) * 100 : 0;
 
+  // Vista compacta para lista (filas)
+  if (vista === 'lista') {
+    return (
+      <Card className="shadow-soft hover:shadow-elegant transition-smooth">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            {/* Información principal */}
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                {getEstadoIcon()}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <h3 className="font-semibold text-sm truncate" title={flujo.nombre || `Flujo #${flujo.id_flujo_activo}`}>
+                          {flujo.nombre || `Flujo #${flujo.id_flujo_activo}`}
+                        </h3>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{flujo.nombre || `Flujo #${flujo.id_flujo_activo}`}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  {getEstadoBadge()}
+                </div>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <FileText className="w-3 h-3" />
+                    Solicitud #{flujo.solicitud_id}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {(() => {
+                      const d = parseDate(flujo.fecha_inicio);
+                      return d ? d.toLocaleDateString('es-ES') : 'Desconocido';
+                    })()}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {getDuracion()}
+                  </span>
+                  {pasos.length > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Square className="w-3 h-3" />
+                      {pasosCompletados}/{pasos.length} pasos ({Math.round(progreso)}%)
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {onVerDiagrama && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onVerDiagrama(flujo.id_flujo_activo)}
+                  className="flex items-center gap-1 border-primary text-primary hover:bg-primary hover:text-white h-8"
+                >
+                  <Workflow className="w-3 h-3" />
+                  Ver Diagrama
+                </Button>
+              )}
+              
+              {/* {flujo.estado === 'encurso' && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onActualizarEstado(flujo.id_flujo_activo, 'finalizado')}
+                    className="flex items-center gap-1 border-green-500 text-green-600 hover:bg-green-500 hover:text-white h-8"
+                  >
+                    <CheckCircle className="w-3 h-3" />
+                    Finalizar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onActualizarEstado(flujo.id_flujo_activo, 'cancelado')}
+                    className="flex items-center gap-1 border-red-500 text-red-600 hover:bg-red-500 hover:text-white h-8"
+                  >
+                    <XCircle className="w-3 h-3" />
+                    Cancelar
+                  </Button>
+                </>
+              )} */}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Vista de cuadros (grid) - original completa
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -222,7 +322,7 @@ export const TarjetaFlujo: React.FC<Props> = ({
             </Button>
           )}
           
-          {flujo.estado === 'encurso' && (
+          {/* {flujo.estado === 'encurso' && (
             <>
               <Button
                 variant="outline"
@@ -243,7 +343,7 @@ export const TarjetaFlujo: React.FC<Props> = ({
                 Cancelar
               </Button>
             </>
-          )}
+          )} */}
           
           {onVerDetalles && (
             <Button

@@ -13,7 +13,7 @@ import type { CrearSolicitudInput, Solicitud } from '@/types/bpm/request';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EstadoSolicitud } from '@/types/bpm/request';
-import { Search, Filter, SortDesc, FileX, Layers, Users, Plus, ArrowRight, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, SortDesc, FileX, Layers, Users, Plus, ArrowRight, Workflow, ChevronLeft, ChevronRight, RefreshCcw } from 'lucide-react';
 import { useToast } from '@/hooks/bpm/use-toast';
 import { useAprobations } from '@/hooks/equipos/aprobations/useAprobations';
 import type { GrupoAprobacion } from '@/types/equipos/aprobations';
@@ -22,11 +22,14 @@ import { RootState } from '@/store';
 import { Toggle } from '@/components/ui/toggle';
 import { useUsers } from '@/hooks/users/useUsers';
 import { setImpersonateUserId, clearImpersonation } from '@/services/api';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useNavigate } from 'react-router-dom';
 
 export const ModuloSolicitudes: React.FC<{
   solicitudesData: ReturnType<typeof useSolicitudes>;
   onNavigateToFlujos: () => void;
 }> = ({ solicitudesData, onNavigateToFlujos }) => {
+  const navigate = useNavigate();
   const { 
     solicitudes, 
     crearSolicitud, 
@@ -53,6 +56,7 @@ export const ModuloSolicitudes: React.FC<{
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [showCreateChoice, setShowCreateChoice] = useState(false);
   const { grupos: gruposBackend } = useAprobations();
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario || 0);
   const currentUserRole = useSelector((s: RootState) => s.auth.user?.rolNombre || '');
@@ -357,6 +361,19 @@ export const ModuloSolicitudes: React.FC<{
     if (page > totalPages) setPage(totalPages);
   }, [totalPages, page]);
 
+  // Refrescar solicitudes para el usuario actual/impersonado
+  const handleRefreshSolicitudes = () => {
+    const uid = viewerUserId || currentUserId;
+    if (uid) {
+      try {
+        solicitudesData.cargarSolicitudes(uid);
+        toast({ title: 'Solicitudes actualizadas', description: 'Se recargó la lista de solicitudes.' });
+      } catch (e) {
+        toast({ title: 'Error al refrescar', description: e instanceof Error ? e.message : 'No se pudo recargar', variant: 'destructive' });
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Container principal con ancho máximo y centrado */}
@@ -373,7 +390,13 @@ export const ModuloSolicitudes: React.FC<{
           </div>
           
           <Button 
-            onClick={() => setMostrarFormulario(!mostrarFormulario)}
+            onClick={() => {
+              if (mostrarFormulario) {
+                setMostrarFormulario(false);
+              } else {
+                setShowCreateChoice(true);
+              }
+            }}
             variant="gradient"
             size="sm"
             className="hover:scale-105 transition-smooth"
@@ -382,6 +405,49 @@ export const ModuloSolicitudes: React.FC<{
             {mostrarFormulario ? 'Ocultar' : 'Nueva Solicitud'}
           </Button>
         </div>
+
+        {/* Dialogo de elección: plantilla o en blanco */}
+        <Dialog open={showCreateChoice} onOpenChange={setShowCreateChoice}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Crear solicitud</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Button
+                className="w-full h-11"
+                variant="gradient"
+                onClick={() => {
+                  setShowCreateChoice(false);
+                  navigate('/flujos/plantillas');
+                }}
+              >
+                Usar una plantilla existente
+              </Button>
+              <Button
+                className="w-full h-11"
+                variant="outline"
+                onClick={() => {
+                  setShowCreateChoice(false);
+                  setMostrarFormulario(true);
+                  // opcional: desplazar al formulario
+                  setTimeout(() => {
+                    try {
+                      const el = document.getElementById('form-crear-solicitud');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } catch (e) {
+                      // noop
+                    }
+                  }, 50);
+                }}
+              >
+                Iniciar en blanco
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setShowCreateChoice(false)}>Cancelar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <EstadisticasSolicitudes estadisticas={estadisticas} />
 
@@ -420,7 +486,8 @@ export const ModuloSolicitudes: React.FC<{
 
         {/* Pestañas principales */}
         <Tabs defaultValue="solicitudes" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto bg-gray-100 border-0">
+          <div className="relative max-w-5xl mx-auto">
+            <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto bg-gray-100 border-0">
             <TabsTrigger 
               value="solicitudes" 
               className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-smooth"
@@ -432,12 +499,24 @@ export const ModuloSolicitudes: React.FC<{
               <Users className="w-4 h-4" />
               Grupos de Aprobación
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
+            <Button
+              onClick={handleRefreshSolicitudes}
+              variant="outline"
+              size="sm"
+              disabled={Boolean(solicitudesData.isLoading)}
+              className="h-8 absolute right-0 top-1/2 -translate-y-1/2"
+            >
+              <RefreshCcw className={`w-4 h-4 mr-2 ${solicitudesData.isLoading ? 'animate-spin' : ''}`} />
+              {solicitudesData.isLoading ? 'Actualizando...' : 'Refrescar'}
+            </Button>
+          </div>
 
           <TabsContent value="solicitudes" className="space-y-4">
             {/* Formulario de creación */}
     {mostrarFormulario && (
               <div className="max-w-4xl mx-auto">
+                <div id="form-crear-solicitud" />
                 <FormularioSolicitud 
                   onCrearSolicitud={handleCrearSolicitud}
       isLoading={solicitudesData.isLoading}

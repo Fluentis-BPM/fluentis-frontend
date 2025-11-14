@@ -120,14 +120,16 @@ export const CampoDinamico: React.FC<Props> = ({
           />
         );
 
-      case 'combobox':
+      case 'combobox': {
+        const opciones = (input.opciones || []).filter((o) => typeof o === 'string' && o.trim() !== '');
+        const valueForSelect = opciones.includes(valor) ? valor : '';
         return (
-          <Select value={valor} onValueChange={handleValueChange}>
+          <Select value={valueForSelect} onValueChange={handleValueChange}>
             <SelectTrigger className="transition-smooth focus:ring-request-primary/50">
               <SelectValue placeholder="Seleccione una opción" />
             </SelectTrigger>
             <SelectContent>
-              {input.opciones?.map((opcion) => (
+              {opciones.map((opcion) => (
                 <SelectItem key={opcion} value={opcion}>
                   {opcion}
                 </SelectItem>
@@ -135,11 +137,13 @@ export const CampoDinamico: React.FC<Props> = ({
             </SelectContent>
           </Select>
         );
+      }
 
-  case 'radiogroup':
+      case 'radiogroup': {
+        const opciones = (input.opciones || []).filter((o) => typeof o === 'string' && o.trim() !== '');
         return (
           <RadioGroup value={valor} onValueChange={handleValueChange} className="space-y-2">
-            {input.opciones?.map((opcion) => (
+            {opciones.map((opcion) => (
               <div key={opcion} className="flex items-center space-x-2">
                 <RadioGroupItem value={opcion} id={`${input.id_input}-rg-${opcion}`} />
                 <Label htmlFor={`${input.id_input}-rg-${opcion}`} className="text-sm cursor-pointer">{opcion}</Label>
@@ -147,6 +151,7 @@ export const CampoDinamico: React.FC<Props> = ({
             ))}
           </RadioGroup>
         );
+      }
 
       case 'number':
         return (
@@ -193,10 +198,11 @@ export const CampoDinamico: React.FC<Props> = ({
           </Popover>
         );
 
-  case 'multiplecheckbox':
+      case 'multiplecheckbox': {
+        const opciones = (input.opciones || []).filter((o) => typeof o === 'string' && o.trim() !== '');
         return (
           <div className="space-y-3">
-            {input.opciones?.map((opcion) => (
+            {opciones.map((opcion) => (
               <div key={opcion} className="flex items-center space-x-2">
                 <Checkbox
                   id={`${input.id_input}-${opcion}`}
@@ -215,7 +221,7 @@ export const CampoDinamico: React.FC<Props> = ({
             ))}
             {selectedOptions.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
-                {selectedOptions.map((opcion) => (
+                {selectedOptions.filter((o) => opciones.includes(o)).map((opcion) => (
                   <Badge key={opcion} variant="secondary" className="text-xs">
                     {opcion}
                   </Badge>
@@ -224,6 +230,7 @@ export const CampoDinamico: React.FC<Props> = ({
             )}
           </div>
         );
+      }
 
   case 'archivo':
         return (

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -15,6 +15,7 @@ import {
   NodeChange,
   OnNodeDrag,
   Connection
+  , OnMoveEnd, type ReactFlowInstance
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { PasoSolicitud, CaminoParalelo } from '@/types/bpm/flow';
@@ -31,12 +32,19 @@ import {
   User,
   Settings,
   Users,
-  FileText
+  FileText,
+  Info
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { toast } from '@/hooks/bpm/use-toast';
 import { selectPasoReadiness } from '@/store/bpm/bpmSlice';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // Tipo para los datos del nodo
 interface PasoNodeData {
@@ -76,7 +84,10 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
     if (paso.tipo_paso === 'inicio') {
       return <Play className="w-4 h-4" />;
     }
-    
+    // Special icon for final step
+    if (paso.tipo_paso === 'fin') {
+      return <CheckCircle className="w-4 h-4" />;
+    }
     switch (paso.tipo_flujo) { // Corregido de 'tipo' a 'tipo_flujo' según la interfaz PasoSolicitud
       case 'normal': return <Settings className="w-4 h-4" />;
       case 'bifurcacion': return <AlertTriangle className="w-4 h-4" />;
@@ -90,6 +101,11 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   };
 
   const getColorByEstado = () => {
+    // Special style for final step - purple/violet theme
+    if (paso.tipo_paso === 'fin') {
+      return 'border-purple-600 bg-purple-50';
+    }
+
     switch (paso.estado) {
       case 'aprobado': return 'border-success bg-success/10';
       case 'rechazado': return 'border-destructive bg-destructive/10';
@@ -102,8 +118,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   };
 
   const getBadgeVariant = () => {
-    // Don't show estado badge for initial step
-    if (paso.tipo_paso === 'inicio') return null;
+    // Don't show estado badge for initial or final step
+    if (paso.tipo_paso === 'inicio' || paso.tipo_paso === 'fin') return null;
     
     switch (paso.estado) {
       case 'aprobado': return 'default';
@@ -117,6 +133,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   };
 
   const getTipoPasoColor = () => {
+    if (paso.tipo_paso === 'fin') return 'text-purple-600';
     return paso.tipo_paso === 'aprobacion' ? 'text-orange-600' : 'text-blue-600';
   };
 
@@ -124,14 +141,14 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
   const isReady = paso.tipo_paso === 'inicio' ? true : Boolean(readiness?.ready ?? true);
 
   return (
-    <Card 
-      className={`relative p-4 min-w-[220px] transition-all b-2 border-2 border-blue-500 duration-300 ${getColorByEstado()} ${
-      isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'
-      }`}
+    <Card
+      className={`p-4 min-w-[220px] transition-all b-2 border-2 border-blue-500 duration-300 ${
+        paso.tipo_paso === 'fin' ? '' : 'cursor-pointer'
+      } ${getColorByEstado()} ${isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-glow' : 'hover:shadow-lg hover:scale-105'}`}
 
       onClick={() => {
-        // Don't open editor for initial step
-        if (paso.tipo_paso === 'inicio') return;
+        // Allow opening editor for initial step to view initial campos; still block final step
+        if (paso.tipo_paso === 'fin') return;
         onNodeClick?.(paso);
       }}
     >
@@ -145,6 +162,12 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
               <h4 className="font-semibold text-sm">{paso.nombre || 'Sin nombre'}</h4>
               {paso.tipo_paso === 'inicio' && (
                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Inicial</span>
+              )}
+              {paso.tipo_paso === 'fin' && (
+                <span className="text-xs bg-purple-600/10 text-purple-600 px-2 py-0.5 rounded-full font-semibold">Final</span>
+              )}
+              {paso.tipo_paso === 'fin' && paso.estado === 'entregado' && (
+                <Badge variant="success" className="text-[10px]">Finalizado</Badge>
               )}
             </div>
           </div>
@@ -164,7 +187,8 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
               {getIconByTipoPaso()}
               <span className="text-xs font-medium">
                 {paso.tipo_paso === 'inicio' ? 'Inicial' : 
-                 (paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución')}
+                 (paso.tipo_paso === 'fin' ? 'Finalización' : 
+                 (paso.tipo_paso === 'aprobacion' ? 'Aprobación' : 'Ejecución'))}
               </span>
             </div>
             {getBadgeVariant() && (
@@ -197,7 +221,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
           )}
 
           {/* Botones de acción */}
-          {data.readOnly !== true && paso.id_paso_solicitud !== 0 && (
+          {data.readOnly !== true && paso.id_paso_solicitud !== 0 && paso.tipo_paso !== 'inicio' && paso.tipo_paso !== 'fin' && (
             <div className="flex gap-1 mt-2">
               {paso.estado === 'pendiente' && (
                 <>
@@ -258,7 +282,7 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
       )}
       
       {/* Handles para conexiones */}
-      {paso.id_paso_solicitud !== 0 && (
+      {paso.id_paso_solicitud !== 0 && paso.tipo_paso !== 'inicio' && (
         <Handle
           type="target"
           position={Position.Left}
@@ -267,13 +291,28 @@ const PasoNode: React.FC<{ data: PasoNodeData }> = ({ data }) => {
           id="target"
         />
       )}
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-4 !h-4 border-2 border-white rounded-full"
-        style={{ backgroundColor: '#10b981' }}
-        id="source"
-      />
+      
+      {/* Handle normal (salida estándar) - todos los pasos excepto Fin */}
+      {paso.tipo_paso !== 'fin' && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="!w-4 !h-4 border-2 border-white rounded-full"
+          style={{ backgroundColor: '#10b981', top: '40%' }}
+          id="source-normal"
+        />
+      )}
+      
+      {/* Handle de excepción (salida roja) - solo para pasos de Aprobación */}
+      {paso.tipo_paso === 'aprobacion' && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="!w-4 !h-4 border-2 border-white rounded-full"
+          style={{ backgroundColor: '#ef4444', top: '60%' }}
+          id="source-excepcion"
+        />
+      )}
     </Card>
   );
 };
@@ -295,6 +334,10 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   onCreateConexion
 }) => {
   const { stagePosition } = useBpm();
+  // React Flow instance and viewport preservation
+  const rfInstanceRef = useRef<ReactFlowInstance | null>(null);
+  const hasFittedRef = useRef(false);
+  const lastViewportRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const draftsByPasoId = useSelector((state: RootState) => state.bpm?.draftsByPasoId || {});
   
   // Convertir pasos a nodos de React Flow
@@ -337,31 +380,42 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
       id: camino.id_camino.toString(),
       source: camino.paso_origen_id.toString(),
       target: camino.paso_destino_id.toString(),
+      sourceHandle: camino.es_excepcion ? 'source-excepcion' : 'source-normal', // Especificar el handle correcto
+      targetHandle: 'target',
       type: 'default',
       animated: !camino.es_excepcion,
       style: { 
-        stroke: camino.es_excepcion ? '#f59e0b' : '#3b82f6',
+        stroke: camino.es_excepcion ? '#ef4444' : '#3b82f6',
         strokeWidth: 3,
-        strokeDasharray: 'none',
+        strokeDasharray: camino.es_excepcion ? '5,5' : 'none',
         strokeLinecap: 'round',
         strokeLinejoin: 'round'
       },
+      zIndex: 1000, // Elevar las conexiones por encima de los nodos
       markerEnd: {
         type: MarkerType.ArrowClosed,
         width: 12,
         height: 12,
-        color: camino.es_excepcion ? '#f59e0b' : '#3b82f6'
+        color: camino.es_excepcion ? '#ef4444' : '#3b82f6'
       },
-      label: camino.nombre,
-      labelStyle: { 
+      label: camino.nombre || (camino.es_excepcion ? '⚠️ Excepción' : undefined),
+      labelStyle: camino.es_excepcion ? {
+        fontSize: 11,
+        fontWeight: 600,
+        color: '#ef4444',
+        backgroundColor: '#fee2e2',
+        padding: '2px 6px',
+        borderRadius: '4px',
+        border: '1px solid #ef4444',
+      } : (camino.nombre ? {
         fontSize: 11, 
         fontWeight: 500,
-        color: camino.es_excepcion ? '#f59e0b' : '#3b82f6',
+        color: '#3b82f6',
         backgroundColor: '#ffffff',
         padding: '2px 6px',
         borderRadius: '4px',
-        border: `1px solid ${camino.es_excepcion ? '#f59e0b' : '#3b82f6'}`,
-      },
+        border: '1px solid #3b82f6',
+      } : undefined),
     })), [caminos]
   );
 
@@ -377,22 +431,24 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
   }, [pasos, stagePosition]);
 
   // Personalizar onNodesChange para manejar el arrastre
+  // Only stage position on explicit drag stop to avoid noisy drafts on re-sync
   const customOnNodesChange = useCallback((changes: NodeChange[]) => {
     onNodesChange(changes);
-    changes.forEach(change => {
-      if (change.type === 'position' && change.dragging === false && change.position) {
-        const nodeId = change.id;
-        const newPosition = change.position;
-        const paso = pasos.find(p => p.id_paso_solicitud.toString() === nodeId);
-        if (paso) {
-          stagePosition(paso.id_paso_solicitud, Math.round(newPosition.x), Math.round(newPosition.y));
-        }
-      }
-    });
-  }, [onNodesChange, pasos, stagePosition]);
+    // Intentionally do NOT stage positions here.
+  }, [onNodesChange]);
 
   // Sincronizar nodos cuando cambien los pasos
   useEffect(() => {
+    // Preserve current viewport before mutating nodes
+    try {
+      const vp = rfInstanceRef.current?.getViewport?.();
+      if (vp && typeof vp.x === 'number') {
+        lastViewportRef.current = { x: vp.x, y: vp.y, zoom: vp.zoom };
+      }
+    } catch {
+      // ignore viewport retrieval errors
+    }
+
     setNodes(currentNodes => {
       if (currentNodes.length === 0) return initialNodes;
       const existingNodesMap = new Map(currentNodes.map(node => [node.id, node]));
@@ -411,6 +467,13 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         return newNode;
       });
       return updatedNodes;
+    });
+    // Restore viewport after nodes update (next tick)
+    queueMicrotask(() => {
+      if (lastViewportRef.current) {
+        const { x, y, zoom } = lastViewportRef.current;
+        try { rfInstanceRef.current?.setViewport?.({ x, y, zoom }); } catch { /* ignore */ }
+      }
     });
   }, [
     // Re-sync when names, states, or POSITIONS change in backend
@@ -442,16 +505,47 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
     (params: Connection) => {
       console.log('🔗 Intentando crear conexión:', params);
       if (params.source && params.target) {
+        // Obtener información de los pasos origen y destino
+        const pasoOrigen = pasos.find(p => p.id_paso_solicitud.toString() === params.source);
+        const pasoDestino = pasos.find(p => p.id_paso_solicitud.toString() === params.target);
+        
+        if (!pasoOrigen || !pasoDestino) {
+          console.error('❌ No se encontró el paso origen o destino');
+          return;
+        }
+
+        // Validación 1: No se puede conectar a pasos de tipo Inicio
+        if (pasoDestino.tipo_paso === 'inicio') {
+          toast({
+            title: 'Conexión no permitida',
+            description: 'No puedes conectar a un paso de tipo Inicio.',
+            variant: 'destructive',
+            duration: 4000
+          });
+          return;
+        }
+
+        // Validación 2: Determinar si es una conexión de excepción basada en el handle
+        const esConexionExcepcion = params.sourceHandle === 'source-excepcion';
+        
+        // Validación 3: Solo pasos de Aprobación pueden crear conexiones de excepción
+        if (esConexionExcepcion && pasoOrigen.tipo_paso !== 'aprobacion') {
+          toast({
+            title: 'Conexión de excepción no permitida',
+            description: 'Solo los pasos de tipo Aprobación pueden tener caminos de excepción.',
+            variant: 'destructive',
+            duration: 4000
+          });
+          return;
+        }
+
         // Limitar ramas salientes por nodo (máximo 10)
         const MAX_BRANCHES = 10;
         const outgoingCount = edges.filter(e => e.source === params.source).length;
         if (outgoingCount >= MAX_BRANCHES) {
-          // Buscar nombres de pasos para mejorar el mensaje
-          const origenPaso = pasos.find(p => p.id_paso_solicitud.toString() === params.source)?.nombre || params.source;
-          const destinoPaso = pasos.find(p => p.id_paso_solicitud.toString() === params.target)?.nombre || params.target;
           toast({
             title: `No se puede crear la conexión`,
-            description: `El paso "${origenPaso}" ya tiene ${outgoingCount} ramas (máx ${MAX_BRANCHES}). Intentaste conectar a "${destinoPaso}".`,
+            description: `El paso "${pasoOrigen.nombre}" ya tiene ${outgoingCount} ramas (máx ${MAX_BRANCHES}). Intentaste conectar a "${pasoDestino.nombre}".`,
             variant: 'destructive',
             duration: 6000
           });
@@ -459,44 +553,67 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
           return;
         }
 
-        // Permitir todas las conexiones sin restricciones (dentro del límite)
-        console.log('🔗 Creando conexión:', params.source, '→', params.target);
+        // Mostrar advertencia si se conecta a un paso Final
+        if (pasoDestino.tipo_paso === 'fin') {
+          const confirmar = window.confirm(
+            `⚠️ Estás conectando a un paso Final.\n\nEsto cerrará el flujo inmediatamente cuando se llegue a este punto.\n\n¿Deseas continuar?`
+          );
+          if (!confirmar) return;
+        }
+
+        // Crear la conexión
+        console.log('🔗 Creando conexión:', params.source, '→', params.target, 'esExcepcion:', esConexionExcepcion);
+        
         const tempEdge: Edge = {
-          id: `connecting-${params.source}-${params.target}`,
+          id: `connecting-${params.source}-${params.target}-${esConexionExcepcion ? 'exc' : 'norm'}`,
           source: params.source,
           target: params.target,
+          sourceHandle: esConexionExcepcion ? 'source-excepcion' : 'source-normal',
+          targetHandle: 'target',
           type: 'default',
-          animated: true,
+          animated: !esConexionExcepcion,
           style: { 
-            stroke: '#3b82f6',
+            stroke: esConexionExcepcion ? '#ef4444' : '#3b82f6',
             strokeWidth: 3,
-            strokeDasharray: 'none',
+            strokeDasharray: esConexionExcepcion ? '5,5' : 'none',
             strokeLinecap: 'round',
             strokeLinejoin: 'round'
           },
+          zIndex: 1000, // Elevar las conexiones por encima de los nodos
           markerEnd: {
             type: MarkerType.ArrowClosed,
             width: 12,
             height: 12,
-            color: '#3b82f6'
-          }
+            color: esConexionExcepcion ? '#ef4444' : '#3b82f6'
+          },
+          label: esConexionExcepcion ? '⚠️ Excepción' : undefined,
+          labelStyle: esConexionExcepcion ? {
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#ef4444',
+            backgroundColor: '#fee2e2',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            border: '1px solid #ef4444',
+          } : undefined,
         };
         setEdges(currentEdges => addEdge(tempEdge, currentEdges));
         
         console.log('📞 Llamando onCreateConexion con:', {
           source: parseInt(params.source),
           target: parseInt(params.target),
+          esExcepcion: esConexionExcepcion,
           onCreateConexion: !!onCreateConexion
         });
         
         if (onCreateConexion) {
-          onCreateConexion(parseInt(params.source), parseInt(params.target), false);
+          onCreateConexion(parseInt(params.source), parseInt(params.target), esConexionExcepcion);
         } else {
           console.warn('⚠️ onCreateConexion no está definido');
         }
       }
     },
-    [setEdges, pasos, onCreateConexion]
+    [setEdges, pasos, edges, onCreateConexion]
   );
 
   const onPaneClick = useCallback(
@@ -558,10 +675,42 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         onPaneClick={onPaneClick}
         onNodeDragStop={handleNodeDragEnd}
         nodeTypes={nodeTypes}
-        fitView={true}
+        // Only fitView on first mount; afterwards we maintain viewport
+        fitView={!hasFittedRef.current}
         connectOnClick={false} // Evitar conexiones accidentales al hacer click
         nodesConnectable={!readOnly} // Permitir conexiones solo si no es readOnly
+        elevateEdgesOnSelect={true} // Elevar las conexiones seleccionadas
         className="bg-gradient-to-br from-background to-muted/20"
+        onInit={(instance) => {
+          // initial fit and mark as done
+          if (!hasFittedRef.current) {
+            hasFittedRef.current = true;
+            rfInstanceRef.current = instance;
+            // capture initial viewport
+            try { lastViewportRef.current = instance.getViewport?.() || null; } catch { /* ignore */ }
+            // Try to restore persisted viewport for this flujo
+            try {
+              const key = `rf-viewport-${String(flujoActivoId)}`;
+              const raw = sessionStorage.getItem(key);
+              if (raw) {
+                const vp = JSON.parse(raw) as { x: number; y: number; zoom: number };
+                if (vp && typeof vp.x === 'number' && typeof vp.y === 'number' && typeof vp.zoom === 'number') {
+                  instance.setViewport?.(vp);
+                  lastViewportRef.current = vp;
+                }
+              }
+            } catch { /* ignore storage errors */ }
+          }
+        }}
+        onMoveEnd={((_e, viewport) => {
+          // Track viewport to restore across data refreshes
+          lastViewportRef.current = viewport;
+          // Persist viewport per flujo to survive remounts/navigations
+          try {
+            const key = `rf-viewport-${String(flujoActivoId)}`;
+            sessionStorage.setItem(key, JSON.stringify(viewport));
+          } catch { /* ignore storage errors */ }
+        }) as OnMoveEnd}
       >
         <Controls className="bg-background border shadow-lg" />
         <MiniMap 
@@ -583,6 +732,40 @@ export const DiagramaFlujo: React.FC<DiagramaFlujoProps> = ({
         />
         <Background gap={20} size={1} className="opacity-30" />
       </ReactFlow>
+
+      {/* Icono de ayuda con tooltip - SUPERIOR IZQUIERDA (más a la derecha) */}
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="absolute top-6 left-24 z-50">
+              <button className="h-12 w-12 rounded-full bg-white border border-input shadow-lg hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-300 flex items-center justify-center">
+                <Info className="w-5 h-5 text-primary" />
+              </button>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs p-3">
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm mb-2">Tipos de Conexión</h4>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm flex-shrink-0" />
+                  <span>Conexión Normal</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-sm flex-shrink-0" />
+                  <span>Conexión de Excepción</span>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-border">
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <strong>Arrastre</strong> desde el punto verde para conexiones normales, 
+                  o desde el punto rojo (solo en pasos de Aprobación) para excepciones.
+                </p>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       {/* Floating Add Button - only show if not read-only */}
       {!readOnly && (

@@ -21,6 +21,7 @@ export interface UsersListProps {
   users: User[]
   onDragStart: (user: User) => void
   onDragEnd: () => void
+  onDropToUnassign?: () => void
 }
 
 export interface UserCardProps {
@@ -35,6 +36,8 @@ export interface DepartmentsListProps {
   getUsersByDepartment: (departmentId: number) => User[]
   onDrop: (departmentId: number) => void
   draggedUser: User | null
+  onUserDragStart?: (user: User) => void
+  onUserDragEnd?: () => void
 }
 
 
@@ -43,6 +46,8 @@ export interface DepartmentCardProps {
   users: User[]
   onDrop: (departmentId: number) => void
   draggedUser: User | null
+  onUserDragStart?: (user: User) => void
+  onUserDragEnd?: () => void
 }
 
 export interface UseDepartmentsReturn {

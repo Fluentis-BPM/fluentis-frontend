@@ -36,6 +36,8 @@ export interface CargosListProps {
   getUsersByCargo: (cargoId: number) => User[]
   onDrop: (cargoId: number) => void
   draggedUser: User | null
+  onUserDragStart?: (user: User) => void
+  onUserDragEnd?: () => void
 }
 
 export interface CargoCardProps {
@@ -43,6 +45,8 @@ export interface CargoCardProps {
   users: User[]
   onDrop: (cargoId: number) => void
   draggedUser: User | null
+  onUserDragStart?: (user: User) => void
+  onUserDragEnd?: () => void
 }
 
 export interface UseCargosReturn {

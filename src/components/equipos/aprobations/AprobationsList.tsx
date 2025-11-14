@@ -6,6 +6,9 @@ export default function AprobationsList({
   getUsersByGroup,
   onDrop,
   draggedUser,
+  onUserDragStart,
+  onUserDragEnd,
+  onUserDragStartFromGroup,
 }: AprobationsListProps) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -16,6 +19,9 @@ export default function AprobationsList({
           users={getUsersByGroup(grupo.id_grupo)}
           onDrop={onDrop}
           draggedUser={draggedUser}
+          onUserDragStart={onUserDragStart}
+          onUserDragEnd={onUserDragEnd}
+          onUserDragStartFromGroup={onUserDragStartFromGroup}
         />
       ))}
     </div>

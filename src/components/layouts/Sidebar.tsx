@@ -2,11 +2,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Users, Shield, GitPullRequest, BarChart3, 
+  Users, GitPullRequest,
   LogOut, ChevronRight, ChevronDown, HomeIcon,
   Menu, User, Settings
 } from 'lucide-react';
 import { cn } from '@/utils/utils';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { User as UserType } from '@/types/auth';
 
@@ -81,28 +82,8 @@ export default function Sidebar({ user }: SidebarProps) {
         { path: '/bpm', label: 'Resumen' },
         { path: '/bpm/solicitudes', label: 'Solicitudes' },
         { path: '/bpm/flujos', label: 'Flujos' },
-        { path: '/flujos/plantillas', label: 'Plantillas' },
-        { path: '/flujos/activos', label: 'Flujos Activos' },
+        { path: '/flujos/plantillas', label: 'Plantillas Solicitud' },
         { path: '/flujos/mis-pasos', label: 'Mis Pasos' },
-        { path: '/flujos/propuestas-votaciones', label: 'Propuestas y Votaciones' },
-      ]
-    },
-    {
-      id: 'backupSeguridad',
-      label: 'Backup y Seguridad',
-      icon: <Shield className="h-5 w-5" />,
-      items: [
-        { path: '/backup/backups', label: 'Backups' },
-        { path: '/backup/incidentes', label: 'Incidentes' }
-      ]
-    },
-    {
-      id: 'metricasInformes',
-      label: 'Métricas e Informes',
-      icon: <BarChart3 className="h-5 w-5" />,
-      items: [
-        { path: '/metricas/metricas', label: 'Métricas' },
-        { path: '/metricas/informes', label: 'Informes' }
       ]
     },
   ];
@@ -203,19 +184,26 @@ export default function Sidebar({ user }: SidebarProps) {
             )}>
               {user?.nombre?.charAt(0).toUpperCase() || 'U'}
             </div>
-            {!isCollapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-sm truncate">{user?.nombre || 'Usuario'}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.cargoNombre || 'Cargo no definido'}</p>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-xs text-primary font-medium truncate">{user?.rolNombre || 'Sin rol'}</span>
-                  {user?.departamentoNombre && (
-                    <>
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-xs text-muted-foreground truncate">{user.departamentoNombre}</span>
-                    </>
-                  )}
+            {isCollapsed ? (
+              // Compact bell over avatar area
+              <NotificationBell userId={user?.idUsuario} compact />
+            ) : (
+              <div className="min-w-0 flex-1 flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{user?.nombre || 'Usuario'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.cargoNombre || 'Cargo no definido'}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-xs text-primary font-medium truncate">{user?.rolNombre || 'Sin rol'}</span>
+                    {user?.departamentoNombre && (
+                      <>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground truncate">{user.departamentoNombre}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
+                {/* Bell aligned to the right of user info */}
+                <NotificationBell userId={user?.idUsuario} />
               </div>
             )}
           </div>

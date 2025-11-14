@@ -6,6 +6,8 @@ export default function CargosList({
   getUsersByCargo,
   onDrop,
   draggedUser,
+  onUserDragStart,
+  onUserDragEnd,
 }: CargosListProps) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -16,6 +18,8 @@ export default function CargosList({
           users={getUsersByCargo(cargo.idCargo)}
           onDrop={onDrop}
           draggedUser={draggedUser}
+          onUserDragStart={onUserDragStart}
+          onUserDragEnd={onUserDragEnd}
         />
       ))}
     </div>

@@ -4,7 +4,7 @@ import UserCard from "../common/UserCard"
 import { DepartmentCardProps } from "@/types/equipos/department"
 
 
-export default function DepartmentCard({ department, users, onDrop, draggedUser }: DepartmentCardProps) {
+export default function DepartmentCard({ department, users, onDrop, draggedUser, onUserDragStart, onUserDragEnd }: DepartmentCardProps) {
   const [isDragOver, setIsDragOver] = useState(false)
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -76,8 +76,8 @@ export default function DepartmentCard({ department, users, onDrop, draggedUser 
             <UserCard
               key={user.oid}
               user={user}
-              onDragStart={() => {}}
-              onDragEnd={() => {}}
+              onDragStart={onUserDragStart || (() => {})}
+              onDragEnd={onUserDragEnd || (() => {})}
               isDragging={draggedUser?.oid === user.oid}
             />
           ))

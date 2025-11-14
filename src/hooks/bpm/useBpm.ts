@@ -14,13 +14,14 @@ export const useBpm = () => {
 
   const { deleting, lastActionError } = useSelector((state: RootState) => state.bpm);
 
-  const loadFlujosActivos = useCallback(() => {
-    dispatch(fetchFlujosActivos());
+  const loadFlujosActivos = useCallback((usuarioId: number, fechaInicio?: string, fechaFin?: string, estado?: number) => {
+    dispatch(fetchFlujosActivos({ usuarioId, fechaInicio, fechaFin, estado }));
   }, [dispatch]);
 
   const loadPasosYConexiones = useCallback(
     (flujoActivoId: number) => {
-      dispatch(fetchPasosYConexiones(flujoActivoId));
+      // Return a promise so callers can await syncing and show proper buffering
+      return dispatch(fetchPasosYConexiones(flujoActivoId)).unwrap();
     },
     [dispatch]
   );

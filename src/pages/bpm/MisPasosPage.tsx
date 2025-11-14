@@ -44,6 +44,10 @@ import {
   List
 } from 'lucide-react';
 import { fmtDateTime } from '@/lib/utils';
+import api from '@/services/api';
+import { calcularReadinessPaso } from '@/lib/bpm/readiness';
+import { isRejected as isOptimisticallyRejected, clearAllOptimistic } from '@/hooks/bpm/optimisticDecisions';
+import type { PasoSolicitud as PasoFlujoPaso, CaminoParalelo as PasoFlujoConexion } from '@/types/bpm/flow';
 
 const MisPasosPage: React.FC = () => {
   const currentUserId = useSelector((s: RootState) => s.auth.user?.idUsuario ?? 0);
@@ -59,14 +63,17 @@ const MisPasosPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Readiness calculado por flujo (derivado del grafo real del backend)
+  const [readyByPasoId, setReadyByPasoId] = useState<Record<number, boolean>>({});
   
-  // Actualizar selectedUserId cuando cambie currentUserId
+  // Actualizar selectedUserId cuando cambie currentUserId (solo si NO es admin)
+  // Los admins deben poder seleccionar libremente cualquier usuario
   useEffect(() => {
-    if (currentUserId > 0 && selectedUserId !== currentUserId) {
-      console.log('Updating selectedUserId from', selectedUserId, 'to', currentUserId);
+    if (!isAdmin && currentUserId > 0 && selectedUserId !== currentUserId) {
+      console.log('[MisPasos] Usuario NO admin - forzando selectedUserId a currentUserId:', currentUserId);
       setSelectedUserId(currentUserId);
     }
-  }, [currentUserId, selectedUserId]);
+  }, [currentUserId, selectedUserId, isAdmin]);
   
   // Estados de filtros
   const [filtros, setFiltros] = useState<FiltrosPasoSolicitud>({});
@@ -76,6 +83,8 @@ const MisPasosPage: React.FC = () => {
   // Estados de acciones
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  // Registro local de mi voto por paso (solo UI, no autoritativo)
+  const [myDecision, setMyDecision] = useState<Record<number, 'aprobar' | 'rechazar'>>({});
   
   // Estados del modal de confirmación
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -107,14 +116,69 @@ const MisPasosPage: React.FC = () => {
       fetchPasos(selectedUserId, filtros);
     }
   }, [selectedUserId, filtros, fetchPasos]);
+
+  // Cargar grafos de flujos para calcular readiness real y ocultar pasos bloqueados
+  useEffect(() => {
+    const flujoIds = Array.from(new Set(pasos.map(p => p.flujoId).filter(Boolean))) as number[];
+    if (flujoIds.length === 0) {
+      setReadyByPasoId({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const newMap: Record<number, boolean> = {};
+      for (const fid of flujoIds) {
+        try {
+          const resp = await api.get<{ flujoActivoId: number; pasos: PasoFlujoPaso[]; caminos: PasoFlujoConexion[] }>(`/api/FlujosActivos/Pasos/${fid}`);
+          const { pasos: pasosFlujo, caminos } = resp.data || { pasos: [], caminos: [] };
+          // Para cada paso del feed que pertenezca a este flujo, calcular readiness
+          for (const p of pasos) {
+            if (p.flujoId !== fid) continue;
+            const pid = p.pasoId || p.id;
+            if (!pid) continue;
+            const res = calcularReadinessPaso(pid, pasosFlujo as unknown as PasoFlujoPaso[], caminos);
+            newMap[pid] = res.ready;
+          }
+        } catch (e) {
+          console.warn('[MisPasos] No se pudo cargar pasos/caminos del flujo', fid, e);
+        }
+      }
+      if (!cancelled) setReadyByPasoId(newMap);
+    })();
+    return () => { cancelled = true; };
+  }, [pasos]);
   
   // Filtrar pasos por término de búsqueda
   const pasosFiltrados = useMemo(() => {
+    const isBlocked = (p: PasoSolicitud): boolean => {
+      // 1) Back-end flags (si existieran en el DTO)
+      const md = (p as unknown as { metadatos?: Record<string, unknown> }).metadatos || {};
+      const mReady = md['ready'];
+      const mBloq = md['bloqueado'];
+      if (typeof mBloq === 'boolean') return mBloq;
+      if (typeof mReady === 'boolean') return mReady === false;
+      // 2) Readiness calculado desde el grafo del flujo
+      const pid = p.pasoId || p.id;
+      if (pid && Object.prototype.hasOwnProperty.call(readyByPasoId, pid)) {
+        return readyByPasoId[pid] === false;
+      }
+      return false;
+    };
     console.log('Filtering pasos:', pasos.length, 'with search term:', searchTerm);
-    if (!searchTerm.trim()) return pasos;
+    // Aplicar override optimista (mostrar rechazado hasta refresh)
+    const pasosConOverride = pasos.map((p) => {
+      const pid = (typeof p.pasoId === 'number' && p.pasoId > 0) ? p.pasoId : p.id;
+      if (pid && isOptimisticallyRejected(pid)) {
+        return { ...p, estado: 'rechazado' as EstadoPaso };
+      }
+      return p;
+    });
+    // Ocultar pasos bloqueados (por flags o por grafo)
+    const visibles = pasosConOverride.filter(p => !isBlocked(p));
+    if (!searchTerm.trim()) return visibles;
     
     const term = searchTerm.toLowerCase();
-    const filtered = pasos.filter(paso => 
+    const filtered = visibles.filter(paso => 
       paso.nombre.toLowerCase().includes(term) ||
       paso.solicitudNombre?.toLowerCase().includes(term) ||
       paso.descripcion?.toLowerCase().includes(term) ||
@@ -122,7 +186,7 @@ const MisPasosPage: React.FC = () => {
     );
     console.log('Filtered pasos:', filtered.length);
     return filtered;
-  }, [pasos, searchTerm]);
+  }, [pasos, searchTerm, readyByPasoId]);
   
   // Manejar cambio de filtros
   const handleFilterChange = (key: keyof FiltrosPasoSolicitud, value: string | undefined) => {
@@ -193,6 +257,9 @@ const MisPasosPage: React.FC = () => {
           IdUsuario: selectedUserId,
           Decision: decision
         });
+        // Optimista: guardar mi voto localmente para bloquear botones y mostrar estado
+        const decisionName: 'aprobar' | 'rechazar' = decision ? 'aprobar' : 'rechazar';
+        setMyDecision((prev) => ({ ...prev, [targetPasoId]: decisionName }));
         setActionMessage(`Paso ${decision ? 'aprobado' : 'rechazado'} correctamente`);
       } else {
         // Para otros tipos de pasos, mantener la lógica anterior
@@ -209,10 +276,7 @@ const MisPasosPage: React.FC = () => {
         }
       }
       
-      // Refrescar lista después de 1 segundo
-      setTimeout(() => {
-        fetchPasos(selectedUserId, filtros);
-      }, 1000);
+      // No auto-refrescar: mantener la vista como "rechazado" hasta que el usuario pulse el botón de refrescar
     } catch (err) {
         setActionMessage(`Error al ${confirmDialog.accion} el paso: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     } finally {
@@ -266,8 +330,8 @@ const MisPasosPage: React.FC = () => {
   
   // Renderizar botones de acción según el tipo
   const renderAccionButtons = (paso: PasoSolicitud) => {
-    const isLoading = actionLoading === paso.pasoId || decisionLoading;
     const resolvedId = resolvePasoSolicitudId(paso);
+    const isLoading = actionLoading === resolvedId || decisionLoading;
     const noId = resolvedId <= 0;
     
     // Estados finales - no se pueden modificar
@@ -304,7 +368,57 @@ const MisPasosPage: React.FC = () => {
         );
       }
       
-      // Solo si está pendiente, mostrar botones de acción
+      // Verificar si el usuario ya votó según los datos reales del backend
+      const relacionGrupo = paso.relacionesGrupoAprobacion?.[0];
+      
+      // Debug logs
+      console.log('[MisPasos] Verificando voto para paso:', paso.nombre);
+      console.log('[MisPasos] selectedUserId:', selectedUserId);
+      console.log('[MisPasos] currentUserId:', currentUserId);
+      console.log('[MisPasos] relacionGrupo:', relacionGrupo);
+      console.log('[MisPasos] decisiones:', relacionGrupo?.decisiones);
+      
+      const miDecisionBackend = relacionGrupo?.decisiones?.find((d) => {
+        console.log('[MisPasos] Comparando:', d.id_usuario, '===', selectedUserId, '?', d.id_usuario === selectedUserId);
+        return d.id_usuario === selectedUserId;
+      });
+      
+      console.log('[MisPasos] miDecisionBackend:', miDecisionBackend);
+      
+      const yaVoteOptimista = resolvedId > 0 && myDecision[resolvedId];
+      
+      if ((miDecisionBackend || yaVoteOptimista) && paso.estado === 'pendiente') {
+        const voted = miDecisionBackend 
+          ? (miDecisionBackend.decision ? 'aprobar' : 'rechazar')
+          : myDecision[resolvedId];
+        
+        // Calcular estadísticas del grupo
+        const totalMiembros = relacionGrupo?.usuarios_grupo?.length || 0;
+        const totalDecisiones = relacionGrupo?.decisiones?.length || 0;
+        const aprobaciones = relacionGrupo?.decisiones?.filter((d) => d.decision === true).length || 0;
+        const rechazos = relacionGrupo?.decisiones?.filter((d) => d.decision === false).length || 0;
+        const pendientes = totalMiembros - totalDecisiones;
+        
+        return (
+          <div className="flex flex-col gap-2">
+            <Badge className={`border ${voted === 'aprobar' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
+              {voted === 'aprobar' ? 'Voto registrado: Aprobaste' : 'Voto registrado: Rechazaste'}
+            </Badge>
+            {miDecisionBackend?.fecha_decision && (
+              <span className="text-xs text-muted-foreground">
+                {new Date(miDecisionBackend.fecha_decision).toLocaleString('es-ES')}
+              </span>
+            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="text-green-600">✓ {aprobaciones}</span>
+              <span className="text-red-600">✗ {rechazos}</span>
+              <span className="text-amber-600">⏳ {pendientes}</span>
+            </div>
+          </div>
+        );
+      }
+
+      // Solo si está pendiente y no ha votado, mostrar botones de acción
       return (
         <div className="flex gap-2">
           <Button
@@ -484,7 +598,10 @@ const MisPasosPage: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchPasos(selectedUserId, filtros)}
+            onClick={() => { 
+              clearAllOptimistic(); 
+              fetchPasos(selectedUserId, filtros); 
+            }}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />

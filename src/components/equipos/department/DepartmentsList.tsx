@@ -7,6 +7,8 @@ export default function DepartmentsList({
   getUsersByDepartment,
   onDrop,
   draggedUser,
+  onUserDragStart,
+  onUserDragEnd,
 }: DepartmentsListProps) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -17,6 +19,8 @@ export default function DepartmentsList({
           users={getUsersByDepartment(department.idDepartamento)}
           onDrop={onDrop}
           draggedUser={draggedUser}
+          onUserDragStart={onUserDragStart}
+          onUserDragEnd={onUserDragEnd}
         />
       ))}
     </div>

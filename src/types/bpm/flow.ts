@@ -121,6 +121,7 @@ export interface FlujoActivo {
   fecha_finalizacion?: Date;
   estado: EstadoFlujo;
   datos_solicitud?: Record<string, string> | undefined;
+  roles_usuario?: string[]; // Array de roles del usuario: "visualizador", "creador", "ejecutor", "aprobador"
 }
 
 // Entidad PasoSolicitud
@@ -165,6 +166,17 @@ export interface RelacionGrupoAprobacion {
   id_relacion: number;
   grupo_aprobacion_id: number;
   paso_solicitud_id: number;
+  // Información adicional que viene del backend
+  usuarios_grupo?: Array<{
+    id_usuario: number;
+    nombre: string;
+  }>;
+  decisiones?: Array<{
+    id_usuario: number;
+    nombre_usuario: string;
+    decision: boolean; // true = aprobado, false = rechazado
+    fecha_decision?: string;
+  }>;
 }
 
 // Entidad Comentario (comentarios asociados a un paso)

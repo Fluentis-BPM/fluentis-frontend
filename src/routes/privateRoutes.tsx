@@ -10,28 +10,24 @@ import ConfigPage from "@/pages/user/ConfigPage";
 import { BPMDashboard } from "@/pages/bpm/BPMDashboard";
 import SolicitudesPage from "@/pages/bpm/SolicitudesPage";
 import FlujosPage from "@/pages/bpm/FlujosPage";
-import ActiveFlows from "@/pages/bpm/ActiveFlows";
 import MisPasosPage from '@/pages/bpm/MisPasosPage';
 import PlantillasPage from '@/pages/plantillas/PlantillasPage';
 import UsarPlantillaPage from '@/pages/plantillas/UsarPlantillaPage';
+import MetricasPage from '@/pages/metricas/MetricasPage';
 
 
 // Placeholders para las páginas privadas (solo divs con nombres)
 const DelegacionesPage = () => <div>Delegaciones Page</div>;
 const PropuestasVotacionesPage = () => <div>Propuestas y Votaciones Page</div>;
 
-const BackupsPage = () => <div>Backups Page</div>;
-const IncidentesPage = () => <div>Incidentes Page</div>;
-
-const MetricasPage = () => <div>Métricas Page</div>;
-const InformesPage = () => <div>Informes Page</div>;
+// (Placeholders removidos no utilizados: BackupsPage, IncidentesPage, InformesPage)
 
 export const privateRoutes = [
   {
     element: <MainLayout />,
     children: [
       // Dashboard
-      { path: '/dashboard', element: <PrivateRoute><div>Dashboard Coming Soon...</div></PrivateRoute> },
+      { path: '/dashboard', element: <PrivateRoute><MetricasPage /></PrivateRoute> },
       
       // Módulo: Gestión de Equipos y Permisos
       { path: '/equipos/usuarios', element: <PrivateRoute><UsersPage /></PrivateRoute> },
@@ -50,18 +46,10 @@ export const privateRoutes = [
   { path: '/flujos/plantillas', element: <PrivateRoute><PlantillasPage /></PrivateRoute> },
   { path: '/flujos/plantillas/:id/usar', element: <PrivateRoute><UsarPlantillaPage /></PrivateRoute> },
       { path: '/flujos/solicitudes', element: <PrivateRoute><SolicitudesPage /></PrivateRoute> },
-      { path: '/flujos/activos', element: <PrivateRoute><ActiveFlows /></PrivateRoute> },
       { path: '/flujos/mis-pasos', element: <PrivateRoute><MisPasosPage /></PrivateRoute> },
       { path: '/flujos/propuestas-votaciones', element: <PrivateRoute><PropuestasVotacionesPage /></PrivateRoute> },
 
-      // Módulo: Backup y Seguridad
-      { path: '/backup/backups', element: <PrivateRoute><BackupsPage /></PrivateRoute> },
-      { path: '/backup/incidentes', element: <PrivateRoute><IncidentesPage /></PrivateRoute> },
-
-      // Módulo: Métricas e Informes
-      { path: '/metricas/metricas', element: <PrivateRoute><MetricasPage /></PrivateRoute> },
-      { path: '/metricas/informes', element: <PrivateRoute><InformesPage /></PrivateRoute> },
-    
+  
       // Módulo: Perfil y Configuración
       { path: '/profile', element: <PrivateRoute><UserPage /></PrivateRoute>},
       { path: '/configuracion/cuenta', element: <PrivateRoute><ConfigPage /></PrivateRoute>},

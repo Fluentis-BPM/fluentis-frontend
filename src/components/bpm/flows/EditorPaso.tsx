@@ -130,7 +130,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
                 <Edit className="w-4 h-4" />
                 Configuración
               </TabsTrigger>
-              {datosEditados.tipo_paso === 'ejecucion' && (
+              {(datosEditados.tipo_paso === 'ejecucion' || datosEditados.tipo_paso === 'inicio') && (
                 <TabsTrigger 
                   value="ejecucion" 
                   className="flex items-center gap-2"
@@ -263,12 +263,13 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
               </div>
             </TabsContent>
 
-            {datosEditados.tipo_paso === 'ejecucion' && (
+              {(datosEditados.tipo_paso === 'ejecucion' || datosEditados.tipo_paso === 'inicio') && (
               <TabsContent value="ejecucion">
                 <EditorPasoEjecucion
                   paso={datosEditados}
                   relacionesInput={relacionesInput}
                   inputsDisponibles={inputsDisponibles}
+                  readOnly={datosEditados.tipo_paso === 'inicio'}
                 />
               </TabsContent>
             )}
@@ -317,7 +318,7 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
                 <Edit className="w-4 h-4" />
                 Configuración
               </TabsTrigger>
-              {datosEditados.tipo_paso === 'ejecucion' && (
+              {(datosEditados.tipo_paso === 'ejecucion' || datosEditados.tipo_paso === 'inicio') && (
                 <TabsTrigger 
                   value="ejecucion" 
                   className="flex items-center gap-2"
@@ -449,12 +450,13 @@ export const EditorPaso: React.FC<EditorPasoProps> = ({
               </div>
             </TabsContent>
 
-            {datosEditados.tipo_paso === 'ejecucion' && (
+              {(datosEditados.tipo_paso === 'ejecucion' || datosEditados.tipo_paso === 'inicio') && (
               <TabsContent value="ejecucion">
                 <EditorPasoEjecucion
                   paso={datosEditados}
                   relacionesInput={relacionesInput}
                   inputsDisponibles={inputsDisponibles}
+                  readOnly={datosEditados.tipo_paso === 'inicio'}
                 />
               </TabsContent>
             )}

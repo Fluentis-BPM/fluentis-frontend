@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/bpm/use-toast';
 import { fmtDate } from '@/lib/utils';
-import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType } from '@/types/bpm/inputs';
+import { INPUT_TEMPLATES, normalizeTipoInput, type Input as InputType, type RelacionInput } from '@/types/bpm/inputs';
 import { fetchInputsCatalog } from '@/services/inputs';
 
 interface FlowViewerPageProps {
@@ -53,11 +53,30 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
   // const { toast, fetchPasosYConexiones, updatePasoSolicitud, createPasoSolicitud, createCaminoParalelo } = useBpm();
   const [modoEdicion, setModoEdicion] = useState(true);
   const [pasoEditando, setPasoEditando] = useState<PasoSolicitud | null>(null);
-  const [diagramaKey, setDiagramaKey] = useState(0);
+  // Eliminado diagramaKey para evitar remounts que resetean el zoom
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [editorWidth, setEditorWidth] = useState(480); // Width for resizable editor
   const [isResizing, setIsResizing] = useState(false);
   const [inputsDisponiblesCat, setInputsDisponiblesCat] = useState<InputType[]>([]);
+  const mapRelacionesFromPaso = React.useCallback((p: PasoSolicitud | null): RelacionInput[] => {
+    if (!p) return [];
+    const cd = (p as unknown as { campos_dinamicos?: unknown }).campos_dinamicos;
+    if (Array.isArray(cd)) return cd as RelacionInput[];
+    if (cd && typeof cd === 'object') {
+      const entries = Object.entries(cd as Record<string, { valor?: string; requerido?: boolean; nombre?: string; placeholder?: string | null }>);
+      return entries.map(([key, campo]) => ({
+        id_relacion: Number(key),
+        input_id: Number(key),
+        nombre: campo.nombre,
+        valor: String(campo.valor ?? ''),
+        placeholder: campo.placeholder ?? null,
+        requerido: Boolean(campo.requerido),
+        paso_solicitud_id: p.id_paso_solicitud,
+      }));
+    }
+    const rel = (p as unknown as { relacionesInput?: RelacionInput[] }).relacionesInput;
+    return Array.isArray(rel) ? rel : [];
+  }, []);
 
   const handleNodeSelect = (paso: PasoSolicitud | null) => {
     if (paso) {
@@ -220,7 +239,6 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
               variant="outline"
               size="sm"
               onClick={() => {
-                setDiagramaKey(prev => prev + 1);
                 toast({
                   title: "Diagrama actualizado",
                   description: "El diagrama se ha refrescado correctamente",
@@ -272,7 +290,6 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
           style={{ marginRight: pasoEditando ? `${editorWidth}px` : '0' }}
         >
           <DiagramaFlujo
-            key={diagramaKey}
             pasos={pasos}
             caminos={caminos}
             flujoActivoId={flujo.id_flujo_activo}
@@ -323,6 +340,7 @@ export const FlowViewerPage: React.FC<FlowViewerPageProps> = ({
                 isOpen={false}
                 onClose={() => setPasoEditando(null)}
                 onGuardar={handleGuardarPasoEditado}
+                relacionesInput={mapRelacionesFromPaso(pasoEditando)}
                 responsablesDisponibles={[
                   { id: 1, nombre: 'Ana García', rol: 'Supervisor', departamento: 'Operaciones' },
                   { id: 2, nombre: 'Carlos López', rol: 'Gerente', departamento: 'Finanzas' },

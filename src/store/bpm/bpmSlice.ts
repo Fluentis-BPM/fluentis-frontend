@@ -55,11 +55,53 @@ const initialState: BpmState = {
   draftsByPasoId: {},
 };
 
+// Map front-end ReglaAprobacion names to backend numeric codes
+// 0 = Unanimidad, 1 = PrimeraAprobacion ("Ancla"), 2 = Mayoria (usamos "individual" como mayoría efectiva)
+const mapReglaAprobacionToCode = (value: unknown): number | undefined => {
+  if (typeof value === 'number') return value; // assume already correct 0/1/2
+  const v = String(value || '').toLowerCase();
+  switch (v) {
+    case 'unanime':
+    case 'unánime':
+    case 'unanimidad':
+      return 0;
+    case 'ancla':
+    case 'primeraaprobacion':
+    case 'primera_aprobacion':
+    case 'primera-aprobacion':
+      return 1;
+    case 'individual':
+    case 'mayoria':
+    case 'mayoría':
+      return 2;
+    default:
+      return undefined;
+  }
+};
+// Strips textual ReglaAprobacion fields so they are not sent to generic PasoSolicitud endpoint
+const stripReglaAprobacionText = (payload: Record<string, unknown>): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(payload)) {
+    const lower = k.toLowerCase();
+    if (lower === 'reglaaprobacion' || lower === 'regla_aprobacion') continue;
+    out[k] = v;
+  }
+  return out;
+};
+
 export const fetchFlujosActivos = createAsyncThunk(
   'bpm/fetchFlujosActivos',
-  async (_, { rejectWithValue }) => {
+  async (params: { usuarioId: number; fechaInicio?: string; fechaFin?: string; estado?: number }, { rejectWithValue }) => {
     try {
-  const response = await api.get<FlujoActivo[]>('/api/FlujosActivos');
+      const queryParams = new URLSearchParams();
+      if (params.fechaInicio) queryParams.append('fechaInicio', params.fechaInicio);
+      if (params.fechaFin) queryParams.append('fechaFin', params.fechaFin);
+      if (params.estado !== undefined) queryParams.append('estado', params.estado.toString());
+      
+      const queryString = queryParams.toString();
+      const url = `/api/FlujosActivos/usuario/${params.usuarioId}${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await api.get<FlujoActivo[]>(url);
       return response.data;
     } catch (error: unknown) {
       return rejectWithValue('Error al cargar los flujos activos: ' + (error as Error).message);
@@ -99,7 +141,16 @@ export const deletePasoSolicitud = createAsyncThunk<void, { id: number }, { stat
 
 export const createPasoSolicitud = createAsyncThunk<PasoSolicitud, { data: unknown }, { state: RootState; rejectValue: string }>('bpm/createPasoSolicitud', async ({ data }, { dispatch, getState, rejectWithValue }) => {
   try {
-    const resp = await api.post('/api/PasoSolicitud', data);
+    const raw = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
+    const rawRegla = raw['regla_aprobacion'] ?? raw['ReglaAprobacion'];
+    const sanitized = stripReglaAprobacionText(raw);
+    const resp = await api.post('/api/PasoSolicitud', sanitized);
+    const reglaCode = mapReglaAprobacionToCode(rawRegla);
+    const created = resp.data as PasoSolicitud;
+    if (reglaCode !== undefined && typeof created?.id_paso_solicitud === 'number') {
+  try { await api.put(`/api/pasosolicitud/${created.id_paso_solicitud}`, { reglaAprobacion: reglaCode }); }
+      catch (e) { console.warn('[BPM] Error sincronizando reglaAprobacion numérica en creación:', e); }
+    }
     // refresh current flujo pasos
     const flujoId = getState().bpm.flujoSeleccionado;
     if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
@@ -112,7 +163,15 @@ export const createPasoSolicitud = createAsyncThunk<PasoSolicitud, { data: unkno
 
 export const updatePasoSolicitud = createAsyncThunk<void, { id: number; data: unknown }, { state: RootState; rejectValue: string }>('bpm/updatePasoSolicitud', async ({ id, data }, { dispatch, getState, rejectWithValue }) => {
   try {
-    await api.put(`/api/PasoSolicitud/${id}`, data);
+    const raw = (data && typeof data === 'object') ? data as Record<string, unknown> : {};
+    const reglaRaw = raw['regla_aprobacion'] ?? raw['ReglaAprobacion'];
+    const sanitized = stripReglaAprobacionText(raw);
+    await api.put(`/api/PasoSolicitud/${id}`, sanitized);
+    const reglaCode = mapReglaAprobacionToCode(reglaRaw);
+    if (reglaCode !== undefined) {
+      await api.put(`/api/pasosolicitud/${id}`, { reglaAprobacion: reglaCode });
+    }
+
     const flujoId = getState().bpm.flujoSeleccionado;
     if (flujoId) await dispatch(fetchPasosYConexiones(flujoId));
   } catch (error: unknown) {
@@ -424,8 +483,17 @@ export const commitAllPasoDrafts = createAsyncThunk<void, void, { state: RootSta
           body['PosX'] = Math.round(draft.position.x);
           body['PosY'] = Math.round(draft.position.y);
         }
-        if (Object.keys(body).length > 0) {
-          await api.put(`/api/PasoSolicitud/${pasoId}`, body);
+        const sanitizedBody = stripReglaAprobacionText(body);
+        if (Object.keys(sanitizedBody).length > 0) {
+          await api.put(`/api/PasoSolicitud/${pasoId}`, sanitizedBody);
+        }
+
+        // Si hay una regla de aprobación en el draft, sincronizar también con el endpoint numérico
+        const reglaRaw = (draft?.metadata && (draft.metadata as Record<string, unknown>)['ReglaAprobacion'])
+          ?? (draft?.metadata && (draft.metadata as Record<string, unknown>)['regla_aprobacion']);
+        const reglaCode = mapReglaAprobacionToCode(reglaRaw);
+        if (reglaCode !== undefined) {
+          await api.put(`/api/pasosolicitud/${pasoId}`, { reglaAprobacion: reglaCode });
         }
         // Group approval
         if (Object.prototype.hasOwnProperty.call(draft || {}, 'groupApprovalId')) {

@@ -3,7 +3,7 @@ import { Building2, Users } from 'lucide-react'
 import UserCard from "../common/UserCard"
 import { RoleCardProps } from "@/types/equipos/role"
 
-export default function RoleCard({ role, users, onDrop, draggedUser }: RoleCardProps) {
+export default function RoleCard({ role, users, onDrop, draggedUser, onUserDragStart, onUserDragEnd }: RoleCardProps) {
   const [isDragOver, setIsDragOver] = useState(false)
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -75,8 +75,8 @@ export default function RoleCard({ role, users, onDrop, draggedUser }: RoleCardP
             <UserCard
               key={user.oid}
               user={user}
-              onDragStart={() => {}}
-              onDragEnd={() => {}}
+              onDragStart={onUserDragStart || (() => {})}
+              onDragEnd={onUserDragEnd || (() => {})}
               isDragging={draggedUser?.oid === user.oid}
             />
           ))
