@@ -233,7 +233,7 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
                       <Anchor className="w-4 h-4" />
                       <div>
                         <div className="font-medium">Ancla</div>
-                        <div className="text-xs text-muted-foreground">Requiere al menos 2 aprobaciones</div>
+                        <div className="text-xs text-muted-foreground">Requiere solo una aprobación</div>
                       </div>
                     </div>
                   </SelectItem>
