@@ -48,6 +48,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   onVolverALista,
 }) => {
   const [inputsDisponiblesCat, setInputsDisponiblesCat] = useState<InputType[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
   const { 
     pasosPorFlujo, 
     caminosPorFlujo, 
@@ -231,12 +232,22 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
 
   // Cargar pasos y caminos al montar el componente
   useEffect(() => {
-    toast({
-      title: 'Cargando diagrama...',
-      description: `Obteniendo pasos y conexiones para el flujo #${flujo.id_flujo_activo}.`,
-      duration: 2000,
-    });
-    loadPasosYConexiones(flujo.id_flujo_activo);
+    let mounted = true;
+    (async () => {
+      try {
+        if (!mounted) return;
+        setIsSyncing(true);
+        toast({
+          title: 'Cargando diagrama...',
+          description: `Obteniendo pasos y conexiones para el flujo #${flujo.id_flujo_activo}.`,
+          duration: 1500,
+        });
+        await loadPasosYConexiones(flujo.id_flujo_activo);
+      } finally {
+        if (mounted) setIsSyncing(false);
+      }
+    })();
+    return () => { mounted = false; };
   }, [loadPasosYConexiones, flujo.id_flujo_activo, toast]);
 
   // Resincronizar el paso editando cuando lleguen nuevos pasos desde el store
@@ -495,11 +506,17 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { 
+                onClick={async () => { 
+                  if (isSyncing) return; // Debounce if already syncing
                   toast({ title: 'Sincronizando…', description: 'Actualizando diagrama desde el servidor', duration: 1200 });
                   clearAllOptimistic(); 
-                  // Solo recargar datos; no forzar remount para preservar zoom
-                  loadPasosYConexiones(flujo.id_flujo_activo);
+                  setIsSyncing(true);
+                  try {
+                    // Solo recargar datos; no forzar remount para preservar zoom
+                    await loadPasosYConexiones(flujo.id_flujo_activo);
+                  } finally {
+                    setIsSyncing(false);
+                  }
                 }}
                 className="mr-2 hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-300"
               >
@@ -568,7 +585,7 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
               </Button>
             </div>
             <div 
-              className={`h-full transition-all duration-300 ${mostrarPantallaCompleta ? 'min-h-screen' : ''}`}
+              className={`relative h-full transition-all duration-300 ${mostrarPantallaCompleta ? 'min-h-screen' : ''}`}
               style={{ marginRight: pasoEditando ? `${editorWidth}px` : '0' }}
             >
               <DiagramaFlujo
@@ -585,6 +602,16 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 onReplaceConexiones={putConexionesPaso}
                 onDeleteConexion={deleteConexionPaso}
               />
+
+              {/* Buffering overlay: keep diagram visible, show a soft progress layer */}
+              {(isSyncing) && (
+                <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center bg-white/50">
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <span className="inline-block h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                    <span>Sincronizando diagrama…</span>
+                  </div>
+                </div>
+              )}
             </div>
             {pasoEditando && (
               <motion.div
