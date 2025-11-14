@@ -20,7 +20,8 @@ export const useBpm = () => {
 
   const loadPasosYConexiones = useCallback(
     (flujoActivoId: number) => {
-      dispatch(fetchPasosYConexiones(flujoActivoId));
+      // Return a promise so callers can await syncing and show proper buffering
+      return dispatch(fetchPasosYConexiones(flujoActivoId)).unwrap();
     },
     [dispatch]
   );
