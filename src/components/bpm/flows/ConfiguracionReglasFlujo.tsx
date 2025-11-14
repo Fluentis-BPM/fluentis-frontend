@@ -28,6 +28,8 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
   onUpdatePaso,
   showTipoFlujo = true
 }) => {
+  // Fallback visual: si no hay valor aún, mostrar 'unanime' (default)
+  const reglaValue: PasoSolicitud['regla_aprobacion'] = (paso.regla_aprobacion ?? 'unanime');
   const handleCambioTipoFlujo = (nuevoTipo: PasoSolicitud['tipo_flujo']) => {
     onUpdatePaso({ ...paso, tipo_flujo: nuevoTipo });
   };
@@ -193,7 +195,7 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              {obtenerIconoReglaAprobacion(paso.regla_aprobacion)}
+              {obtenerIconoReglaAprobacion(reglaValue)}
               Reglas de Aprobación
             </CardTitle>
           </CardHeader>
@@ -201,7 +203,7 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
             <div className="space-y-2">
               <Label>Criterio de Aprobación</Label>
               <Select 
-                value={paso.regla_aprobacion}
+                value={reglaValue}
                 onValueChange={(v) => handleCambioReglaAprobacion(v as PasoSolicitud['regla_aprobacion'])}
               >
                 <SelectTrigger>
@@ -242,17 +244,17 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
             {/* Información de la regla */}
             <div className="p-3 bg-muted/30 rounded-lg">
               <div className="flex items-start gap-2">
-                {obtenerIconoReglaAprobacion(paso.regla_aprobacion)}
+                {obtenerIconoReglaAprobacion(reglaValue)}
                 <div>
                   <p className="font-medium text-sm">
-                    {paso.regla_aprobacion === 'unanime' && 'Aprobación Unánime'}
-                    {paso.regla_aprobacion === 'individual' && 'Aprobación por Mayoría'}
-                    {paso.regla_aprobacion === 'ancla' && 'Aprobación con Usuario Ancla'}
+                    {reglaValue === 'unanime' && 'Aprobación Unánime'}
+                    {reglaValue === 'individual' && 'Aprobación por Mayoría'}
+                    {reglaValue === 'ancla' && 'Aprobación con Usuario Ancla'}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {paso.regla_aprobacion === 'unanime' && 'Todos los miembros del grupo deben aprobar para que el paso continúe. Un solo rechazo cancelará el paso.'}
-                    {paso.regla_aprobacion === 'individual' && 'Se aprueba si la mayoría del grupo aprueba.'}
-                    {paso.regla_aprobacion === 'ancla' && 'Se requieren al menos 2 aprobaciones, incluyendo la de un usuario clave o "ancla".'}
+                    {reglaValue === 'unanime' && 'Todos los miembros del grupo deben aprobar para que el paso continúe. Un solo rechazo cancelará el paso.'}
+                    {reglaValue === 'individual' && 'Se aprueba si la mayoría del grupo aprueba.'}
+                    {reglaValue === 'ancla' && 'Se requieren al menos 2 aprobaciones, incluyendo la de un usuario clave o "ancla".'}
                   </p>
                 </div>
               </div>
@@ -261,8 +263,8 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
             {/* Indicadores visuales */}
             <div className="flex gap-2">
               <Badge variant="outline" className="flex items-center gap-1">
-                {obtenerIconoReglaAprobacion(paso.regla_aprobacion)}
-                <span className="capitalize">{labelReglaAprobacion(paso.regla_aprobacion)}</span>
+                {obtenerIconoReglaAprobacion(reglaValue)}
+                <span className="capitalize">{labelReglaAprobacion(reglaValue)}</span>
               </Badge>
               {paso.tipo_flujo !== 'normal' && (
                 <Badge variant="secondary" className="flex items-center gap-1">
@@ -297,7 +299,7 @@ export const ConfiguracionReglasFlujo: React.FC<ConfiguracionReglasProps> = ({
               {paso.tipo_paso === 'aprobacion' && (
                 <div className="col-span-2">
                   <span className="text-muted-foreground">Regla de aprobación:</span>
-                  <span className="ml-2 font-medium capitalize">{labelReglaAprobacion(paso.regla_aprobacion)}</span>
+                  <span className="ml-2 font-medium capitalize">{labelReglaAprobacion(reglaValue)}</span>
                 </div>
               )}
             </div>
