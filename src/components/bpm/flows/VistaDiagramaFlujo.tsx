@@ -54,7 +54,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
     loading, 
     error, 
     loadPasosYConexiones,
-    bufferedLoadPasosYConexiones,
     createPasoSolicitud,
     updatePasoSolicitud,
     deletePasoSolicitud,
@@ -87,7 +86,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const [mostrarPantallaCompleta, setMostrarPantallaCompleta] = useState(false);
   const [mostrarGestionVisualizadores, setMostrarGestionVisualizadores] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   
   // Helper to map campos_dinamicos/relaciones into RelacionInput[] for EditorPaso
   const mapRelacionesFromPaso = React.useCallback((p: PasoSolicitud | null): RelacionInput[] => {
@@ -238,8 +236,8 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
       description: `Obteniendo pasos y conexiones para el flujo #${flujo.id_flujo_activo}.`,
       duration: 2000,
     });
-    bufferedLoadPasosYConexiones(flujo.id_flujo_activo, 150);
-  }, [bufferedLoadPasosYConexiones, flujo.id_flujo_activo, toast]);
+    loadPasosYConexiones(flujo.id_flujo_activo);
+  }, [loadPasosYConexiones, flujo.id_flujo_activo, toast]);
 
   // Resincronizar el paso editando cuando lleguen nuevos pasos desde el store
   useEffect(() => {
@@ -294,7 +292,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
         description: `Diagrama del flujo #${flujo.id_flujo_activo} cargado.`,
         duration: 3000,
       });
-      setHasLoadedOnce(true);
     }
   }, [loading, pasos.length, caminos.length, error, flujo.id_flujo_activo, toast]);
 
@@ -501,8 +498,8 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 onClick={() => { 
                   toast({ title: 'Sincronizando…', description: 'Actualizando diagrama desde el servidor', duration: 1200 });
                   clearAllOptimistic(); 
-                  // Solo recargar datos; usar recarga amortiguada para evitar ráfagas
-                  bufferedLoadPasosYConexiones(flujo.id_flujo_activo, 200);
+                  // Solo recargar datos; no forzar remount para preservar zoom
+                  loadPasosYConexiones(flujo.id_flujo_activo);
                 }}
                 className="mr-2 hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-300"
               >
@@ -533,13 +530,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
         </TabsList>
 
         <TabsContent value="diagrama" className="space-y-4">
-          {/* Sync indicator (non-blocking) */}
-          {loading && hasLoadedOnce && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="animate-spin border-2 border-gray-300 border-t-transparent rounded-full w-3 h-3" />
-              Sincronizando cambios del diagrama…
-            </div>
-          )}
           <div className={`${mostrarPantallaCompleta ? 'fixed inset-0 z-40' : 'relative h-[600px]'} border rounded-lg overflow-hidden bg-gray-50`}>
             {/* Floating action buttons: view/edit + fullscreen + save */}
             <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
@@ -577,13 +567,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 {mostrarPantallaCompleta ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </Button>
             </div>
-            {/* First-load skeleton to avoid layout jank */}
-            {!hasLoadedOnce && loading ? (
-              <div className="h-full p-6 space-y-4">
-                <div className="h-8 w-40 bg-gray-200 animate-pulse rounded" />
-                <div className="h-[440px] bg-gray-100 animate-pulse rounded" />
-              </div>
-            ) : (
             <div 
               className={`h-full transition-all duration-300 ${mostrarPantallaCompleta ? 'min-h-screen' : ''}`}
               style={{ marginRight: pasoEditando ? `${editorWidth}px` : '0' }}
@@ -603,7 +586,6 @@ export const VistaDiagramaFlujo: React.FC<VistaDiagramaFlujoProps> = ({
                 onDeleteConexion={deleteConexionPaso}
               />
             </div>
-            )}
             {pasoEditando && (
               <motion.div
                 initial={{ x: editorWidth }}
