@@ -4,7 +4,7 @@ import { CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Solicitud, EstadoSolicitud } from '@/types/bpm/request';
-import { INPUT_TEMPLATES } from '@/types/bpm/inputs';
+import { normalizeTipoInput, TipoInput } from '@/types/bpm/inputs';
 import { Calendar, User, Workflow, MoreHorizontal, CheckCircle, XCircle, Clock, Database } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -88,6 +88,35 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
   };
 
   const prioridad = String(solicitud.datos_adicionales?.prioridad ?? 'media');
+
+  const campos = solicitud.campos_dinamicos || [];
+
+  const formatValor = (tipo: TipoInput, raw: string) => {
+    if (!raw) return '';
+    switch (tipo) {
+      case 'date':
+        return new Date(raw).toLocaleDateString('es-ES');
+      case 'multiplecheckbox':
+        try {
+          const arr = JSON.parse(raw);
+          return Array.isArray(arr) ? arr.join(', ') : String(raw);
+        } catch {
+          return String(raw);
+        }
+      case 'archivo':
+        // Try to parse expected JSON payload (provider/fileId/directLink)
+        try {
+          const obj = JSON.parse(raw) as { fileName?: string; name?: string; directLink?: string; link?: string; url?: string };
+          const label = obj.fileName || obj.name || 'Archivo';
+          const href = obj.directLink || obj.link || obj.url;
+          return href ? `${label} (${href})` : label;
+        } catch {
+          return String(raw);
+        }
+      default:
+        return String(raw);
+    }
+  };
 
   return (
   <motion.div
@@ -208,51 +237,65 @@ export const TarjetaSolicitud: React.FC<Props> = ({ solicitud, onActualizarEstad
         )}
 
         {/* Campos dinámicos */}
-        {solicitud.campos_dinamicos && solicitud.campos_dinamicos.length > 0 && (
+        {campos.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 mb-3">
               <Database className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">Campos Dinámicos:</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {solicitud.campos_dinamicos.map((relacion) => {
-                const input = INPUT_TEMPLATES.find(i => i.id_input === relacion.input_id);
-                if (!input || !relacion.valor) return null;
+              {campos.map((relacion) => {
+                const tipo = normalizeTipoInput((relacion.input as unknown as { tipo_input?: string })?.tipo_input || 'textocorto');
+                const label = (relacion.nombre || (relacion.input as unknown as { etiqueta?: string })?.etiqueta || `Campo #${relacion.input_id}`).trim();
+                const displayValue = formatValor(tipo, relacion.valor);
+                const isLong = tipo === 'textolargo' || String(displayValue).length > 80;
 
-                const displayValue = (() => {
-                  switch (input.tipo_input) {
-                    case 'date':
-                      return new Date(relacion.valor).toLocaleDateString('es-ES');
-                    case 'multiplecheckbox':
-                      try {
-                        const opciones = JSON.parse(relacion.valor);
-                        return opciones.join(', ');
-                      } catch {
-                        return relacion.valor;
-                      }
-                    case 'archivo':
-                      return `📎 ${relacion.valor}`;
-                    case 'number':
-                      return `${relacion.valor}${input.etiqueta?.includes('Presupuesto') ? ' €' : ''}`;
-                    default:
-                      return relacion.valor;
+                // In case id_relacion is missing/unstable, fall back to composite key
+                const key = `${relacion.id_relacion || 0}-${relacion.input_id}-${label}`;
+
+                // File link extraction (best-effort)
+                const fileHref = (() => {
+                  if (tipo !== 'archivo' || !relacion.valor) return undefined;
+                  try {
+                    const obj = JSON.parse(relacion.valor) as { directLink?: string; link?: string; url?: string };
+                    return obj.directLink || obj.link || obj.url;
+                  } catch {
+                    return undefined;
                   }
                 })();
 
                 return (
-                  <div key={relacion.id_relacion} className="p-2 bg-muted/50 rounded border-l-2 border-request-primary/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {input.etiqueta}
-                        {relacion.requerido && <span className="text-request-danger ml-1">*</span>}
-                      </span>
-                      <span className="text-xs bg-request-primary/10 text-request-primary px-1 rounded">
-                        {input.tipo_input}
+                  <div key={key} className="p-3 bg-muted/40 rounded border border-muted">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-muted-foreground">
+                          {label}
+                          {relacion.requerido && <span className="text-request-danger ml-1">*</span>}
+                        </div>
+                        {fileHref ? (
+                          <a
+                            href={fileHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium underline text-request-primary break-all"
+                            title={fileHref}
+                          >
+                            {displayValue}
+                          </a>
+                        ) : (
+                          <div
+                            className={isLong ? 'text-sm font-medium mt-1 whitespace-pre-wrap break-words' : 'text-sm font-medium mt-1 truncate'}
+                            title={isLong ? undefined : String(displayValue)}
+                          >
+                            {displayValue || <span className="text-muted-foreground">(vacío)</span>}
+                          </div>
+                        )}
+                      </div>
+
+                      <span className="shrink-0 text-[10px] bg-request-primary/10 text-request-primary px-2 py-0.5 rounded">
+                        {tipo}
                       </span>
                     </div>
-                    <p className="text-sm font-medium mt-1 truncate" title={displayValue}>
-                      {displayValue}
-                    </p>
                   </div>
                 );
               })}

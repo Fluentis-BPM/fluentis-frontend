@@ -40,18 +40,48 @@ const mapInputs = (arr: unknown[]): RelacionInput[] => arr.map((riObj) => {
     for (const k of keys) { const v = o[k]; if (v !== undefined && v !== null) return v as T; }
     return fb;
   };
-  const rawVal = pickRi<string | number | boolean | { RawValue?: string | number | boolean | null }>(ri, ['valor','Valor']);
-  const valor = typeof rawVal === 'object' && rawVal && 'RawValue' in rawVal
-    ? String((rawVal as { RawValue?: string | number | boolean | null }).RawValue ?? '')
-    : String((rawVal as string | number | boolean | undefined) ?? '');
+
+  // Backend v2 shape: { inputValue: { rawValue, value, options, tipoInput } }
+  const iv = pickRi<Record<string, unknown>>(ri, ['inputValue', 'InputValue']);
+  const ivRaw = iv ? (pickRi<string | number | boolean | null>(iv, ['rawValue', 'RawValue']) ?? null) : null;
+
+  // Legacy shapes: Valor may be { RawValue } or direct primitive
+  const legacyVal = pickRi<string | number | boolean | { RawValue?: string | number | boolean | null }>(ri, ['valor', 'Valor']);
+  const legacyRaw = (typeof legacyVal === 'object' && legacyVal && 'RawValue' in legacyVal)
+    ? (legacyVal as { RawValue?: string | number | boolean | null }).RawValue
+    : legacyVal;
+
+  // Entity-shaped fallback (some endpoints may serialize RelacionInput directly)
+  const directValor = pickRi<string | number | boolean | null>(ri, ['Valor', 'valor']);
+
+  const mergedRaw = (ivRaw ?? legacyRaw ?? directValor ?? null) as string | number | boolean | null;
+
+  const valor = mergedRaw === null || mergedRaw === undefined ? '' : String(mergedRaw);
+
   return {
-    id_relacion: pickRi<number>(ri, ['idRelacion','IdRelacion']) ?? Date.now(),
+    id_relacion: pickRi<number>(ri, ['idRelacion','IdRelacion','id_relacion']) ?? Date.now(),
     input_id: pickRi<number>(ri, ['inputId','InputId'], 0)!,
     nombre: pickRi<string>(ri, ['nombre','Nombre']),
     valor,
     placeholder: pickRi<string | null>(ri, ['placeHolder','PlaceHolder'], null) ?? null,
     requerido: Boolean(pickRi<boolean>(ri, ['requerido','Requerido'], false)),
     paso_solicitud_id: 0,
+
+    // optional metadata for richer rendering
+    input: (() => {
+      const tipoRaw = iv ? pickRi<string>(iv, ['tipoInput','TipoInput']) : undefined;
+      const opciones = iv ? pickRi<string[]>(iv, ['options','Options']) : undefined;
+      if (!tipoRaw && !opciones) return undefined;
+      return {
+        id_input: pickRi<number>(ri, ['inputId','InputId'], 0)!,
+        // we keep the raw string and normalize at render-time
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tipo_input: (String(tipoRaw ?? 'textocorto').toLowerCase() as any),
+        etiqueta: pickRi<string>(ri, ['nombre','Nombre']),
+        opciones: Array.isArray(opciones) ? opciones : undefined,
+        placeholder: pickRi<string | undefined>(ri, ['placeHolder','PlaceHolder'])
+      };
+    })(),
   };
 });
 
