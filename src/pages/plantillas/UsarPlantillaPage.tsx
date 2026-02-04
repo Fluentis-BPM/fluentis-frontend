@@ -31,6 +31,8 @@ export default function UsarPlantillaPage() {
   const [submitting, setSubmitting] = useState(false);
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  // Nota: una plantilla puede contener múltiples instancias del mismo inputId (mismo tipo configurado varias veces).
+  // Para evitar que compartan valor, guardamos por índice/posición (pos) dentro de la plantilla.
   const [valores, setValores] = useState<Record<number, string>>({});
 
   // Siempre trae la plantilla por ID para asegurar que incluya inputs completos
@@ -63,19 +65,19 @@ export default function UsarPlantillaPage() {
       setNombre(plantilla.nombre || '');
       setDescripcion(plantilla.descripcion || '');
       const init: Record<number, string> = {};
-      (plantilla.inputs || []).forEach(i => { init[i.inputId] = i.valorPorDefecto ?? ''; });
+      (plantilla.inputs || []).forEach((i, idx) => { init[idx] = i.valorPorDefecto ?? ''; });
       setValores(init);
     }
   }, [plantilla]);
 
-  const onChangeValor = (inputId: number, value: string) => setValores((v) => ({ ...v, [inputId]: value }));
+  const onChangeValor = (pos: number, value: string) => setValores((v) => ({ ...v, [pos]: value }));
 
   const requiredMissing = useMemo(() => {
     if (!plantilla) return [] as number[];
     const missing: number[] = [];
-    for (const i of plantilla.inputs || []) {
-      if (i.requerido && !String(valores[i.inputId] ?? '').trim()) missing.push(i.inputId);
-    }
+    (plantilla.inputs || []).forEach((i, idx) => {
+      if (i.requerido && !String(valores[idx] ?? '').trim()) missing.push(idx);
+    });
     return missing;
   }, [plantilla, valores]);
 
@@ -160,7 +162,7 @@ export default function UsarPlantillaPage() {
                   </div>
                 )}
 
-                {(plantilla.inputs || []).map((i) => {
+                {(plantilla.inputs || []).map((i, idx) => {
                   const meta = catalog?.find(c => c.idInput === i.inputId);
                   const tipo = normTipo(meta?.tipoInput || 'textocorto');
                   const inputObj: InputType = {
@@ -171,12 +173,12 @@ export default function UsarPlantillaPage() {
                     opciones: (['combobox','multiplecheckbox','radiogroup'].includes(tipo) ? (i.opciones || []) : undefined),
                   };
                   return (
-                    <div key={i.inputId} className="space-y-2">
+                    <div key={`${i.inputId}-${idx}`} className="space-y-2">
                       <CampoDinamico
                         input={inputObj}
-                        valor={valores[i.inputId] ?? ''}
+                        valor={valores[idx] ?? ''}
                         requerido={Boolean(i.requerido)}
-                        onChange={(v) => onChangeValor(i.inputId, v)}
+                        onChange={(v) => onChangeValor(idx, v)}
                         showRequiredToggle={false}
                       />
                       <div className="flex items-center gap-2">
